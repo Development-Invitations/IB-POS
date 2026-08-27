@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "IB-POS",
+    "subtitle": "Бизнес учун замонавий POS-тизим"
+  },
+  "common": {
+    "language": "Тил",
+    "search": "Маҳсулотларни қидириш...",
+    "loading": "Юкланмоқда..."
+  },
+  "nav": {
+    "sale": "Сотув",
+    "products": "Маҳсулотлар",
+    "customers": "Мижозлар",
+    "discounts": "Чегирмалар ва акциялар",
+    "returns": "Қайтаришлар",
+    "reports": "Ҳисоботлар",
+    "shifts": "Сменалар",
+    "integrations": "Интеграция",
+    "equipment": "Ускуналар",
+    "settings": "Созламалар"
+  },
+  "receipt": {
+    "current": "Жорий чек",
+    "total": "Жами",
+    "discount": "Чегирма",
+    "clear": "Тозалаш",
+    "pay": "Тўлаш"
+  },
+  "roles": {
+    "cashier": "Кассир",
+    "manager": "Бошқарувчи",
+    "admin": "Администратор",
+    "accountant": "Бухгалтер"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "IB-POS",
+    "subtitle": "Современная POS-система для бизнеса"
+  },
+  "common": {
+    "language": "Язык",
+    "search": "Поиск товаров...",
+    "loading": "Загрузка..."
+  },
+  "nav": {
+    "sale": "Продажа",
+    "products": "Товары",
+    "customers": "Клиенты",
+    "discounts": "Скидки и акции",
+    "returns": "Возвраты",
+    "reports": "Отчёты",
+    "shifts": "Смены",
+    "integrations": "Интеграция",
+    "equipment": "Оборудование",
+    "settings": "Настройки"
+  },
+  "receipt": {
+    "current": "Текущий чек",
+    "total": "Итого",
+    "discount": "Скидка",
+    "clear": "Очистить",
+    "pay": "Оплатить"
+  },
+  "roles": {
+    "cashier": "Кассир",
+    "manager": "Управляющий",
+    "admin": "Администратор",
+    "accountant": "Бухгалтер"
+  }
+}

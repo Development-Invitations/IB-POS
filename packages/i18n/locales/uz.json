@@ -1,0 +1,36 @@
+{
+  "app": {
+    "title": "IB-POS",
+    "subtitle": "Biznes uchun zamonaviy POS-tizim"
+  },
+  "common": {
+    "language": "Til",
+    "search": "Mahsulotlarni qidirish...",
+    "loading": "Yuklanmoqda..."
+  },
+  "nav": {
+    "sale": "Sotuv",
+    "products": "Mahsulotlar",
+    "customers": "Mijozlar",
+    "discounts": "Chegirmalar va aksiyalar",
+    "returns": "Qaytarishlar",
+    "reports": "Hisobotlar",
+    "shifts": "Smenalar",
+    "integrations": "Integratsiya",
+    "equipment": "Uskunalar",
+    "settings": "Sozlamalar"
+  },
+  "receipt": {
+    "current": "Joriy chek",
+    "total": "Jami",
+    "discount": "Chegirma",
+    "clear": "Tozalash",
+    "pay": "Toʻlash"
+  },
+  "roles": {
+    "cashier": "Kassir",
+    "manager": "Boshqaruvchi",
+    "admin": "Administrator",
+    "accountant": "Buxgalter"
+  }
+}
