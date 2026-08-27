@@ -1,0 +1,371 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Мультитенантность: organization_id есть на всех прикладных таблицах.
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  stores       Store[]
+  users        User[]
+  products     Product[]
+  categories   Category[]
+  customers    Customer[]
+  discounts    Discount[]
+  integrations Integration[]
+  auditLogs    AuditLog[]
+  outboxEvents OutboxEvent[]
+
+  @@map("organizations")
+}
+
+model Store {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  address        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workstations Workstation[]
+  stock        Stock[]
+  shifts       Shift[]
+  receipts     Receipt[]
+  devices      Device[]
+
+  @@index([organizationId])
+  @@map("stores")
+}
+
+model Workstation {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  storeId        String   @map("store_id")
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shifts   Shift[]
+  receipts Receipt[]
+  devices  Device[]
+
+  @@index([organizationId])
+  @@index([storeId])
+  @@map("workstations")
+}
+
+enum Role {
+  CASHIER
+  MANAGER
+  ADMIN
+  ACCOUNTANT
+}
+
+model User {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  fullName       String   @map("full_name")
+  login          String
+  pinHash        String?  @map("pin_hash")
+  passwordHash   String?  @map("password_hash")
+  role           Role
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  shifts       Shift[]
+  auditLogs    AuditLog[]
+
+  @@unique([organizationId, login])
+  @@index([organizationId])
+  @@map("users")
+}
+
+model Category {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  parentId       String?  @map("parent_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       Category?    @relation("CategoryToSubcategory", fields: [parentId], references: [id])
+  children     Category[]   @relation("CategoryToSubcategory")
+  products     Product[]
+
+  @@index([organizationId])
+  @@map("categories")
+}
+
+model Product {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  categoryId     String?  @map("category_id")
+  name           String
+  sku            String?
+  barcode        String?
+  price          Decimal  @db.Decimal(14, 2)
+  unit           String   @default("pcs")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id])
+  stock        Stock[]
+  receiptItems ReceiptItem[]
+
+  @@index([organizationId])
+  @@index([barcode])
+  @@map("products")
+}
+
+model Stock {
+  id        String   @id @default(uuid())
+  storeId   String   @map("store_id")
+  productId String   @map("product_id")
+  quantity  Decimal  @default(0) @db.Decimal(14, 3)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId])
+  @@map("stock")
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  fullName       String   @map("full_name")
+  phone          String?
+  bonusBalance   Decimal  @default(0) @map("bonus_balance") @db.Decimal(14, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  receipts     Receipt[]
+
+  @@index([organizationId])
+  @@map("customers")
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+model Discount {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  name           String
+  type           DiscountType
+  value          Decimal      @db.Decimal(14, 2)
+  minRole        Role         @default(CASHIER) @map("min_role")
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("discounts")
+}
+
+enum ShiftStatus {
+  OPEN
+  CLOSED
+}
+
+model Shift {
+  id            String      @id @default(uuid())
+  storeId       String      @map("store_id")
+  workstationId String      @map("workstation_id")
+  userId        String      @map("user_id")
+  status        ShiftStatus @default(OPEN)
+  openedAt      DateTime    @default(now()) @map("opened_at")
+  closedAt      DateTime?   @map("closed_at")
+  openingCash   Decimal     @default(0) @map("opening_cash") @db.Decimal(14, 2)
+  closingCash   Decimal?    @map("closing_cash") @db.Decimal(14, 2)
+
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  workstation Workstation @relation(fields: [workstationId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id])
+  receipts    Receipt[]
+
+  @@index([storeId])
+  @@index([workstationId])
+  @@map("shifts")
+}
+
+enum ReceiptStatus {
+  OPEN
+  PAID
+  RETURNED
+  VOID
+}
+
+model Receipt {
+  id            String        @id @default(uuid())
+  storeId       String        @map("store_id")
+  workstationId String        @map("workstation_id")
+  shiftId       String        @map("shift_id")
+  customerId    String?       @map("customer_id")
+  status        ReceiptStatus @default(OPEN)
+  total         Decimal       @default(0) @db.Decimal(14, 2)
+  discountTotal Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  workstation Workstation   @relation(fields: [workstationId], references: [id], onDelete: Cascade)
+  shift       Shift         @relation(fields: [shiftId], references: [id])
+  customer    Customer?     @relation(fields: [customerId], references: [id])
+  items       ReceiptItem[]
+  payments    Payment[]
+
+  @@index([storeId])
+  @@index([shiftId])
+  @@map("receipts")
+}
+
+model ReceiptItem {
+  id        String  @id @default(uuid())
+  receiptId String  @map("receipt_id")
+  productId String  @map("product_id")
+  quantity  Decimal @db.Decimal(14, 3)
+  price     Decimal @db.Decimal(14, 2)
+  discount  Decimal @default(0) @db.Decimal(14, 2)
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([receiptId])
+  @@map("receipt_items")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  CLICK
+  PAYME
+  QR
+  MIXED
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  receiptId String        @map("receipt_id")
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(14, 2)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+
+  @@index([receiptId])
+  @@map("payments")
+}
+
+enum IntegrationProvider {
+  REGOS
+  EPOS
+  SMARTPOS
+  ARCAGROUP
+  RAHMATPOS
+  ONEC
+}
+
+model Integration {
+  id             String              @id @default(uuid())
+  organizationId String              @map("organization_id")
+  provider       IntegrationProvider
+  config         Json                @default("{}")
+  isConnected    Boolean             @default(false) @map("is_connected")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+  @@map("integrations")
+}
+
+enum DeviceType {
+  FISCAL_REGISTRAR
+  BARCODE_SCANNER
+  CASH_DRAWER
+  CUSTOMER_DISPLAY
+  PAYMENT_TERMINAL
+}
+
+model Device {
+  id            String     @id @default(uuid())
+  storeId       String     @map("store_id")
+  workstationId String?    @map("workstation_id")
+  type          DeviceType
+  name          String
+  isConnected   Boolean    @default(false) @map("is_connected")
+  lastSeenAt    DateTime?  @map("last_seen_at")
+
+  store       Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  workstation Workstation? @relation(fields: [workstationId], references: [id])
+
+  @@index([storeId])
+  @@map("devices")
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String?  @map("user_id")
+  action         String
+  entity         String
+  entityId       String?  @map("entity_id")
+  metadata       Json     @default("{}")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@map("audit_log")
+}
+
+// ---------------------------------------------------------------------------
+// Оффлайн-очередь: локально созданное событие (чек создан, возврат и т.д.)
+// сначала пишется сюда, затем sync-worker (Этап 8) отправляет его в облако
+// или фискальному провайдеру. Работает без интернета — статус остаётся PENDING.
+// ---------------------------------------------------------------------------
+
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model OutboxEvent {
+  id             String       @id @default(uuid())
+  organizationId String       @map("organization_id")
+  eventType      String       @map("event_type")
+  payload        Json
+  status         OutboxStatus @default(PENDING)
+  attempts       Int          @default(0)
+  lastError      String?      @map("last_error")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  sentAt         DateTime?    @map("sent_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("outbox_events")
+}
