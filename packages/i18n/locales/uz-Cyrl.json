@@ -6,9 +6,13 @@
   "common": {
     "language": "Тил",
     "search": "Маҳсулотларни қидириш...",
-    "loading": "Юкланмоқда..."
+    "loading": "Юкланмоқда...",
+    "currency": "сўм",
+    "notifications": "Билдиришномалар",
+    "remove": "Ўчириш"
   },
   "nav": {
+    "home": "Бош саҳифа",
     "sale": "Сотув",
     "products": "Маҳсулотлар",
     "customers": "Мижозлар",
@@ -18,14 +22,36 @@
     "shifts": "Сменалар",
     "integrations": "Интеграция",
     "equipment": "Ускуналар",
-    "settings": "Созламалар"
+    "settings": "Созламалар",
+    "collapse": "Йиғиш"
+  },
+  "header": {
+    "workstation": "Касса",
+    "online": "Онлайн",
+    "shift": "Смена"
+  },
+  "tabs": {
+    "products": "Маҳсулотлар",
+    "categories": "Категориялар"
+  },
+  "categories": {
+    "all": "Барчаси",
+    "drinks": "Ичимликлар",
+    "food": "Овқат",
+    "desserts": "Десертлар",
+    "tobacco": "Тамаки",
+    "other": "Бошқа"
+  },
+  "product": {
+    "addProduct": "Маҳсулот қўшиш"
   },
   "receipt": {
     "current": "Жорий чек",
     "total": "Жами",
     "discount": "Чегирма",
     "clear": "Тозалаш",
-    "pay": "Тўлаш"
+    "pay": "Тўлаш",
+    "empty": "Чек бўш"
   },
   "roles": {
     "cashier": "Кассир",

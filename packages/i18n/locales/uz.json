@@ -6,9 +6,13 @@
   "common": {
     "language": "Til",
     "search": "Mahsulotlarni qidirish...",
-    "loading": "Yuklanmoqda..."
+    "loading": "Yuklanmoqda...",
+    "currency": "soʻm",
+    "notifications": "Bildirishnomalar",
+    "remove": "Oʻchirish"
   },
   "nav": {
+    "home": "Bosh sahifa",
     "sale": "Sotuv",
     "products": "Mahsulotlar",
     "customers": "Mijozlar",
@@ -18,14 +22,36 @@
     "shifts": "Smenalar",
     "integrations": "Integratsiya",
     "equipment": "Uskunalar",
-    "settings": "Sozlamalar"
+    "settings": "Sozlamalar",
+    "collapse": "Yigʻish"
+  },
+  "header": {
+    "workstation": "Kassa",
+    "online": "Onlayn",
+    "shift": "Smena"
+  },
+  "tabs": {
+    "products": "Mahsulotlar",
+    "categories": "Kategoriyalar"
+  },
+  "categories": {
+    "all": "Barchasi",
+    "drinks": "Ichimliklar",
+    "food": "Ovqat",
+    "desserts": "Desertlar",
+    "tobacco": "Tamaki",
+    "other": "Boshqa"
+  },
+  "product": {
+    "addProduct": "Mahsulot qoʻshish"
   },
   "receipt": {
     "current": "Joriy chek",
     "total": "Jami",
     "discount": "Chegirma",
     "clear": "Tozalash",
-    "pay": "Toʻlash"
+    "pay": "Toʻlash",
+    "empty": "Chek boʻsh"
   },
   "roles": {
     "cashier": "Kassir",

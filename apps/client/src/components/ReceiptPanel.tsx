@@ -1,0 +1,149 @@
+import { useTranslation } from "react-i18next";
+import { formatSum } from "../lib/format";
+import type { CatalogProduct } from "../data/catalog";
+import { MinusIcon, PlusIcon, CloseIcon } from "./icons";
+
+export interface CartLine {
+  product: CatalogProduct;
+  qty: number;
+}
+
+interface ReceiptPanelProps {
+  lines: CartLine[];
+  discountPercent: number;
+  onDiscountChange: (percent: number) => void;
+  onIncrement: (productId: string) => void;
+  onDecrement: (productId: string) => void;
+  onRemove: (productId: string) => void;
+  onClear: () => void;
+  onPay: () => void;
+}
+
+const DISCOUNT_STEP = 5;
+const MAX_DISCOUNT_PERCENT = 50;
+
+export function ReceiptPanel({
+  lines,
+  discountPercent,
+  onDiscountChange,
+  onIncrement,
+  onDecrement,
+  onRemove,
+  onClear,
+  onPay,
+}: ReceiptPanelProps) {
+  const { t } = useTranslation();
+
+  const subtotal = lines.reduce((sum, line) => sum + line.product.price * line.qty, 0);
+  const discountAmount = Math.round((subtotal * discountPercent) / 100);
+  const total = subtotal - discountAmount;
+
+  return (
+    <aside className="m-4 flex w-[340px] shrink-0 flex-col rounded-xl bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+        <h2 className="font-semibold text-slate-800">{t("receipt.current")}</h2>
+      </div>
+
+      <div className="flex-1 space-y-1 overflow-y-auto px-2 py-2">
+        {lines.length === 0 && (
+          <p className="px-2 py-8 text-center text-sm text-slate-400">{t("receipt.empty")}</p>
+        )}
+
+        {lines.map((line) => (
+          <div key={line.product.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-50">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-lg">
+              {line.product.emoji}
+            </span>
+
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-slate-800">{line.product.name}</div>
+              <div className="text-xs text-slate-400">{line.product.subtitle}</div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onDecrement(line.product.id)}
+                className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100"
+              >
+                <MinusIcon width={14} height={14} />
+              </button>
+              <span className="w-5 text-center text-sm">{line.qty}</span>
+              <button
+                onClick={() => onIncrement(line.product.id)}
+                className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100"
+              >
+                <PlusIcon width={14} height={14} />
+              </button>
+            </div>
+
+            <div className="w-20 shrink-0 text-right text-sm font-semibold text-slate-800">
+              {formatSum(line.product.price * line.qty)}
+            </div>
+
+            <button
+              onClick={() => onRemove(line.product.id)}
+              className="text-slate-300 hover:text-accent"
+              aria-label={t("common.remove")}
+            >
+              <CloseIcon width={14} height={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+        {lines.length > 0 && (
+          <div className="flex items-center justify-between text-sm text-slate-500">
+            <span className="flex items-center gap-2">
+              {t("receipt.discount")}
+              <span className="flex items-center gap-1">
+                <button
+                  onClick={() => onDiscountChange(Math.max(0, discountPercent - DISCOUNT_STEP))}
+                  disabled={discountPercent === 0}
+                  className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                >
+                  <MinusIcon width={14} height={14} />
+                </button>
+                <span className="w-10 rounded bg-slate-100 px-1.5 py-0.5 text-center text-xs">
+                  {discountPercent}%
+                </span>
+                <button
+                  onClick={() => onDiscountChange(Math.min(MAX_DISCOUNT_PERCENT, discountPercent + DISCOUNT_STEP))}
+                  disabled={discountPercent >= MAX_DISCOUNT_PERCENT}
+                  className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40"
+                >
+                  <PlusIcon width={14} height={14} />
+                </button>
+              </span>
+            </span>
+            <span>-{formatSum(discountAmount)}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <span className="font-semibold text-slate-800">{t("receipt.total")}</span>
+          <span className="text-xl font-bold text-slate-900">
+            {formatSum(total)} {t("common.currency")}
+          </span>
+        </div>
+
+        <div className="flex gap-2 pt-1">
+          <button
+            onClick={onClear}
+            disabled={lines.length === 0}
+            className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-40"
+          >
+            {t("receipt.clear")}
+          </button>
+          <button
+            onClick={onPay}
+            disabled={lines.length === 0}
+            className="flex-[2] rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+          >
+            {t("receipt.pay")}
+          </button>
+        </div>
+      </div>
+    </aside>
+  );
+}

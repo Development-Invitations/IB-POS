@@ -6,9 +6,13 @@
   "common": {
     "language": "Язык",
     "search": "Поиск товаров...",
-    "loading": "Загрузка..."
+    "loading": "Загрузка...",
+    "currency": "сум",
+    "notifications": "Уведомления",
+    "remove": "Удалить"
   },
   "nav": {
+    "home": "Главная",
     "sale": "Продажа",
     "products": "Товары",
     "customers": "Клиенты",
@@ -18,14 +22,36 @@
     "shifts": "Смены",
     "integrations": "Интеграция",
     "equipment": "Оборудование",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "collapse": "Свернуть"
+  },
+  "header": {
+    "workstation": "Касса",
+    "online": "Онлайн",
+    "shift": "Смена"
+  },
+  "tabs": {
+    "products": "Товары",
+    "categories": "Категории"
+  },
+  "categories": {
+    "all": "Все",
+    "drinks": "Напитки",
+    "food": "Еда",
+    "desserts": "Десерты",
+    "tobacco": "Табак",
+    "other": "Прочее"
+  },
+  "product": {
+    "addProduct": "Добавить товар"
   },
   "receipt": {
     "current": "Текущий чек",
     "total": "Итого",
     "discount": "Скидка",
     "clear": "Очистить",
-    "pay": "Оплатить"
+    "pay": "Оплатить",
+    "empty": "Чек пуст"
   },
   "roles": {
     "cashier": "Кассир",

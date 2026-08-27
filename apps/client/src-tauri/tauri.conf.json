@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "client",
+  "productName": "IB-POS",
   "version": "0.1.0",
-  "identifier": "com.user.client",
+  "identifier": "com.ibpos.client",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "client",
-        "width": 800,
-        "height": 600
+        "title": "IB-POS",
+        "width": 1366,
+        "height": 768,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "resizable": true,
+        "maximized": true
       }
     ],
     "security": {
