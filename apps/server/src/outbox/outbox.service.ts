@@ -29,4 +29,12 @@ export class OutboxService {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  // Журнал ошибок фискализации/синка (Этап 5) — события, исчерпавшие попытки ретрая.
+  findFailed(organizationId: string) {
+    return this.prisma.outboxEvent.findMany({
+      where: { organizationId, status: 'FAILED' },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
 }

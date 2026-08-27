@@ -17,4 +17,10 @@ export class OutboxController {
   findPending(@CurrentUser() user: AuthenticatedUser) {
     return this.outbox.findPending(user.organizationId);
   }
+
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @Get('failed')
+  findFailed(@CurrentUser() user: AuthenticatedUser) {
+    return this.outbox.findFailed(user.organizationId);
+  }
 }
