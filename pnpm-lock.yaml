@@ -81,6 +81,9 @@ importers:
 
   apps/device-agent:
     dependencies:
+      '@ib-pos/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       ws:
         specifier: ^8.18.0
         version: 8.21.3

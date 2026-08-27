@@ -5,3 +5,5 @@ export enum Role {
   Admin = "admin",
   Accountant = "accountant",
 }
+
+export * from "./device-protocol.js";

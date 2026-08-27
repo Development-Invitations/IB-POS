@@ -9,7 +9,8 @@
     "loading": "Yuklanmoqda...",
     "currency": "soʻm",
     "notifications": "Bildirishnomalar",
-    "remove": "Oʻchirish"
+    "remove": "Oʻchirish",
+    "close": "Yopish"
   },
   "nav": {
     "home": "Bosh sahifa",
@@ -85,5 +86,24 @@
     "cancel": "Bekor qilish",
     "wrongPin": "PIN notoʻgʻri",
     "done": "Chek qaytarildi"
+  },
+  "scanner": {
+    "notFoundTitle": "Mahsulot topilmadi",
+    "notFoundHint": "Kod: {{code}}"
+  },
+  "equipment": {
+    "title": "Uskunalar",
+    "connected": "Ulangan",
+    "disconnected": "Ulanmagan",
+    "test": "Test",
+    "testing": "Tekshirilmoqda...",
+    "agentOffline": "Device Agent mavjud emas",
+    "devices": {
+      "fiscal_registrar": "Fiskal registrator",
+      "cash_drawer": "Pul qutisi",
+      "customer_display": "Xaridor displeyi",
+      "payment_terminal": "Toʻlov terminali",
+      "barcode_scanner": "Shtrix-kod skaneri"
+    }
   }
 }

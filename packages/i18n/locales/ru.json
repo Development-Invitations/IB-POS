@@ -9,7 +9,8 @@
     "loading": "Загрузка...",
     "currency": "сум",
     "notifications": "Уведомления",
-    "remove": "Удалить"
+    "remove": "Удалить",
+    "close": "Закрыть"
   },
   "nav": {
     "home": "Главная",
@@ -85,5 +86,24 @@
     "cancel": "Отмена",
     "wrongPin": "Неверный PIN",
     "done": "Чек возвращён"
+  },
+  "scanner": {
+    "notFoundTitle": "Товар не найден",
+    "notFoundHint": "Код: {{code}}"
+  },
+  "equipment": {
+    "title": "Оборудование",
+    "connected": "Подключено",
+    "disconnected": "Не подключено",
+    "test": "Тест",
+    "testing": "Проверка...",
+    "agentOffline": "Device Agent недоступен",
+    "devices": {
+      "fiscal_registrar": "Фискальный регистратор",
+      "cash_drawer": "Денежный ящик",
+      "customer_display": "Дисплей покупателя",
+      "payment_terminal": "Терминал оплаты",
+      "barcode_scanner": "Сканер штрих-кодов"
+    }
   }
 }

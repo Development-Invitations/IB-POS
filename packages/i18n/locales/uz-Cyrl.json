@@ -9,7 +9,8 @@
     "loading": "Юкланмоқда...",
     "currency": "сўм",
     "notifications": "Билдиришномалар",
-    "remove": "Ўчириш"
+    "remove": "Ўчириш",
+    "close": "Ёпиш"
   },
   "nav": {
     "home": "Бош саҳифа",
@@ -85,5 +86,24 @@
     "cancel": "Бекор қилиш",
     "wrongPin": "PIN нотўғри",
     "done": "Чек қайтарилди"
+  },
+  "scanner": {
+    "notFoundTitle": "Маҳсулот топилмади",
+    "notFoundHint": "Код: {{code}}"
+  },
+  "equipment": {
+    "title": "Ускуналар",
+    "connected": "Уланган",
+    "disconnected": "Уланмаган",
+    "test": "Тест",
+    "testing": "Текширилмоқда...",
+    "agentOffline": "Device Agent мавжуд эмас",
+    "devices": {
+      "fiscal_registrar": "Фискал регистратор",
+      "cash_drawer": "Пул қутиси",
+      "customer_display": "Харидор дисплейи",
+      "payment_terminal": "Тўлов терминали",
+      "barcode_scanner": "Штрих-код сканери"
+    }
   }
 }
