@@ -56,7 +56,34 @@
   "roles": {
     "cashier": "Kassir",
     "manager": "Boshqaruvchi",
+    "warehouse": "Ombor mudiri",
     "admin": "Administrator",
     "accountant": "Buxgalter"
+  },
+  "payment": {
+    "title": "Toʻlov",
+    "cash": "Naqd pul",
+    "card": "Karta (POS-terminal)",
+    "clickPayme": "Click / Payme",
+    "qr": "QR-kod",
+    "mixed": "Aralash toʻlov",
+    "toPay": "Toʻlanadi",
+    "received": "Qabul qilindi",
+    "change": "Qaytim",
+    "confirm": "Toʻlovni qabul qilish",
+    "cancel": "Bekor qilish",
+    "error": "Toʻlov xatosi. Chek saqlandi, qayta urinib koʻring",
+    "retry": "Qayta urinish",
+    "success": "Toʻlandi"
+  },
+  "returns": {
+    "action": "Qaytarish",
+    "title": "Chekni qaytarish",
+    "confirmText": "Qaytarish uchun boshqaruvchi yoki administrator huquqi tasdiqlanishi kerak",
+    "pinPlaceholder": "PIN",
+    "confirm": "Qaytarishni tasdiqlash",
+    "cancel": "Bekor qilish",
+    "wrongPin": "PIN notoʻgʻri",
+    "done": "Chek qaytarildi"
   }
 }

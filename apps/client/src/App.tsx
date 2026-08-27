@@ -3,8 +3,13 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
 import { ProductGrid } from "./components/ProductGrid";
-import { ReceiptPanel, type CartLine } from "./components/ReceiptPanel";
+import { ReceiptPanel, type CartLine, type PaidReceipt } from "./components/ReceiptPanel";
+import { PaymentModal, type PaymentStatus } from "./components/PaymentModal";
+import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
+import { checkApiHealth } from "./lib/api";
+import { computeTotals } from "./lib/cart";
 import { DEMO_PRODUCTS, type CategoryId, type CatalogProduct } from "./data/catalog";
+import type { PaymentMethod } from "./types/payment";
 import "./App.css";
 
 function App() {
@@ -12,6 +17,11 @@ function App() {
   const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
   const [lines, setLines] = useState<CartLine[]>([]);
   const [discountPercent, setDiscountPercent] = useState(0);
+
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
+  const [lastReceipt, setLastReceipt] = useState<PaidReceipt | null>(null);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
 
   const visibleProducts = useMemo(
     () =>
@@ -52,9 +62,32 @@ function App() {
     setDiscountPercent(0);
   }
 
-  function pay() {
-    // Этап 3: модальное окно оплаты (наличные/карта/Click/Payme/QR/смешанная).
+  function openPaymentModal() {
+    setPaymentStatus("idle");
+    setPaymentModalOpen(true);
+  }
+
+  async function confirmPayment(method: PaymentMethod, _receivedAmount: number | null) {
+    setPaymentStatus("processing");
+
+    // Реальная (не имитированная) проверка доступности backend — честно демонстрирует
+    // поведение из ТЗ: "ошибка оплаты не должна терять чек (сохраняется локально, повтор)".
+    const reachable = await checkApiHealth();
+    if (!reachable) {
+      setPaymentStatus("error");
+      return;
+    }
+
+    const { total } = computeTotals(lines, discountPercent);
+    setLastReceipt({ total, method });
+    setPaymentModalOpen(false);
+    setPaymentStatus("idle");
     clear();
+  }
+
+  function confirmReturn() {
+    setLastReceipt(null);
+    setReturnModalOpen(false);
   }
 
   return (
@@ -76,9 +109,24 @@ function App() {
           onDecrement={decrement}
           onRemove={remove}
           onClear={clear}
-          onPay={pay}
+          onPay={openPaymentModal}
+          lastReceipt={lastReceipt}
+          onReturnClick={() => setReturnModalOpen(true)}
         />
       </div>
+
+      {paymentModalOpen && (
+        <PaymentModal
+          total={computeTotals(lines, discountPercent).total}
+          status={paymentStatus}
+          onClose={() => setPaymentModalOpen(false)}
+          onConfirm={confirmPayment}
+        />
+      )}
+
+      {returnModalOpen && (
+        <ReturnConfirmModal onClose={() => setReturnModalOpen(false)} onConfirm={confirmReturn} />
+      )}
     </div>
   );
 }

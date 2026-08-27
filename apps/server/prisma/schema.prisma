@@ -68,6 +68,7 @@ model Workstation {
 enum Role {
   CASHIER
   MANAGER
+  WAREHOUSE
   ADMIN
   ACCOUNTANT
 }

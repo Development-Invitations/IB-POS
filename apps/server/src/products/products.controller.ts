@@ -23,7 +23,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 export class ProductsController {
   constructor(private readonly products: ProductsService) {}
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,
@@ -42,7 +42,7 @@ export class ProductsController {
     return this.products.findOne(user.organizationId, id);
   }
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
   @Patch(':id')
   update(
     @CurrentUser() user: AuthenticatedUser,
@@ -52,7 +52,7 @@ export class ProductsController {
     return this.products.update(user.organizationId, id, dto);
   }
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
   @Delete(':id')
   remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.products.remove(user.organizationId, id);

@@ -13,7 +13,7 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 export class CategoriesController {
   constructor(private readonly categories: CategoriesService) {}
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
   @Post()
   create(
     @CurrentUser() user: AuthenticatedUser,

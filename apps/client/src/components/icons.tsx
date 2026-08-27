@@ -134,3 +134,41 @@ export const CloseIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="m6 6 12 12M18 6 6 18" />
   </svg>
 );
+
+export const CashIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2.5" y="6" width="19" height="12" rx="1.5" />
+    <circle cx="12" cy="12" r="2.6" />
+    <path d="M6 8v8M18 8v8" />
+  </svg>
+);
+
+export const CardIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2.5" y="5" width="19" height="14" rx="2" />
+    <path d="M2.5 10h19" />
+    <path d="M6 14.5h4" />
+  </svg>
+);
+
+export const QrIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 14h3v3h-3zM19 14h2v2h-2zM14 19h2v2h-2zM19 19h2v2h-2z" />
+  </svg>
+);
+
+export const MixedIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 7h13l-3-3M21 17H8l3 3" />
+  </svg>
+);
+
+export const CheckCircleIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m8 12.5 2.6 2.6L16 9.5" />
+  </svg>
+);
