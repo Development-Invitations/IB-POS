@@ -50,8 +50,11 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [oneCBusy, setOneCBusy] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  // quiet=true — фоновое обновление после успешного действия (подключение/тест):
+  // не должно прятать уже отрисованный экран за "Загрузка...", иначе карточки
+  // дёргаются (пропадают и появляются заново) при каждом клике.
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true);
     setLoadError(null);
     try {
       const [integrationList, oneCStatus] = await Promise.all([
@@ -67,7 +70,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
         setLoadError(err instanceof ApiError ? err.message : t("integrations.loadError"));
       }
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
 
@@ -91,7 +94,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
       const result = await connectIntegration(session.accessToken, activeProvider, login.trim(), providerToken.trim());
       setProviderMessage(result.message ?? (result.success ? t("integrations.connected") : t("integrations.connectError")));
       if (result.success) {
-        await load();
+        await load(true);
         setActiveProvider(null);
       }
     } catch (err) {
@@ -132,7 +135,13 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
     try {
       const credentials = await configureOneC(session.accessToken);
       setOneCCredentials(credentials);
-      await load();
+      // Ответ уже содержит всё нужное — полный рефетч не нужен, обновляем статус на месте.
+      setOneC({
+        isConnected: true,
+        login: credentials.login,
+        exchangePath: credentials.exchangePath,
+        updatedAt: new Date().toISOString(),
+      });
     } catch {
       // ошибку молча игнорируем — кнопка остаётся доступной для повтора
     } finally {
