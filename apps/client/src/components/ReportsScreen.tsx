@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError, getDashboard, getReportsCsv, getStockReport, getStores } from "../lib/api";
+import { ApiError, getDashboard, getReportsCsv, getStockReport, getStores, getTopProducts } from "../lib/api";
 import { formatSum } from "../lib/format";
-import type { ApiStockEntry, ApiStore, DashboardReport } from "../types/api";
+import type { ApiStockEntry, ApiStore, DashboardReport, TopProduct } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface ReportsScreenProps {
@@ -22,7 +22,57 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-type Tab = "dashboard" | "stock";
+type Tab = "dashboard" | "products" | "stock";
+
+function ChangeBadge({ value }: { value: number | null }) {
+  const { t } = useTranslation();
+  if (value === null) {
+    return <span className="text-xs text-slate-400">{t("reports.noComparison")}</span>;
+  }
+  const positive = value >= 0;
+  return (
+    <span className={`text-xs font-medium ${positive ? "text-emerald-600" : "text-red-600"}`}>
+      {positive ? "+" : ""}
+      {value.toFixed(1)}% {t("reports.vsPrevious")}
+    </span>
+  );
+}
+
+// Лёгкий линейный график без внешней библиотеки — 24 почасовые точки, заливка под линией.
+function SalesLineChart({ points }: { points: { hour: number; total: number }[] }) {
+  const width = 600;
+  const height = 140;
+  const max = Math.max(1, ...points.map((p) => p.total));
+
+  const coords = points.map((p, i) => {
+    const x = (i / (points.length - 1)) * width;
+    const y = height - (p.total / max) * (height - 8) - 4;
+    return { x, y, ...p };
+  });
+
+  const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
+  const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaPath} fill="url(#salesFill)" />
+      <path d={linePath} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {coords.map((c) => (
+        <circle key={c.hour} cx={c.x} cy={c.y} r={c.total > 0 ? 2.5 : 0} fill="#ef4444">
+          <title>
+            {c.hour}:00 — {formatSum(c.total)}
+          </title>
+        </circle>
+      ))}
+    </svg>
+  );
+}
 
 export function ReportsScreen({ session }: ReportsScreenProps) {
   const { t } = useTranslation();
@@ -36,6 +86,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
   const [to, setTo] = useState(todayIso());
 
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [stock, setStock] = useState<ApiStockEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,6 +107,9 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
         if (tab === "dashboard" && canDashboard) {
           const report = await getDashboard(session.accessToken, { from, to, storeId: storeId || undefined });
           if (!cancelled) setDashboard(report);
+        } else if (tab === "products" && canDashboard) {
+          const list = await getTopProducts(session.accessToken, { from, to, storeId: storeId || undefined });
+          if (!cancelled) setTopProducts(list);
         } else if (tab === "stock" && canStock) {
           const entries = await getStockReport(session.accessToken, storeId || undefined);
           if (!cancelled) setStock(entries);
@@ -73,10 +127,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, from, to, storeId, session.accessToken]);
 
-  const maxHourly = useMemo(() => {
-    if (!dashboard) return 0;
-    return Math.max(1, ...dashboard.salesByHour.map((h) => h.total));
-  }, [dashboard]);
+  const maxTopRevenue = useMemo(() => Math.max(1, ...topProducts.map((p) => p.revenue)), [topProducts]);
 
   async function handleExport() {
     setExporting(true);
@@ -108,7 +159,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-800">{t("nav.reports")}</h1>
-        {tab === "dashboard" && canDashboard && (
+        {tab !== "stock" && canDashboard && (
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -119,8 +170,8 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
         )}
       </div>
 
-      {canDashboard && canStock && (
-        <div className="flex gap-2 rounded-lg bg-slate-100 p-1">
+      <div className="flex gap-2 rounded-lg bg-slate-100 p-1">
+        {canDashboard && (
           <button
             onClick={() => setTab("dashboard")}
             className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
@@ -129,6 +180,18 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
           >
             {t("reports.tabDashboard")}
           </button>
+        )}
+        {canDashboard && (
+          <button
+            onClick={() => setTab("products")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+              tab === "products" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {t("reports.tabProducts")}
+          </button>
+        )}
+        {canStock && (
           <button
             onClick={() => setTab("stock")}
             className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
@@ -137,11 +200,11 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
           >
             {t("reports.tabStock")}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        {tab === "dashboard" && (
+        {tab !== "stock" && (
           <>
             <label className="text-xs font-medium text-slate-500">
               {t("reports.from")}
@@ -223,22 +286,26 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
               <div className="mt-1 text-xl font-bold text-slate-800">
                 {formatSum(dashboard.totalSales)} {t("common.currency")}
               </div>
+              <ChangeBadge value={dashboard.changeVsPrevious.totalSales} />
             </div>
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <div className="text-xs text-slate-400">{t("reports.receiptsCount")}</div>
               <div className="mt-1 text-xl font-bold text-slate-800">{dashboard.receiptsCount}</div>
+              <ChangeBadge value={dashboard.changeVsPrevious.receiptsCount} />
             </div>
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <div className="text-xs text-slate-400">{t("reports.averageCheck")}</div>
               <div className="mt-1 text-xl font-bold text-slate-800">
                 {formatSum(dashboard.averageCheck)} {t("common.currency")}
               </div>
+              <ChangeBadge value={dashboard.changeVsPrevious.averageCheck} />
             </div>
             <div className="rounded-xl bg-white p-4 shadow-sm">
               <div className="text-xs text-slate-400">{t("reports.profit")}</div>
               <div className="mt-1 text-xl font-bold text-slate-800">
                 {formatSum(dashboard.profit)} {t("common.currency")}
               </div>
+              <ChangeBadge value={dashboard.changeVsPrevious.profit} />
               {dashboard.profitDataIncomplete && (
                 <div className="mt-1 text-[11px] text-amber-600">{t("reports.profitIncomplete")}</div>
               )}
@@ -247,16 +314,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-slate-700">{t("reports.salesByHour")}</h3>
-            <div className="flex h-32 items-end gap-1">
-              {dashboard.salesByHour.map((h) => (
-                <div
-                  key={h.hour}
-                  title={`${h.hour}:00 — ${formatSum(h.total)} ${t("common.currency")}`}
-                  className="flex-1 rounded-t bg-accent/70 transition hover:bg-accent"
-                  style={{ height: `${Math.max(2, (h.total / maxHourly) * 100)}%` }}
-                />
-              ))}
-            </div>
+            <SalesLineChart points={dashboard.salesByHour} />
             <div className="mt-1 flex justify-between text-[10px] text-slate-400">
               <span>0:00</span>
               <span>12:00</span>
@@ -264,6 +322,49 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
             </div>
           </div>
         </>
+      )}
+
+      {!loading && !loadError && tab === "products" && (
+        <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-xs text-slate-400">
+                <th className="px-4 py-3 font-medium">{t("products.name")}</th>
+                <th className="px-4 py-3 font-medium text-right">{t("reports.soldQuantity")}</th>
+                <th className="px-4 py-3 font-medium text-right">{t("reports.revenue")}</th>
+                <th className="px-4 py-3 font-medium" />
+              </tr>
+            </thead>
+            <tbody>
+              {topProducts.map((p) => (
+                <tr key={p.productId} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                  <td className="px-4 py-3 text-right text-slate-500">
+                    {p.quantity} {p.unit}
+                  </td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    {formatSum(p.revenue)} {t("common.currency")}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-accent"
+                        style={{ width: `${(p.revenue / maxTopRevenue) * 100}%` }}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {topProducts.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-400">
+                    {t("reports.stockEmpty")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {!loading && !loadError && tab === "stock" && (

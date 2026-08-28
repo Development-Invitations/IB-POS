@@ -17,6 +17,7 @@ import type {
   DiscountType,
   OneCCredentials,
   OneCStatus,
+  TopProduct,
 } from "../types/api";
 import type { Role } from "../types/auth";
 
@@ -386,6 +387,10 @@ export async function getReportsCsv(token: string, filter: PeriodFilter): Promis
 export function getStockReport(token: string, storeId?: string) {
   const qs = storeId ? `?storeId=${encodeURIComponent(storeId)}` : "";
   return request<ApiStockEntry[]>(`/reports/stock${qs}`, {}, token);
+}
+
+export function getTopProducts(token: string, filter: PeriodFilter) {
+  return request<TopProduct[]>(`/reports/top-products${periodQuery(filter)}`, {}, token);
 }
 
 export function getIntegrations(token: string) {

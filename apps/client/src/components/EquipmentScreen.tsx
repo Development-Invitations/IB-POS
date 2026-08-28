@@ -42,7 +42,8 @@ export function EquipmentScreen() {
           </span>
           <div className="flex-1">
             <div className="text-sm font-semibold text-slate-800">{t("equipment.devices.barcode_scanner")}</div>
-            <div className="flex items-center gap-1 text-xs text-slate-400">
+            <div className="text-xs text-slate-400">{t("equipment.descriptions.barcode_scanner")}</div>
+            <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
               {t("equipment.connected")}
             </div>
@@ -60,7 +61,8 @@ export function EquipmentScreen() {
 
               <div className="flex-1">
                 <div className="text-sm font-semibold text-slate-800">{t(`equipment.devices.${device.kind}`)}</div>
-                <div className="flex items-center gap-1 text-xs text-slate-400">
+                <div className="text-xs text-slate-400">{t(`equipment.descriptions.${device.kind}`)}</div>
+                <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
                   <span
                     className={`h-1.5 w-1.5 rounded-full ${device.connected ? "bg-emerald-500" : "bg-slate-300"}`}
                   />

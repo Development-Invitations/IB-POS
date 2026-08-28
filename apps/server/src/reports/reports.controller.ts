@@ -60,4 +60,19 @@ export class ReportsController {
   ) {
     return this.reports.getStockReport(user.organizationId, storeId);
   }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Get('top-products')
+  getTopProducts(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.reports.getTopProducts(user.organizationId, {
+      from,
+      to,
+      storeId,
+    });
+  }
 }

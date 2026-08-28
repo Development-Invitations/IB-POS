@@ -115,6 +115,13 @@ export interface ApiDiscount {
 
 // getDashboard считает суммы через Number() на бэкенде (не Decimal-объекты Prisma),
 // поэтому в отличие от ApiProduct/ApiReceipt эти поля реально приходят числами.
+export interface DashboardChange {
+  totalSales: number | null;
+  receiptsCount: number | null;
+  averageCheck: number | null;
+  profit: number | null;
+}
+
 export interface DashboardReport {
   period: { from: string; to: string };
   totalSales: number;
@@ -123,6 +130,15 @@ export interface DashboardReport {
   profit: number;
   profitDataIncomplete: boolean;
   salesByHour: { hour: number; total: number }[];
+  changeVsPrevious: DashboardChange;
+}
+
+export interface TopProduct {
+  productId: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  revenue: number;
 }
 
 export interface ApiStockEntry {

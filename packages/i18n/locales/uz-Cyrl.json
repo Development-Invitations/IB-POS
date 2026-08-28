@@ -163,6 +163,7 @@
   },
   "reports": {
     "tabDashboard": "Сотувлар",
+    "tabProducts": "Маҳсулотлар",
     "tabStock": "Қолдиқлар",
     "from": "Дан",
     "to": "Гача",
@@ -180,7 +181,11 @@
     "stockEmpty": "Қолдиқлар бўйича маълумот йўқ",
     "exportCsv": "CSV форматида экспорт",
     "loadError": "Ҳисоботни юклаб бўлмади",
-    "accessDenied": "Сизнинг ролингизда ҳисоботларга кириш ҳуқуқи йўқ"
+    "accessDenied": "Сизнинг ролингизда ҳисоботларга кириш ҳуқуқи йўқ",
+    "noComparison": "ўтган давр учун маълумот йўқ",
+    "vsPrevious": "ўтган даврга нисбатан",
+    "soldQuantity": "Сотилди",
+    "revenue": "Тушум"
   },
   "shifts": {
     "accessDenied": "Сизнинг ролингизда сменаларга кириш ҳуқуқи йўқ",
@@ -289,6 +294,13 @@
       "customer_display": "Харидор дисплейи",
       "payment_terminal": "Тўлов терминали",
       "barcode_scanner": "Штрих-код сканери"
+    },
+    "descriptions": {
+      "fiscal_registrar": "Device Agent орқали фискал чекларни чоп этиш",
+      "cash_drawer": "Тугма орқали ёки нақд тўловда очилади",
+      "customer_display": "Харидорга чек суммаси ва позицияларини кўрсатади",
+      "payment_terminal": "Карталар, Payme, Click қабул қилинади",
+      "barcode_scanner": "USB / Bluetooth, клавиатура киритиш режими"
     }
   }
 }

@@ -163,6 +163,7 @@
   },
   "reports": {
     "tabDashboard": "Продажи",
+    "tabProducts": "Товары",
     "tabStock": "Остатки",
     "from": "С",
     "to": "По",
@@ -180,7 +181,11 @@
     "stockEmpty": "Нет данных по остаткам",
     "exportCsv": "Экспорт в CSV",
     "loadError": "Не удалось загрузить отчёт",
-    "accessDenied": "У вашей роли нет доступа к отчётам"
+    "accessDenied": "У вашей роли нет доступа к отчётам",
+    "noComparison": "нет данных за прошлый период",
+    "vsPrevious": "к прошлому периоду",
+    "soldQuantity": "Продано",
+    "revenue": "Выручка"
   },
   "shifts": {
     "accessDenied": "У вашей роли нет доступа к сменам",
@@ -289,6 +294,13 @@
       "customer_display": "Дисплей покупателя",
       "payment_terminal": "Терминал оплаты",
       "barcode_scanner": "Сканер штрих-кодов"
+    },
+    "descriptions": {
+      "fiscal_registrar": "Печать фискальных чеков через Device Agent",
+      "cash_drawer": "Открывается по кнопке или при оплате наличными",
+      "customer_display": "Показывает сумму и позиции чека покупателю",
+      "payment_terminal": "Приём карт, Payme, Click",
+      "barcode_scanner": "USB / Bluetooth, режим клавиатурного ввода"
     }
   }
 }

@@ -163,6 +163,7 @@
   },
   "reports": {
     "tabDashboard": "Sotuvlar",
+    "tabProducts": "Mahsulotlar",
     "tabStock": "Qoldiqlar",
     "from": "Dan",
     "to": "Gacha",
@@ -180,7 +181,11 @@
     "stockEmpty": "Qoldiqlar boʻyicha maʻlumot yoʻq",
     "exportCsv": "CSV formatida eksport",
     "loadError": "Hisobotni yuklab boʻlmadi",
-    "accessDenied": "Sizning rolingizda hisobotlarga kirish huquqi yoʻq"
+    "accessDenied": "Sizning rolingizda hisobotlarga kirish huquqi yoʻq",
+    "noComparison": "oʻtgan davr uchun maʻlumot yoʻq",
+    "vsPrevious": "oʻtgan davrga nisbatan",
+    "soldQuantity": "Sotildi",
+    "revenue": "Tushum"
   },
   "shifts": {
     "accessDenied": "Sizning rolingizda smenalarga kirish huquqi yoʻq",
@@ -289,6 +294,13 @@
       "customer_display": "Xaridor displeyi",
       "payment_terminal": "Toʻlov terminali",
       "barcode_scanner": "Shtrix-kod skaneri"
+    },
+    "descriptions": {
+      "fiscal_registrar": "Device Agent orqali fiskal cheklarni chop etish",
+      "cash_drawer": "Tugma orqali yoki naqd toʻlovda ochiladi",
+      "customer_display": "Xaridorga chek summasi va pozitsiyalarini koʻrsatadi",
+      "payment_terminal": "Kartalar, Payme, Click qabul qilinadi",
+      "barcode_scanner": "USB / Bluetooth, klaviatura kiritish rejimi"
     }
   }
 }
