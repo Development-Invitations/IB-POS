@@ -47,7 +47,20 @@
     "signingIn": "Kirilmoqda...",
     "invalidCredentials": "Login, parol yoki Tashkilot ID notoʻgʻri",
     "networkError": "Server bilan aloqa yoʻq",
-    "logout": "Chiqish"
+    "logout": "Chiqish",
+    "orgName": "Tashkilot nomi",
+    "fullName": "F.I.Sh.",
+    "confirmPassword": "Parolni takrorlang",
+    "register": "Roʻyxatdan oʻtkazish",
+    "registering": "Roʻyxatdan oʻtkazilmoqda...",
+    "registerLink": "Birinchi marta? Tashkilotni roʻyxatdan oʻtkazish",
+    "backToLogin": "Akkaunt bormi? Kirish",
+    "orgCreatedTitle": "Tashkilot yaratildi",
+    "orgCreatedHint": "Tashkilot ID sini saqlab qoʻying — u kirish uchun kerak boʻladi",
+    "continueToApp": "Davom etish",
+    "passwordMismatch": "Parollar mos kelmadi",
+    "passwordTooShort": "Parol kamida 8 ta belgidan iborat boʻlishi kerak",
+    "registerError": "Tashkilotni roʻyxatdan oʻtkazib boʻlmadi"
   },
   "workstation": {
     "setupTitle": "Kassani tanlash",

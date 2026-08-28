@@ -47,7 +47,20 @@
     "signingIn": "Кирилмоқда...",
     "invalidCredentials": "Логин, парол ёки Ташкилот ID нотўғри",
     "networkError": "Сервер билан алоқа йўқ",
-    "logout": "Чиқиш"
+    "logout": "Чиқиш",
+    "orgName": "Ташкилот номи",
+    "fullName": "Ф.И.Ш.",
+    "confirmPassword": "Паролни такрорланг",
+    "register": "Рўйхатдан ўтказиш",
+    "registering": "Рўйхатдан ўтказилмоқда...",
+    "registerLink": "Биринчи марта? Ташкилотни рўйхатдан ўтказиш",
+    "backToLogin": "Аккаунт борми? Кириш",
+    "orgCreatedTitle": "Ташкилот яратилди",
+    "orgCreatedHint": "Ташкилот ID сини сақлаб қўйинг — у кириш учун керак бўлади",
+    "continueToApp": "Давом этиш",
+    "passwordMismatch": "Пароллар мос келмади",
+    "passwordTooShort": "Парол камида 8 та белгидан иборат бўлиши керак",
+    "registerError": "Ташкилотни рўйхатдан ўтказиб бўлмади"
   },
   "workstation": {
     "setupTitle": "Кассани танлаш",

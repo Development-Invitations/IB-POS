@@ -9,6 +9,7 @@ import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
 import { LoginScreen } from "./components/LoginScreen";
+import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
 import { CloseShiftModal } from "./components/CloseShiftModal";
 import {
@@ -48,6 +49,9 @@ function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): B
 
 function App() {
   const [session, setSession] = useState<AuthSession | null>(() => loadSession());
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [prefillOrgId, setPrefillOrgId] = useState<string | undefined>(undefined);
+  const [prefillLogin, setPrefillLogin] = useState<string | undefined>(undefined);
   const [workstation, setWorkstation] = useState<ApiWorkstation | null>(null);
   const [shift, setShift] = useState<ApiShift | null>(null);
 
@@ -234,8 +238,23 @@ function App() {
   });
 
   if (!session) {
+    if (authMode === "register") {
+      return (
+        <RegisterScreen
+          onBackToLogin={() => setAuthMode("login")}
+          onDone={(organizationId, login) => {
+            setPrefillOrgId(organizationId);
+            setPrefillLogin(login);
+            setAuthMode("login");
+          }}
+        />
+      );
+    }
     return (
       <LoginScreen
+        initialOrgId={prefillOrgId}
+        initialLogin={prefillLogin}
+        onRegisterClick={() => setAuthMode("register")}
         onSuccess={(s) => {
           saveSession(s);
           setSession(s);

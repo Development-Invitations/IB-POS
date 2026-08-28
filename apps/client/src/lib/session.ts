@@ -3,6 +3,7 @@ import type { AuthSession, Role } from "../types/auth";
 
 const SESSION_KEY = "ibpos.session";
 const WORKSTATION_KEY = "ibpos.workstation";
+const LAST_ORG_KEY = "ibpos.lastOrgId";
 
 interface JwtClaims {
   sub: string;
@@ -64,4 +65,14 @@ export function loadWorkstation(): WorkstationSelection | null {
 
 export function clearWorkstation() {
   localStorage.removeItem(WORKSTATION_KEY);
+}
+
+// Кассир не должен перепечатывать ID организации на каждом входе — сохраняем
+// последний использованный, но не используем как секрет (это не пароль).
+export function saveLastOrgId(organizationId: string) {
+  localStorage.setItem(LAST_ORG_KEY, organizationId);
+}
+
+export function loadLastOrgId(): string {
+  return localStorage.getItem(LAST_ORG_KEY) ?? "";
 }

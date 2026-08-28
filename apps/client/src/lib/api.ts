@@ -75,6 +75,18 @@ export async function checkApiHealth(): Promise<boolean> {
   }
 }
 
+export interface RegisterOrganizationPayload {
+  name: string;
+  admin: { fullName: string; login: string; password: string };
+}
+
+export function registerOrganization(payload: RegisterOrganizationPayload) {
+  return request<{ id: string }>("/organizations", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function login(organizationId: string, login: string, password: string) {
   return request<{ accessToken: string }>("/auth/login", {
     method: "POST",

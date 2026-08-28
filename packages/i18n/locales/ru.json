@@ -47,7 +47,20 @@
     "signingIn": "Вход...",
     "invalidCredentials": "Неверный логин, пароль или ID организации",
     "networkError": "Нет соединения с сервером",
-    "logout": "Выйти"
+    "logout": "Выйти",
+    "orgName": "Название организации",
+    "fullName": "ФИО",
+    "confirmPassword": "Повторите пароль",
+    "register": "Зарегистрировать",
+    "registering": "Регистрация...",
+    "registerLink": "Впервые здесь? Зарегистрировать организацию",
+    "backToLogin": "Уже есть аккаунт? Войти",
+    "orgCreatedTitle": "Организация создана",
+    "orgCreatedHint": "Сохраните ID организации — он понадобится для входа",
+    "continueToApp": "Продолжить",
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordTooShort": "Пароль должен быть не короче 8 символов",
+    "registerError": "Не удалось зарегистрировать организацию"
   },
   "workstation": {
     "setupTitle": "Выбор кассы",

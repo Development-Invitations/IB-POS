@@ -3,17 +3,20 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import logo from "../assets/logo-mark.png";
 import { ApiError, login } from "../lib/api";
-import { sessionFromToken, saveSession } from "../lib/session";
+import { sessionFromToken, saveSession, loadLastOrgId, saveLastOrgId } from "../lib/session";
 import type { AuthSession } from "../types/auth";
 
 interface LoginScreenProps {
   onSuccess: (session: AuthSession) => void;
+  onRegisterClick: () => void;
+  initialOrgId?: string;
+  initialLogin?: string;
 }
 
-export function LoginScreen({ onSuccess }: LoginScreenProps) {
+export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialLogin }: LoginScreenProps) {
   const { t, i18n } = useTranslation();
-  const [organizationId, setOrganizationId] = useState("");
-  const [loginValue, setLoginValue] = useState("");
+  const [organizationId, setOrganizationId] = useState(initialOrgId ?? loadLastOrgId());
+  const [loginValue, setLoginValue] = useState(initialLogin ?? "");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +33,7 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
         return;
       }
       saveSession(session);
+      saveLastOrgId(session.organizationId);
       onSuccess(session);
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
@@ -94,6 +98,14 @@ export function LoginScreen({ onSuccess }: LoginScreenProps) {
             {submitting ? t("auth.signingIn") : t("auth.signIn")}
           </button>
         </form>
+
+        <button
+          type="button"
+          onClick={onRegisterClick}
+          className="mt-4 w-full text-center text-xs font-medium text-accent hover:underline"
+        >
+          {t("auth.registerLink")}
+        </button>
 
         <div className="mt-5 flex justify-center gap-1 rounded-lg bg-slate-100 p-1">
           {SUPPORTED_LOCALES.map((locale: Locale) => (

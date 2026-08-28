@@ -12,25 +12,42 @@ export class OrganizationsService {
   async create(dto: CreateOrganizationDto) {
     const passwordHash = await hashSecret(dto.admin.password);
 
-    const organization = await this.prisma.organization.create({
-      data: {
-        name: dto.name,
-        users: {
-          create: {
-            fullName: dto.admin.fullName,
-            login: dto.admin.login,
-            passwordHash,
-            role: Role.ADMIN,
+    return this.prisma.$transaction(async (tx) => {
+      const organization = await tx.organization.create({
+        data: {
+          name: dto.name,
+          users: {
+            create: {
+              fullName: dto.admin.fullName,
+              login: dto.admin.login,
+              passwordHash,
+              role: Role.ADMIN,
+            },
+          },
+          stores: {
+            create: { name: dto.name },
           },
         },
-      },
-      include: { users: true },
-    });
+        include: { users: true, stores: true },
+      });
 
-    return {
-      ...organization,
-      users: organization.users.map((user) => sanitizeUser(user)),
-    };
+      // Workstation.organizationId — денормализованный скаляр без Prisma-relation
+      // (см. schema.prisma), вложенным create через Store он не заполняется сам.
+      // Без хотя бы одной кассы новый админ не может открыть смену и попадает в тупик
+      // на экране выбора кассы (пустые списки без объяснения).
+      await tx.workstation.create({
+        data: {
+          organizationId: organization.id,
+          storeId: organization.stores[0].id,
+          name: 'Касса 1',
+        },
+      });
+
+      return {
+        ...organization,
+        users: organization.users.map((user) => sanitizeUser(user)),
+      };
+    });
   }
 
   findOne(id: string) {
