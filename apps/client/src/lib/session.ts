@@ -4,6 +4,7 @@ import type { AuthSession, Role } from "../types/auth";
 const SESSION_KEY = "ibpos.session";
 const WORKSTATION_KEY = "ibpos.workstation";
 const LAST_ORG_KEY = "ibpos.lastOrgId";
+const LAST_LOGIN_KEY = "ibpos.lastLogin";
 
 interface JwtClaims {
   sub: string;
@@ -75,4 +76,14 @@ export function saveLastOrgId(organizationId: string) {
 
 export function loadLastOrgId(): string {
   return localStorage.getItem(LAST_ORG_KEY) ?? "";
+}
+
+// Логин тоже запоминаем (не пароль — его нигде не храним) — тот же кассир обычно
+// входит с одного и того же моноблока много раз подряд за смену.
+export function saveLastLogin(login: string) {
+  localStorage.setItem(LAST_LOGIN_KEY, login);
+}
+
+export function loadLastLogin(): string {
+  return localStorage.getItem(LAST_LOGIN_KEY) ?? "";
 }

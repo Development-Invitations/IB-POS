@@ -3,7 +3,14 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import logo from "../assets/logo-mark.png";
 import { ApiError, login } from "../lib/api";
-import { sessionFromToken, saveSession, loadLastOrgId, saveLastOrgId } from "../lib/session";
+import {
+  sessionFromToken,
+  saveSession,
+  loadLastOrgId,
+  saveLastOrgId,
+  loadLastLogin,
+  saveLastLogin,
+} from "../lib/session";
 import type { AuthSession } from "../types/auth";
 
 interface LoginScreenProps {
@@ -16,10 +23,13 @@ interface LoginScreenProps {
 export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialLogin }: LoginScreenProps) {
   const { t, i18n } = useTranslation();
   const [organizationId, setOrganizationId] = useState(initialOrgId ?? loadLastOrgId());
-  const [loginValue, setLoginValue] = useState(initialLogin ?? "");
+  const [loginValue, setLoginValue] = useState(initialLogin ?? loadLastLogin());
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Если и организация, и логин уже известны (возврат кассира), сразу переходим к паролю —
+  // не заставляем перепечатывать то, что уже сохранено.
+  const hasSavedLogin = organizationId.length > 0 && loginValue.length > 0;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -34,6 +44,7 @@ export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialL
       }
       saveSession(session);
       saveLastOrgId(session.organizationId);
+      saveLastLogin(session.login);
       onSuccess(session);
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {
@@ -61,7 +72,7 @@ export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialL
               value={organizationId}
               onChange={(e) => setOrganizationId(e.target.value)}
               required
-              autoFocus
+              autoFocus={!hasSavedLogin}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
             />
             <span className="mt-1 block text-[11px] font-normal text-slate-400">{t("auth.orgIdHint")}</span>
@@ -84,6 +95,7 @@ export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialL
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoFocus={hasSavedLogin}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
             />
           </label>
