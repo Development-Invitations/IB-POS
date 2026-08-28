@@ -62,11 +62,11 @@ export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate }: Sideb
               key={item.key}
               title={t(item.labelKey)}
               onClick={() => item.screen && onNavigate(item.screen)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-                isActive ? "bg-accent text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
-              }`}
+              className={`flex h-11 w-full shrink-0 items-center gap-3 rounded-lg text-sm font-medium transition ${
+                collapsed ? "justify-center px-0" : "px-3"
+              } ${isActive ? "bg-accent text-white" : "text-white/70 hover:bg-white/10 hover:text-white"}`}
             >
-              <Icon className="shrink-0" />
+              <Icon className="h-5 w-5 shrink-0" />
               {!collapsed && <span className="truncate">{t(item.labelKey)}</span>}
             </button>
           );

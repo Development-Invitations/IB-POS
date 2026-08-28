@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import { IntegrationProvider, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -7,6 +8,7 @@ import {
 } from './adapters/adapter.interface';
 import { getAdapter, isFiscalProvider } from './adapters/registry';
 import { ConnectIntegrationDto } from './dto/connect-integration.dto';
+import { ConfigureOneCDto } from './dto/configure-onec.dto';
 
 function assertFiscalProvider(provider: string): FiscalProvider {
   if (
@@ -89,5 +91,55 @@ export class IntegrationsService {
 
     const config = (integration.config as Record<string, unknown>) ?? {};
     return adapter.testConnection(config);
+  }
+
+  // 1С не подключаем изнутри (нет адаптера, который бы "звонил" наружу) — наоборот, 1С сама
+  // обращается к нашему /onec/:organizationId/exchange с этими логином/токеном (Basic Auth).
+  // См. apps/server/src/onec — реализация протокола "Обмен с сайтом" (CommerceML 2).
+  async configureOneC(organizationId: string, dto: ConfigureOneCDto) {
+    const login = dto.login ?? `ib_pos_${organizationId.slice(0, 8)}`;
+    const token = dto.token ?? randomBytes(16).toString('hex');
+
+    const integration = await this.prisma.integration.upsert({
+      where: {
+        organizationId_provider: {
+          organizationId,
+          provider: IntegrationProvider.ONEC,
+        },
+      },
+      create: {
+        organizationId,
+        provider: IntegrationProvider.ONEC,
+        config: { login, token },
+        isConnected: true,
+      },
+      update: { config: { login, token }, isConnected: true },
+    });
+
+    return {
+      login,
+      token,
+      exchangePath: `/onec/${organizationId}/exchange`,
+      integration,
+    };
+  }
+
+  async getOneC(organizationId: string) {
+    const integration = await this.prisma.integration.findUnique({
+      where: {
+        organizationId_provider: {
+          organizationId,
+          provider: IntegrationProvider.ONEC,
+        },
+      },
+    });
+
+    const config = (integration?.config as { login?: string } | null) ?? null;
+    return {
+      isConnected: integration?.isConnected ?? false,
+      login: config?.login ?? null,
+      exchangePath: `/onec/${organizationId}/exchange`,
+      updatedAt: integration?.updatedAt ?? null,
+    };
   }
 }

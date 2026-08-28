@@ -99,6 +99,8 @@ model Category {
   organizationId String   @map("organization_id")
   name           String
   parentId       String?  @map("parent_id")
+  // Ид группы из классификатора 1С (CommerceML) — по нему сопоставляем при повторном импорте (Этап 6).
+  externalId     String?  @map("external_id")
   createdAt      DateTime @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -106,6 +108,7 @@ model Category {
   children     Category[]   @relation("CategoryToSubcategory")
   products     Product[]
 
+  @@unique([organizationId, externalId])
   @@index([organizationId])
   @@map("categories")
 }
@@ -120,6 +123,8 @@ model Product {
   price          Decimal  @db.Decimal(14, 2)
   unit           String   @default("pcs")
   isActive       Boolean  @default(true) @map("is_active")
+  // Ид товара из 1С (CommerceML) — ключ сопоставления номенклатуры при синке (Этап 6).
+  externalId     String?  @map("external_id")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -128,6 +133,7 @@ model Product {
   stock        Stock[]
   receiptItems ReceiptItem[]
 
+  @@unique([organizationId, externalId])
   @@index([organizationId])
   @@index([barcode])
   @@map("products")
@@ -225,6 +231,8 @@ model Receipt {
   status        ReceiptStatus @default(OPEN)
   total         Decimal       @default(0) @db.Decimal(14, 2)
   discountTotal Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
+  // Когда свод продаж по этому чеку был выгружен в 1С (Этап 6, направление IB-POS -> 1С).
+  exportedToOneCAt DateTime?  @map("exported_to_onec_at")
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 

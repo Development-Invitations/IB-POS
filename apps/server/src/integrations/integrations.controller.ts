@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import { IntegrationsService } from './integrations.service';
 import { FiscalizationService } from './fiscalization.service';
 import { ConnectIntegrationDto } from './dto/connect-integration.dto';
+import { ConfigureOneCDto } from './dto/configure-onec.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -46,5 +47,18 @@ export class IntegrationsController {
   async runFiscalization() {
     const processed = await this.fiscalization.processPending();
     return { processed };
+  }
+
+  @Get('onec')
+  getOneC(@CurrentUser() user: AuthenticatedUser) {
+    return this.integrations.getOneC(user.organizationId);
+  }
+
+  @Post('onec/configure')
+  configureOneC(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ConfigureOneCDto,
+  ) {
+    return this.integrations.configureOneC(user.organizationId, dto);
   }
 }

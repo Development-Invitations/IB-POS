@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
@@ -39,14 +41,35 @@ fn disable_webview_accelerators(window: &tauri::WebviewWindow) {
     });
 }
 
+// На Windows восстановление окна из свёрнутого (Свернуть на панели задач) состояния иногда
+// возвращает его развёрнутым до размера, превышающего экран, вместо аккуратного maximized —
+// известная особенность WebView2. Приложение задумано как киоск: после восстановления из
+// сворачивания всегда возвращаем окно в normal maximized-режим.
+fn watch_minimize_restore(window: &tauri::WebviewWindow) {
+    let was_minimized = Arc::new(AtomicBool::new(false));
+    let window_handle = window.clone();
+
+    window.on_window_event(move |event| {
+        if let tauri::WindowEvent::Resized(_) = event {
+            let is_minimized = window_handle.is_minimized().unwrap_or(false);
+            if is_minimized {
+                was_minimized.store(true, Ordering::SeqCst);
+            } else if was_minimized.swap(false, Ordering::SeqCst) {
+                let _ = window_handle.maximize();
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
+                #[cfg(target_os = "windows")]
                 disable_webview_accelerators(&window);
+                watch_minimize_restore(&window);
             }
             Ok(())
         })

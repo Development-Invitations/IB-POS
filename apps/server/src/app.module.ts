@@ -16,6 +16,7 @@ import { ShiftsModule } from './shifts/shifts.module';
 import { OutboxModule } from './outbox/outbox.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { OneCModule } from './onec/onec.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
     OutboxModule,
     ReceiptsModule,
     IntegrationsModule,
+    OneCModule,
   ],
   controllers: [AppController],
   providers: [AppService],
