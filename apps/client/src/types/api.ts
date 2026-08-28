@@ -1,6 +1,8 @@
 // Формы данных, которые реально возвращает apps/server (см. prisma/schema.prisma).
 // Decimal-поля (цены, суммы, количества) Prisma сериализует в JSON строками, а не числами.
 
+import type { Role } from "./auth";
+
 export interface ApiCategory {
   id: string;
   name: string;
@@ -81,4 +83,17 @@ export interface ApiCustomer {
   fullName: string;
   phone: string | null;
   bonusBalance: string;
+}
+
+export type DiscountType = "PERCENT" | "FIXED";
+
+export interface ApiDiscount {
+  id: string;
+  name: string;
+  type: DiscountType;
+  value: string;
+  productId: string | null;
+  categoryId: string | null;
+  minRole: Role;
+  isActive: boolean;
 }

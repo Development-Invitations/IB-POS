@@ -1,13 +1,16 @@
 import type {
   ApiCategory,
   ApiCustomer,
+  ApiDiscount,
   ApiProduct,
   ApiReceipt,
   ApiShift,
   ApiStore,
   ApiWorkstation,
   BackendPaymentMethod,
+  DiscountType,
 } from "../types/api";
+import type { Role } from "../types/auth";
 
 export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
 
@@ -257,4 +260,41 @@ export function adjustCustomerBonus(token: string, id: string, delta: number, co
 
 export function getCustomerPurchaseHistory(token: string, id: string) {
   return request<ApiReceipt[]>(`/customers/${id}/receipts`, {}, token);
+}
+
+export function getDiscounts(token: string) {
+  return request<ApiDiscount[]>("/discounts", {}, token);
+}
+
+export interface DiscountPayload {
+  name: string;
+  type: DiscountType;
+  value: number;
+  productId?: string;
+  categoryId?: string;
+  minRole?: Role;
+}
+
+export function createDiscount(token: string, payload: DiscountPayload) {
+  return request<ApiDiscount>(
+    "/discounts",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateDiscount(
+  token: string,
+  id: string,
+  payload: Partial<DiscountPayload> & { isActive?: boolean },
+) {
+  return request<ApiDiscount>(
+    `/discounts/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function deactivateDiscount(token: string, id: string) {
+  return request<void>(`/discounts/${id}`, { method: "DELETE" }, token);
 }

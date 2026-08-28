@@ -28,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "sale", labelKey: "nav.sale", icon: CartIcon, screen: "sale" },
   { key: "products", labelKey: "nav.products", icon: BoxIcon, screen: "products" },
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon, screen: "customers" },
-  { key: "discounts", labelKey: "nav.discounts", icon: TagIcon },
+  { key: "discounts", labelKey: "nav.discounts", icon: TagIcon, screen: "discounts" },
   { key: "returns", labelKey: "nav.returns", icon: ReturnIcon },
   { key: "reports", labelKey: "nav.reports", icon: ChartIcon },
   { key: "shifts", labelKey: "nav.shifts", icon: ClockIcon },
