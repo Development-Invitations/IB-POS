@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
+import { PayReceiptDto } from './dto/pay-receipt.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -26,5 +27,26 @@ export class ReceiptsController {
   @Get(':id')
   findOne(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.receipts.findOne(user.organizationId, id);
+  }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
+  @Post(':id/pay')
+  pay(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: PayReceiptDto,
+  ) {
+    return this.receipts.pay(user.organizationId, id, dto);
+  }
+
+  // Подтверждение возврата — права управляющего/администратора (см. Раздел 3 ТЗ и
+  // клиентский ReturnConfirmModal, который пока проверяет PIN локально-заглушкой).
+  @Roles(Role.ADMIN, Role.MANAGER)
+  @Post(':id/return')
+  returnReceipt(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.receipts.returnReceipt(user.organizationId, id);
   }
 }

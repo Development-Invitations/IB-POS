@@ -60,6 +60,10 @@ export class ShiftsController {
     );
   }
 
+  // Отчёт смены — финансовые данные, доступ как у "Отчётов и аналитики" в целом:
+  // Бухгалтеру нужен полный доступ, а не только ролям, у которых есть операционный
+  // доступ к самим сменам (перекрывает @Roles контроллера).
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)
   @Get(':id/report')
   getReport(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.shifts.getReport(user.organizationId, id);

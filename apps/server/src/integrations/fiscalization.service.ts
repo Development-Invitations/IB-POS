@@ -12,9 +12,10 @@ const MAX_ATTEMPTS = 5;
 const POLL_INTERVAL_MS = 10_000;
 const BATCH_SIZE = 20;
 
-// Очередь с ретраями: чек создаётся в outbox (см. ReceiptsService) со статусом PENDING
-// независимо от того, есть ли сеть/настроена ли касса. Этот воркер периодически подбирает
-// такие события и пробует отправить их на фискализацию через подключённый адаптер (Этап 5).
+// Очередь с ретраями: событие пишется в outbox не в момент создания чека, а в момент его
+// оплаты/возврата (см. ReceiptsService.pay/returnReceipt) — на фискальный регистратор должна
+// уходить только завершённая продажа, а не то, что кассир ещё набирает в корзину.
+// Работает независимо от сети: событие остаётся PENDING, воркер подбирает его при следующем тике.
 // Нет подключённой кассы у организации — событие просто ждёт своей очереди, это не ошибка.
 @Injectable()
 export class FiscalizationService {
@@ -35,7 +36,7 @@ export class FiscalizationService {
     try {
       const events = await this.prisma.outboxEvent.findMany({
         where: {
-          eventType: 'receipt.created',
+          eventType: { in: ['receipt.paid', 'receipt.returned'] },
           status: OutboxStatus.PENDING,
           attempts: { lt: MAX_ATTEMPTS },
         },
