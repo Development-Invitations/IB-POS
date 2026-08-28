@@ -86,6 +86,33 @@
   "product": {
     "addProduct": "Mahsulot qoʻshish"
   },
+  "products": {
+    "addTitle": "Yangi mahsulot",
+    "editTitle": "Mahsulotni tahrirlash",
+    "name": "Nomi",
+    "category": "Kategoriya",
+    "newCategory": "+ Yangi kategoriya",
+    "newCategoryPlaceholder": "Kategoriya nomi",
+    "categoryNameRequired": "Yangi kategoriya nomini kiriting",
+    "sku": "Artikul",
+    "barcode": "Shtrix-kod",
+    "price": "Narx",
+    "cost": "Tannarx",
+    "unit": "Oʻlchov birligi",
+    "status": "Holati",
+    "active": "Faol",
+    "inactive": "Nofaol",
+    "edit": "Tahrirlash",
+    "activate": "Faollashtirish",
+    "deactivate": "Faolsizlantirish",
+    "deactivateTitle": "Mahsulotni faolsizlantirish",
+    "deactivateConfirm": "«{{name}}» mahsuloti endi sotuv ekranida koʻrsatilmaydi. Qoldiqlar va chek tarixi saqlanadi.",
+    "save": "Saqlash",
+    "saveError": "Mahsulotni saqlab boʻlmadi",
+    "loadError": "Mahsulotlarni yuklab boʻlmadi",
+    "searchPlaceholder": "Nomi, artikuli, shtrix-kodi boʻyicha qidirish...",
+    "empty": "Mahsulotlar topilmadi"
+  },
   "receipt": {
     "current": "Joriy chek",
     "total": "Jami",

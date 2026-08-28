@@ -26,7 +26,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: "home", labelKey: "nav.home", icon: HomeIcon },
   { key: "sale", labelKey: "nav.sale", icon: CartIcon, screen: "sale" },
-  { key: "products", labelKey: "nav.products", icon: BoxIcon },
+  { key: "products", labelKey: "nav.products", icon: BoxIcon, screen: "products" },
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon },
   { key: "discounts", labelKey: "nav.discounts", icon: TagIcon },
   { key: "returns", labelKey: "nav.returns", icon: ReturnIcon },

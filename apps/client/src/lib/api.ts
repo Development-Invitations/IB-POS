@@ -105,8 +105,46 @@ export function getCategories(token: string) {
   return request<ApiCategory[]>("/categories", {}, token);
 }
 
+export function createCategory(token: string, name: string, parentId?: string) {
+  return request<ApiCategory>(
+    "/categories",
+    { method: "POST", body: JSON.stringify({ name, parentId }) },
+    token,
+  );
+}
+
 export function getProducts(token: string) {
   return request<ApiProduct[]>("/products", {}, token);
+}
+
+export interface ProductPayload {
+  name: string;
+  categoryId?: string;
+  sku?: string;
+  barcode?: string;
+  price: number;
+  cost?: number;
+  unit?: string;
+}
+
+export function createProduct(token: string, payload: ProductPayload) {
+  return request<ApiProduct>(
+    "/products",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateProduct(token: string, id: string, payload: Partial<ProductPayload> & { isActive?: boolean }) {
+  return request<ApiProduct>(
+    `/products/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function deactivateProduct(token: string, id: string) {
+  return request<void>(`/products/${id}`, { method: "DELETE" }, token);
 }
 
 export function getStores(token: string) {

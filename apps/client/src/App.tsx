@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
@@ -8,6 +8,7 @@ import { PaymentModal, type PaymentStatus, type ClickProvider } from "./componen
 import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
+import { ProductsScreen } from "./components/ProductsScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
@@ -86,37 +87,35 @@ function App() {
     handleLogout();
   }
 
+  const loadCatalog = useCallback(async () => {
+    if (!session) return;
+    try {
+      const [categoryList, productList] = await Promise.all([
+        getCategories(session.accessToken),
+        getProducts(session.accessToken),
+      ]);
+      setCategories(categoryList.map((c) => ({ id: c.id, name: c.name })));
+      setProducts(
+        productList
+          .filter((p) => p.isActive)
+          .map((p) => ({
+            id: p.id,
+            name: p.name,
+            price: Number(p.price),
+            unit: p.unit,
+            barcode: p.barcode,
+            categoryId: p.categoryId,
+          })),
+      );
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) handleUnauthorized();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
   useEffect(() => {
     if (!session || !shift) return;
-    let cancelled = false;
-    async function load() {
-      try {
-        const [categoryList, productList] = await Promise.all([
-          getCategories(session!.accessToken),
-          getProducts(session!.accessToken),
-        ]);
-        if (cancelled) return;
-        setCategories(categoryList.map((c) => ({ id: c.id, name: c.name })));
-        setProducts(
-          productList
-            .filter((p) => p.isActive)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              price: Number(p.price),
-              unit: p.unit,
-              barcode: p.barcode,
-              categoryId: p.categoryId,
-            })),
-        );
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401) handleUnauthorized();
-      }
-    }
-    load();
-    return () => {
-      cancelled = true;
-    };
+    loadCatalog();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, shift]);
 
@@ -293,7 +292,7 @@ function App() {
           onNavigate={setActiveScreen}
         />
 
-        {activeScreen === "sale" ? (
+        {activeScreen === "sale" && (
           <>
             <main className="flex-1 space-y-4 overflow-y-auto p-4">
               <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
@@ -313,9 +312,17 @@ function App() {
               onReturnClick={() => setReturnModalOpen(true)}
             />
           </>
-        ) : (
+        )}
+
+        {activeScreen === "equipment" && (
           <main className="flex-1 overflow-y-auto p-6">
             <EquipmentScreen />
+          </main>
+        )}
+
+        {activeScreen === "products" && (
+          <main className="flex-1 overflow-y-auto p-6">
+            <ProductsScreen session={session} onCatalogChanged={loadCatalog} />
           </main>
         )}
       </div>
