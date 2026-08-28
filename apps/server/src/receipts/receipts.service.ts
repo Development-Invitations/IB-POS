@@ -6,6 +6,7 @@ import {
 import { ReceiptStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
+import { AuditService } from '../audit/audit.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
 
@@ -14,6 +15,7 @@ export class ReceiptsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: OutboxService,
+    private readonly audit: AuditService,
   ) {}
 
   async create(organizationId: string, dto: CreateReceiptDto) {
@@ -71,7 +73,12 @@ export class ReceiptsService {
     });
   }
 
-  async pay(organizationId: string, id: string, dto: PayReceiptDto) {
+  async pay(
+    organizationId: string,
+    userId: string,
+    id: string,
+    dto: PayReceiptDto,
+  ) {
     const receipt = await this.prisma.receipt.findFirst({
       where: { id, store: { organizationId } },
     });
@@ -114,11 +121,23 @@ export class ReceiptsService {
         total: updated.total,
       });
 
+      await this.audit.log(
+        organizationId,
+        userId,
+        'receipt.paid',
+        'Receipt',
+        id,
+        {
+          total: updated.total,
+          methods: dto.payments.map((p) => p.method),
+        },
+      );
+
       return updated;
     });
   }
 
-  async returnReceipt(organizationId: string, id: string) {
+  async returnReceipt(organizationId: string, userId: string, id: string) {
     const receipt = await this.prisma.receipt.findFirst({
       where: { id, store: { organizationId } },
     });
@@ -140,6 +159,17 @@ export class ReceiptsService {
         receiptId: updated.id,
         total: updated.total,
       });
+
+      await this.audit.log(
+        organizationId,
+        userId,
+        'receipt.returned',
+        'Receipt',
+        id,
+        {
+          total: updated.total,
+        },
+      );
 
       return updated;
     });

@@ -5,13 +5,17 @@ import {
 } from '@nestjs/common';
 import { PaymentMethod, ShiftStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { OpenShiftDto } from './dto/open-shift.dto';
 import { CloseShiftDto } from './dto/close-shift.dto';
 import { CashMovementDto } from './dto/cash-movement.dto';
 
 @Injectable()
 export class ShiftsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async open(organizationId: string, userId: string, dto: OpenShiftDto) {
     const workstation = await this.prisma.workstation.findFirst({
@@ -28,7 +32,7 @@ export class ShiftsService {
       throw new BadRequestException('На этой кассе уже открыта смена');
     }
 
-    return this.prisma.shift.create({
+    const shift = await this.prisma.shift.create({
       data: {
         storeId: dto.storeId,
         workstationId: dto.workstationId,
@@ -36,9 +40,28 @@ export class ShiftsService {
         openingCash: dto.openingCash,
       },
     });
+
+    await this.audit.log(
+      organizationId,
+      userId,
+      'shift.opened',
+      'Shift',
+      shift.id,
+      {
+        workstationId: dto.workstationId,
+        openingCash: dto.openingCash,
+      },
+    );
+
+    return shift;
   }
 
-  async close(organizationId: string, id: string, dto: CloseShiftDto) {
+  async close(
+    organizationId: string,
+    userId: string,
+    id: string,
+    dto: CloseShiftDto,
+  ) {
     const shift = await this.prisma.shift.findFirst({
       where: { id, store: { organizationId } },
     });
@@ -49,7 +72,7 @@ export class ShiftsService {
       throw new BadRequestException('Смена уже закрыта');
     }
 
-    return this.prisma.shift.update({
+    const updated = await this.prisma.shift.update({
       where: { id },
       data: {
         status: ShiftStatus.CLOSED,
@@ -57,6 +80,12 @@ export class ShiftsService {
         closingCash: dto.closingCash,
       },
     });
+
+    await this.audit.log(organizationId, userId, 'shift.closed', 'Shift', id, {
+      closingCash: dto.closingCash,
+    });
+
+    return updated;
   }
 
   findAll(organizationId: string, storeId?: string) {

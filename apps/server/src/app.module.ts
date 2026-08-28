@@ -18,12 +18,14 @@ import { ReceiptsModule } from './receipts/receipts.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { OneCModule } from './onec/onec.module';
 import { DiscountsModule } from './discounts/discounts.module';
+import { AuditModule } from './audit/audit.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     PrismaModule,
+    AuditModule,
     AuthModule,
     OrganizationsModule,
     StoresModule,

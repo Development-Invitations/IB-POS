@@ -35,7 +35,7 @@ export class ShiftsController {
     @Param('id') id: string,
     @Body() dto: CloseShiftDto,
   ) {
-    return this.shifts.close(user.organizationId, id, dto);
+    return this.shifts.close(user.organizationId, user.userId, id, dto);
   }
 
   @Get()

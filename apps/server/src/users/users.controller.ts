@@ -16,7 +16,7 @@ export class UsersController {
   @Roles(Role.ADMIN)
   @Post()
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateUserDto) {
-    return this.users.create(user.organizationId, dto);
+    return this.users.create(user.organizationId, user.userId, dto);
   }
 
   @Roles(Role.ADMIN, Role.MANAGER)

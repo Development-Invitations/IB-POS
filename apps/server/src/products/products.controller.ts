@@ -6,12 +6,15 @@ import {
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { ImportProductsCsvDto } from './dto/import-products-csv.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -35,6 +38,31 @@ export class ProductsController {
   @Get()
   findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.products.findAll(user.organizationId);
+  }
+
+  // Должно идти раньше @Get(':id'), иначе "export" попадёт в параметр :id.
+  @Get('export')
+  async exportCsv(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ) {
+    const csv = await this.products.exportCsv(user.organizationId);
+    res
+      .status(200)
+      .set({
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="products.csv"',
+      })
+      .send(csv);
+  }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
+  @Post('import')
+  importCsv(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ImportProductsCsvDto,
+  ) {
+    return this.products.importCsv(user.organizationId, dto.csv);
   }
 
   @Get(':id')

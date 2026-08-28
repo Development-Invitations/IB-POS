@@ -36,7 +36,7 @@ export class ReceiptsController {
     @Param('id') id: string,
     @Body() dto: PayReceiptDto,
   ) {
-    return this.receipts.pay(user.organizationId, id, dto);
+    return this.receipts.pay(user.organizationId, user.userId, id, dto);
   }
 
   // Подтверждение возврата — права управляющего/администратора (см. Раздел 3 ТЗ и
@@ -47,6 +47,6 @@ export class ReceiptsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
   ) {
-    return this.receipts.returnReceipt(user.organizationId, id);
+    return this.receipts.returnReceipt(user.organizationId, user.userId, id);
   }
 }
