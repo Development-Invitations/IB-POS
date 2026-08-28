@@ -2,6 +2,7 @@ import { useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSum } from "../lib/format";
 import { PAYMENT_METHODS, type PaymentMethod } from "../types/payment";
+import { AmountInput } from "./AmountInput";
 import { CashIcon, CardIcon, MonitorIcon, QrIcon, MixedIcon, CloseIcon } from "./icons";
 
 const METHOD_ICON: Record<PaymentMethod, (p: { className?: string }) => ReactElement> = {
@@ -24,9 +25,9 @@ interface PaymentModalProps {
 export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModalProps) {
   const { t } = useTranslation();
   const [method, setMethod] = useState<PaymentMethod>("cash");
-  const [receivedInput, setReceivedInput] = useState(String(total));
+  const [received, setReceived] = useState(total);
 
-  const receivedAmount = method === "cash" ? Number(receivedInput) || 0 : null;
+  const receivedAmount = method === "cash" ? received : null;
   const change = receivedAmount !== null ? receivedAmount - total : 0;
   const canConfirm = status !== "processing" && (method !== "cash" || receivedAmount! >= total);
 
@@ -64,11 +65,10 @@ export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModal
             <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
               <label className="text-xs text-slate-500">
                 {t("payment.received")}
-                <input
-                  type="number"
-                  min={0}
-                  value={receivedInput}
-                  onChange={(e) => setReceivedInput(e.target.value)}
+                <AmountInput
+                  value={received}
+                  onChange={setReceived}
+                  autoFocus
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-accent"
                 />
               </label>

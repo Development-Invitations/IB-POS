@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ShiftStatus } from '@prisma/client';
+import { PaymentMethod, ShiftStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OpenShiftDto } from './dto/open-shift.dto';
 import { CloseShiftDto } from './dto/close-shift.dto';
+import { CashMovementDto } from './dto/cash-movement.dto';
 
 @Injectable()
 export class ShiftsService {
@@ -62,5 +63,88 @@ export class ShiftsService {
     return this.prisma.shift.findMany({
       where: { store: { organizationId }, ...(storeId ? { storeId } : {}) },
     });
+  }
+
+  private async findOwnedShift(organizationId: string, id: string) {
+    const shift = await this.prisma.shift.findFirst({
+      where: { id, store: { organizationId } },
+    });
+    if (!shift) {
+      throw new NotFoundException('Смена не найдена');
+    }
+    return shift;
+  }
+
+  async addCashMovement(
+    organizationId: string,
+    userId: string,
+    shiftId: string,
+    dto: CashMovementDto,
+  ) {
+    const shift = await this.findOwnedShift(organizationId, shiftId);
+    if (shift.status === ShiftStatus.CLOSED) {
+      throw new BadRequestException(
+        'Смена закрыта — внесение/изъятие недоступно',
+      );
+    }
+
+    return this.prisma.cashMovement.create({
+      data: {
+        shiftId,
+        userId,
+        type: dto.type,
+        amount: dto.amount,
+        comment: dto.comment,
+      },
+    });
+  }
+
+  // Отчёт по смене: продажи по способам оплаты, внесения/изъятия, ожидаемая
+  // сумма наличных в ящике (Этап 7 — "отчёт смены").
+  async getReport(organizationId: string, shiftId: string) {
+    const shift = await this.findOwnedShift(organizationId, shiftId);
+
+    const [receipts, payments, cashMovements] = await Promise.all([
+      this.prisma.receipt.findMany({
+        where: { shiftId },
+        select: { id: true, total: true, status: true },
+      }),
+      this.prisma.payment.groupBy({
+        by: ['method'],
+        where: { receipt: { shiftId } },
+        _sum: { amount: true },
+      }),
+      this.prisma.cashMovement.findMany({
+        where: { shiftId },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    const salesTotal = receipts.reduce((sum, r) => sum + Number(r.total), 0);
+    const paymentsByMethod = Object.fromEntries(
+      payments.map((p) => [p.method, Number(p._sum.amount ?? 0)]),
+    ) as Partial<Record<PaymentMethod, number>>;
+
+    const deposits = cashMovements
+      .filter((m) => m.type === 'DEPOSIT')
+      .reduce((sum, m) => sum + Number(m.amount), 0);
+    const withdrawals = cashMovements
+      .filter((m) => m.type === 'WITHDRAWAL')
+      .reduce((sum, m) => sum + Number(m.amount), 0);
+
+    const cashSales = paymentsByMethod.CASH ?? 0;
+    const expectedCash =
+      Number(shift.openingCash) + cashSales + deposits - withdrawals;
+
+    return {
+      shift,
+      receiptsCount: receipts.length,
+      salesTotal,
+      paymentsByMethod,
+      cashMovements,
+      deposits,
+      withdrawals,
+      expectedCash,
+    };
   }
 }

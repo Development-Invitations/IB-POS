@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { CustomersService } from './customers.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
@@ -29,5 +37,14 @@ export class CustomersController {
     @Query('search') search?: string,
   ) {
     return this.customers.findAll(user.organizationId, search);
+  }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)
+  @Get(':id/receipts')
+  findPurchaseHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.customers.findPurchaseHistory(user.organizationId, id);
   }
 }

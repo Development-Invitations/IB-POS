@@ -85,9 +85,10 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  shifts       Shift[]
-  auditLogs    AuditLog[]
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  shifts        Shift[]
+  auditLogs     AuditLog[]
+  cashMovements CashMovement[]
 
   @@unique([organizationId, login])
   @@index([organizationId])
@@ -107,6 +108,7 @@ model Category {
   parent       Category?    @relation("CategoryToSubcategory", fields: [parentId], references: [id])
   children     Category[]   @relation("CategoryToSubcategory")
   products     Product[]
+  discounts    Discount[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId])
@@ -132,6 +134,7 @@ model Product {
   category     Category?     @relation(fields: [categoryId], references: [id])
   stock        Stock[]
   receiptItems ReceiptItem[]
+  discounts    Discount[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId])
@@ -179,11 +182,17 @@ model Discount {
   name           String
   type           DiscountType
   value          Decimal      @db.Decimal(14, 2)
+  // Область действия: не задано ни одного — на весь чек; productId — только на товар;
+  // categoryId — на всю категорию (Этап 7: "% / фикс / по товару / по категории").
+  productId      String?      @map("product_id")
+  categoryId     String?      @map("category_id")
   minRole        Role         @default(CASHIER) @map("min_role")
   isActive       Boolean      @default(true) @map("is_active")
   createdAt      DateTime     @default(now()) @map("created_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product?     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  category     Category?    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@map("discounts")
@@ -205,14 +214,37 @@ model Shift {
   openingCash   Decimal     @default(0) @map("opening_cash") @db.Decimal(14, 2)
   closingCash   Decimal?    @map("closing_cash") @db.Decimal(14, 2)
 
-  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  workstation Workstation @relation(fields: [workstationId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id])
-  receipts    Receipt[]
+  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  workstation   Workstation    @relation(fields: [workstationId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id])
+  receipts      Receipt[]
+  cashMovements CashMovement[]
 
   @@index([storeId])
   @@index([workstationId])
   @@map("shifts")
+}
+
+enum CashMovementType {
+  DEPOSIT
+  WITHDRAWAL
+}
+
+// Внесение/изъятие наличных в кассе в течение смены (Этап 7).
+model CashMovement {
+  id        String           @id @default(uuid())
+  shiftId   String           @map("shift_id")
+  userId    String           @map("user_id")
+  type      CashMovementType
+  amount    Decimal          @db.Decimal(14, 2)
+  comment   String?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  shift Shift @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([shiftId])
+  @@map("cash_movements")
 }
 
 enum ReceiptStatus {
@@ -223,18 +255,18 @@ enum ReceiptStatus {
 }
 
 model Receipt {
-  id            String        @id @default(uuid())
-  storeId       String        @map("store_id")
-  workstationId String        @map("workstation_id")
-  shiftId       String        @map("shift_id")
-  customerId    String?       @map("customer_id")
-  status        ReceiptStatus @default(OPEN)
-  total         Decimal       @default(0) @db.Decimal(14, 2)
-  discountTotal Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
+  id               String        @id @default(uuid())
+  storeId          String        @map("store_id")
+  workstationId    String        @map("workstation_id")
+  shiftId          String        @map("shift_id")
+  customerId       String?       @map("customer_id")
+  status           ReceiptStatus @default(OPEN)
+  total            Decimal       @default(0) @db.Decimal(14, 2)
+  discountTotal    Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
   // Когда свод продаж по этому чеку был выгружен в 1С (Этап 6, направление IB-POS -> 1С).
-  exportedToOneCAt DateTime?  @map("exported_to_onec_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  exportedToOneCAt DateTime?     @map("exported_to_onec_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
 
   store       Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
   workstation Workstation   @relation(fields: [workstationId], references: [id], onDelete: Cascade)

@@ -17,6 +17,7 @@ import { OutboxModule } from './outbox/outbox.module';
 import { ReceiptsModule } from './receipts/receipts.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { OneCModule } from './onec/onec.module';
+import { DiscountsModule } from './discounts/discounts.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { OneCModule } from './onec/onec.module';
     ReceiptsModule,
     IntegrationsModule,
     OneCModule,
+    DiscountsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

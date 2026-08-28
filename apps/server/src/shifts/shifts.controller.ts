@@ -11,6 +11,7 @@ import { Role } from '@prisma/client';
 import { ShiftsService } from './shifts.service';
 import { OpenShiftDto } from './dto/open-shift.dto';
 import { CloseShiftDto } from './dto/close-shift.dto';
+import { CashMovementDto } from './dto/cash-movement.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -43,5 +44,24 @@ export class ShiftsController {
     @Query('storeId') storeId?: string,
   ) {
     return this.shifts.findAll(user.organizationId, storeId);
+  }
+
+  @Post(':id/cash-movements')
+  addCashMovement(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: CashMovementDto,
+  ) {
+    return this.shifts.addCashMovement(
+      user.organizationId,
+      user.userId,
+      id,
+      dto,
+    );
+  }
+
+  @Get(':id/report')
+  getReport(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.shifts.getReport(user.organizationId, id);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 
@@ -23,6 +23,22 @@ export class CustomersService {
             }
           : {}),
       },
+    });
+  }
+
+  // История покупок клиента (Этап 7 — модуль "Клиенты").
+  async findPurchaseHistory(organizationId: string, customerId: string) {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, organizationId },
+    });
+    if (!customer) {
+      throw new NotFoundException('Клиент не найден');
+    }
+
+    return this.prisma.receipt.findMany({
+      where: { customerId },
+      include: { items: true, payments: true },
+      orderBy: { createdAt: 'desc' },
     });
   }
 }
