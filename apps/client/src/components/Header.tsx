@@ -19,15 +19,16 @@ interface HeaderProps {
   shiftOpenedAt: string;
   onLogout: () => void;
   onCloseShift: () => void;
+  className?: string;
 }
 
-export function Header({ session, workstationName, shiftOpenedAt, onLogout, onCloseShift }: HeaderProps) {
+export function Header({ session, workstationName, shiftOpenedAt, onLogout, onCloseShift, className }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const now = new Date();
   const online = useOnlineStatus();
 
   return (
-    <header className="flex shrink-0 items-center gap-6 border-b border-slate-200 bg-white px-6 py-3">
+    <header className={`flex shrink-0 items-center gap-6 border-b border-slate-200 bg-white px-6 py-3 ${className ?? ""}`}>
       <div className="flex items-center gap-2">
         <img src={logo} alt="IB-POS" className="h-8 w-8" />
         <span className="text-lg font-bold text-slate-900">IB-POS</span>

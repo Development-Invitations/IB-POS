@@ -180,6 +180,7 @@
     "quantity": "Остаток",
     "stockEmpty": "Нет данных по остаткам",
     "exportCsv": "Экспорт в CSV",
+    "print": "Печать",
     "loadError": "Не удалось загрузить отчёт",
     "accessDenied": "У вашей роли нет доступа к отчётам",
     "noComparison": "нет данных за прошлый период",
@@ -236,6 +237,7 @@
     "current": "Текущий чек",
     "total": "Итого",
     "discount": "Скидка",
+    "autoDiscount": "Автоскидка",
     "clear": "Очистить",
     "pay": "Оплатить",
     "empty": "Чек пуст"
@@ -327,7 +329,6 @@
     "createBackup": "Создать копию",
     "exportTitle": "Экспорт данных",
     "exportCsv": "Экспорт товаров в CSV",
-    "printSettings": "Печать",
     "tabNotReady": "Раздел в разработке"
   }
 }

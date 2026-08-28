@@ -180,6 +180,7 @@
     "quantity": "Qoldiq",
     "stockEmpty": "Qoldiqlar boʻyicha maʻlumot yoʻq",
     "exportCsv": "CSV formatida eksport",
+    "print": "Chop etish",
     "loadError": "Hisobotni yuklab boʻlmadi",
     "accessDenied": "Sizning rolingizda hisobotlarga kirish huquqi yoʻq",
     "noComparison": "oʻtgan davr uchun maʻlumot yoʻq",
@@ -236,6 +237,7 @@
     "current": "Joriy chek",
     "total": "Jami",
     "discount": "Chegirma",
+    "autoDiscount": "Avto-chegirma",
     "clear": "Tozalash",
     "pay": "Toʻlash",
     "empty": "Chek boʻsh"
@@ -327,7 +329,6 @@
     "createBackup": "Nusxa yaratish",
     "exportTitle": "Maʻlumotlarni eksport qilish",
     "exportCsv": "Mahsulotlarni CSV formatida eksport qilish",
-    "printSettings": "Chop etish",
     "tabNotReady": "Boʻlim ishlab chiqilmoqda"
   }
 }

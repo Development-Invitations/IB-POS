@@ -42,16 +42,17 @@ interface SidebarProps {
   onToggle: () => void;
   activeScreen: ScreenKey;
   onNavigate: (screen: ScreenKey) => void;
+  className?: string;
 }
 
-export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, className }: SidebarProps) {
   const { t } = useTranslation();
 
   return (
     <aside
       className={`flex shrink-0 flex-col bg-sidebar text-white transition-[width] duration-200 ${
         collapsed ? "w-[76px]" : "w-60"
-      }`}
+      } ${className ?? ""}`}
     >
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {NAV_ITEMS.map((item) => {

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { API_BASE } from "../lib/api";
+import { API_BASE, type ReceiptPreview } from "../lib/api";
 import { formatSum } from "../lib/format";
 import { computeTotals } from "../lib/cart";
 import { loadShowProductImages } from "../lib/preferences";
@@ -25,6 +25,7 @@ function initials(name: string): string {
 interface ReceiptPanelProps {
   lines: CartLine[];
   discountPercent: number;
+  preview: ReceiptPreview | null;
   onDiscountChange: (percent: number) => void;
   onIncrement: (productId: string) => void;
   onDecrement: (productId: string) => void;
@@ -41,6 +42,7 @@ const MAX_DISCOUNT_PERCENT = 50;
 export function ReceiptPanel({
   lines,
   discountPercent,
+  preview,
   onDiscountChange,
   onIncrement,
   onDecrement,
@@ -53,7 +55,13 @@ export function ReceiptPanel({
   const { t } = useTranslation();
   const showImages = loadShowProductImages();
 
-  const { discountAmount, total } = computeTotals(lines, discountPercent);
+  // preview — авторитетный итог с сервера (учитывает авто-скидки из «Скидки и акции»,
+  // см. ReceiptsService.calculateTotals); пока не пришёл или сети нет — локальный расчёт
+  // только по ручному %, как было до авто-скидок.
+  const local = computeTotals(lines, discountPercent);
+  const manualDiscountAmount = preview?.manualDiscountAmount ?? local.discountAmount;
+  const autoDiscountAmount = preview?.autoDiscountTotal ?? 0;
+  const total = preview?.total ?? local.total;
 
   return (
     <aside className="m-4 flex w-[340px] shrink-0 flex-col rounded-xl bg-white shadow-sm">
@@ -153,7 +161,14 @@ export function ReceiptPanel({
                 </button>
               </span>
             </span>
-            <span>-{formatSum(discountAmount)}</span>
+            <span>-{formatSum(manualDiscountAmount)}</span>
+          </div>
+        )}
+
+        {autoDiscountAmount > 0 && (
+          <div className="flex items-center justify-between text-xs text-emerald-600">
+            <span>{t("receipt.autoDiscount")}</span>
+            <span>-{formatSum(autoDiscountAmount)}</span>
           </div>
         )}
 

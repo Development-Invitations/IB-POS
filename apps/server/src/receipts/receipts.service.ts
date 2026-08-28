@@ -3,13 +3,34 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ReceiptStatus, StockMovementType } from '@prisma/client';
+import { Role, ReceiptStatus, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { AuditService } from '../audit/audit.service';
 import { StockService } from '../stock/stock.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
+
+// Скидки из модуля «Скидки и акции» применяются автоматически при создании чека — сервер
+// сам решает, что применимо (не доверяя клиенту), в отличие от ручного discountPercent
+// (кнопки +/-5% на экране «Продажа»), который остаётся честным клиентским оверрайдом кассира.
+// minRole — это не иерархия ролей вообще, а порог именно для экрана «Продажа»: кассир видит
+// только скидки с minRole=CASHIER, управляющий/админ — вообще все (см. Раздел 3 ТЗ: кассир
+// «применяет в рамках лимита», управляющий/админ полным доступом).
+const SALE_ROLE_RANK: Partial<Record<Role, number>> = {
+  [Role.CASHIER]: 0,
+  [Role.MANAGER]: 1,
+  [Role.ADMIN]: 1,
+};
+
+function isDiscountAllowedForRole(
+  minRole: Role,
+  requestingRole: Role,
+): boolean {
+  const requestingRank = SALE_ROLE_RANK[requestingRole] ?? 1;
+  const minRank = SALE_ROLE_RANK[minRole] ?? 0;
+  return requestingRank >= minRank;
+}
 
 @Injectable()
 export class ReceiptsService {
@@ -20,7 +41,140 @@ export class ReceiptsService {
     private readonly stock: StockService,
   ) {}
 
-  async create(organizationId: string, dto: CreateReceiptDto) {
+  // Общая логика расчёта скидок для create() и preview() — вынесена отдельно, чтобы кассир
+  // видел на экране «Продажа» ДО оплаты те же цифры, что сервер реально спишет при создании
+  // чека (иначе PaymentModal показывал бы сумму без учёта авто-скидок из «Скидки и акции»).
+  private async calculateTotals(
+    organizationId: string,
+    requestingRole: Role,
+    items: { productId: string; quantity: number }[],
+    discountPercent: number | undefined,
+  ) {
+    const productIds = items.map((item) => item.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, organizationId },
+    });
+    if (products.length !== new Set(productIds).size) {
+      throw new BadRequestException('Один или несколько товаров не найдены');
+    }
+
+    const priceById = new Map(products.map((p) => [p.id, p.price]));
+    const costById = new Map(products.map((p) => [p.id, p.cost]));
+    const categoryById = new Map(products.map((p) => [p.id, p.categoryId]));
+    const subtotal = items.reduce(
+      (sum, item) =>
+        sum + Number(priceById.get(item.productId)) * item.quantity,
+      0,
+    );
+
+    const categoryIds = [
+      ...new Set(
+        products.map((p) => p.categoryId).filter((id): id is string => !!id),
+      ),
+    ];
+    const activeDiscounts = await this.prisma.discount.findMany({
+      where: {
+        organizationId,
+        isActive: true,
+        OR: [
+          { productId: { in: productIds } },
+          { categoryId: { in: categoryIds } },
+          { AND: [{ productId: null }, { categoryId: null }] },
+        ],
+      },
+    });
+    const allowedDiscounts = activeDiscounts.filter((d) =>
+      isDiscountAllowedForRole(d.minRole, requestingRole),
+    );
+
+    // Для каждой позиции чека — лучшая (максимальная по сумме) применимая скидка на товар
+    // или на его категорию; скидки не суммируются между собой на одной позиции.
+    let lineDiscountTotal = 0;
+    for (const item of items) {
+      const lineTotal = Number(priceById.get(item.productId)) * item.quantity;
+      const categoryId = categoryById.get(item.productId) ?? null;
+      const candidates = allowedDiscounts.filter(
+        (d) =>
+          d.productId === item.productId ||
+          (d.categoryId && d.categoryId === categoryId),
+      );
+      const bestAmount = candidates.reduce((best, d) => {
+        const amount =
+          d.type === 'PERCENT'
+            ? (lineTotal * Number(d.value)) / 100
+            : Math.min(Number(d.value), lineTotal);
+        return Math.max(best, amount);
+      }, 0);
+      lineDiscountTotal += bestAmount;
+    }
+
+    // Скидки на весь чек (без привязки к товару/категории) — берём одну лучшую, применяем
+    // к остатку после позиционных скидок, чтобы не давать двойного вычета с одной и той же суммы.
+    const afterLineDiscounts = subtotal - lineDiscountTotal;
+    const receiptWideCandidates = allowedDiscounts.filter(
+      (d) => !d.productId && !d.categoryId,
+    );
+    const receiptWideDiscount = receiptWideCandidates.reduce((best, d) => {
+      const amount =
+        d.type === 'PERCENT'
+          ? (afterLineDiscounts * Number(d.value)) / 100
+          : Math.min(Number(d.value), afterLineDiscounts);
+      return Math.max(best, amount);
+    }, 0);
+
+    const afterAutoDiscounts = afterLineDiscounts - receiptWideDiscount;
+    const autoDiscountTotal = Math.round(
+      lineDiscountTotal + receiptWideDiscount,
+    );
+    const manualDiscountAmount = Math.round(
+      (afterAutoDiscounts * (discountPercent ?? 0)) / 100,
+    );
+    const discountTotal = autoDiscountTotal + manualDiscountAmount;
+    const total = subtotal - discountTotal;
+
+    return {
+      priceById,
+      costById,
+      subtotal,
+      autoDiscountTotal,
+      manualDiscountAmount,
+      discountTotal,
+      total,
+    };
+  }
+
+  async preview(
+    organizationId: string,
+    requestingRole: Role,
+    items: { productId: string; quantity: number }[],
+    discountPercent: number | undefined,
+  ) {
+    const {
+      subtotal,
+      autoDiscountTotal,
+      manualDiscountAmount,
+      discountTotal,
+      total,
+    } = await this.calculateTotals(
+      organizationId,
+      requestingRole,
+      items,
+      discountPercent,
+    );
+    return {
+      subtotal,
+      autoDiscountTotal,
+      manualDiscountAmount,
+      discountTotal,
+      total,
+    };
+  }
+
+  async create(
+    organizationId: string,
+    requestingRole: Role,
+    dto: CreateReceiptDto,
+  ) {
     const shift = await this.prisma.shift.findFirst({
       where: {
         id: dto.shiftId,
@@ -32,25 +186,13 @@ export class ReceiptsService {
       throw new NotFoundException('Смена не найдена');
     }
 
-    const productIds = dto.items.map((item) => item.productId);
-    const products = await this.prisma.product.findMany({
-      where: { id: { in: productIds }, organizationId },
-    });
-    if (products.length !== new Set(productIds).size) {
-      throw new BadRequestException('Один или несколько товаров не найдены');
-    }
-
-    const priceById = new Map(products.map((p) => [p.id, p.price]));
-    const costById = new Map(products.map((p) => [p.id, p.cost]));
-    const subtotal = dto.items.reduce(
-      (sum, item) =>
-        sum + Number(priceById.get(item.productId)) * item.quantity,
-      0,
-    );
-    const discountTotal = Math.round(
-      (subtotal * (dto.discountPercent ?? 0)) / 100,
-    );
-    const total = subtotal - discountTotal;
+    const { priceById, costById, discountTotal, total } =
+      await this.calculateTotals(
+        organizationId,
+        requestingRole,
+        dto.items,
+        dto.discountPercent,
+      );
 
     // Чек создаётся открытым (OPEN) без записи в очередь фискализации — на фискальный
     // регистратор/кассу уходит только фактически оплаченная продажа, см. pay() ниже.

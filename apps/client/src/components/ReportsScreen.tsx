@@ -160,13 +160,21 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-800">{t("nav.reports")}</h1>
         {tab !== "stock" && canDashboard && (
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-          >
-            {exporting ? t("common.loading") : t("reports.exportCsv")}
-          </button>
+          <div className="no-print flex gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              {exporting ? t("common.loading") : t("reports.exportCsv")}
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              {t("reports.print")}
+            </button>
+          </div>
         )}
       </div>
 
@@ -203,7 +211,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
         )}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="no-print flex flex-wrap items-end gap-3">
         {tab !== "stock" && (
           <>
             <label className="text-xs font-medium text-slate-500">

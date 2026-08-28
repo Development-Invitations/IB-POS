@@ -27,7 +27,9 @@ import {
   getProducts,
   getShiftReport,
   payReceipt,
+  previewReceipt,
   returnReceipt,
+  type ReceiptPreview,
 } from "./lib/api";
 import { computeTotals } from "./lib/cart";
 import { useBarcodeScanner } from "./lib/use-barcode-scanner";
@@ -69,6 +71,7 @@ function App() {
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [discountPercent, setDiscountPercent] = useState(0);
+  const [receiptPreview, setReceiptPreview] = useState<ReceiptPreview | null>(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
@@ -131,6 +134,33 @@ function App() {
         : products.filter((product) => product.categoryId === activeCategory),
     [products, activeCategory],
   );
+
+  // Предпросчёт итога с учётом авто-скидок (см. ReceiptsService.calculateTotals на сервере) —
+  // кассир должен видеть тот же итог, что реально спишется при оплате. Если сети нет или запрос
+  // не успел — receiptPreview остаётся null, и ReceiptPanel/PaymentModal падают на локальный
+  // расчёт только по ручному % (тот же расчёт, что был здесь до авто-скидок).
+  useEffect(() => {
+    if (!session || lines.length === 0) {
+      setReceiptPreview(null);
+      return;
+    }
+    let cancelled = false;
+    const id = setTimeout(async () => {
+      try {
+        const preview = await previewReceipt(session.accessToken, {
+          discountPercent,
+          items: lines.map((line) => ({ productId: line.product.id, quantity: line.qty })),
+        });
+        if (!cancelled) setReceiptPreview(preview);
+      } catch {
+        if (!cancelled) setReceiptPreview(null);
+      }
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
+  }, [session, lines, discountPercent]);
 
   function addToCart(product: CartProduct) {
     setLines((prev) => {
@@ -282,6 +312,7 @@ function App() {
         shiftOpenedAt={shift.openedAt}
         onLogout={handleLogout}
         onCloseShift={openCloseShiftModal}
+        className="no-print"
       />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
@@ -289,6 +320,7 @@ function App() {
           onToggle={() => setSidebarCollapsed((v) => !v)}
           activeScreen={activeScreen}
           onNavigate={setActiveScreen}
+          className="no-print"
         />
 
         {activeScreen === "sale" && (
@@ -301,6 +333,7 @@ function App() {
             <ReceiptPanel
               lines={lines}
               discountPercent={discountPercent}
+              preview={receiptPreview}
               onDiscountChange={setDiscountPercent}
               onIncrement={increment}
               onDecrement={decrement}
@@ -364,7 +397,7 @@ function App() {
 
       {paymentModalOpen && (
         <PaymentModal
-          total={computeTotals(lines, discountPercent).total}
+          total={receiptPreview?.total ?? computeTotals(lines, discountPercent).total}
           status={paymentStatus}
           onClose={() => setPaymentModalOpen(false)}
           onConfirm={confirmPayment}

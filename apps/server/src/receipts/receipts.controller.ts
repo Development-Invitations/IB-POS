@@ -3,6 +3,7 @@ import { Role } from '@prisma/client';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
+import { PreviewReceiptDto } from './dto/preview-receipt.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -20,7 +21,23 @@ export class ReceiptsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateReceiptDto,
   ) {
-    return this.receipts.create(user.organizationId, dto);
+    return this.receipts.create(user.organizationId, user.role, dto);
+  }
+
+  // Предпросчёт итога с учётом авто-скидок (без сохранения чека) — экран «Продажа» вызывает
+  // это при каждом изменении корзины, чтобы кассир видел ту же сумму, что спишется при оплате.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
+  @Post('preview')
+  preview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: PreviewReceiptDto,
+  ) {
+    return this.receipts.preview(
+      user.organizationId,
+      user.role,
+      dto.items,
+      dto.discountPercent,
+    );
   }
 
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)

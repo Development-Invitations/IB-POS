@@ -286,12 +286,6 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
                 >
                   {exportBusy ? t("common.loading") : t("settings.exportCsv")}
                 </button>
-                <button
-                  onClick={() => window.print()}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
-                >
-                  {t("settings.printSettings")}
-                </button>
               </div>
             </div>
           </div>

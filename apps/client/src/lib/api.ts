@@ -269,6 +269,25 @@ export function createReceipt(token: string, payload: CreateReceiptPayload) {
   );
 }
 
+export interface ReceiptPreview {
+  subtotal: number;
+  autoDiscountTotal: number;
+  manualDiscountAmount: number;
+  discountTotal: number;
+  total: number;
+}
+
+export function previewReceipt(
+  token: string,
+  payload: { discountPercent?: number; items: { productId: string; quantity: number }[] },
+) {
+  return request<ReceiptPreview>(
+    "/receipts/preview",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
 export function payReceipt(
   token: string,
   receiptId: string,
