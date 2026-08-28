@@ -7,7 +7,7 @@ export function EquipmentScreen() {
   const { connected, devices, testState, testDevice } = useDeviceAgent();
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-800">{t("equipment.title")}</h1>
         {!connected && (

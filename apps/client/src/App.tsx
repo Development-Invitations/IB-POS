@@ -318,31 +318,31 @@ function App() {
         )}
 
         {activeScreen === "equipment" && (
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4">
             <EquipmentScreen />
           </main>
         )}
 
         {activeScreen === "products" && (
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4">
             <ProductsScreen session={session} onCatalogChanged={loadCatalog} />
           </main>
         )}
 
         {activeScreen === "customers" && (
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4">
             <CustomersScreen session={session} />
           </main>
         )}
 
         {activeScreen === "discounts" && (
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4">
             <DiscountsScreen session={session} />
           </main>
         )}
 
         {activeScreen === "reports" && (
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-4">
             <ReportsScreen session={session} />
           </main>
         )}

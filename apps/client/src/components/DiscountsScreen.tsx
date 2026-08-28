@@ -124,7 +124,7 @@ export function DiscountsScreen({ session }: DiscountsScreenProps) {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-slate-800">{t("nav.discounts")}</h1>
         {canManage && (
