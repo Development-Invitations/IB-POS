@@ -1,5 +1,6 @@
 import type {
   ApiCategory,
+  ApiCustomer,
   ApiProduct,
   ApiReceipt,
   ApiShift,
@@ -218,4 +219,42 @@ export function payReceipt(
 
 export function returnReceipt(token: string, receiptId: string) {
   return request<ApiReceipt>(`/receipts/${receiptId}/return`, { method: "POST" }, token);
+}
+
+export function getCustomers(token: string, search?: string) {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return request<ApiCustomer[]>(`/customers${query}`, {}, token);
+}
+
+export interface CustomerPayload {
+  fullName: string;
+  phone?: string;
+}
+
+export function createCustomer(token: string, payload: CustomerPayload) {
+  return request<ApiCustomer>(
+    "/customers",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateCustomer(token: string, id: string, payload: Partial<CustomerPayload>) {
+  return request<ApiCustomer>(
+    `/customers/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function adjustCustomerBonus(token: string, id: string, delta: number, comment?: string) {
+  return request<ApiCustomer>(
+    `/customers/${id}/bonus`,
+    { method: "POST", body: JSON.stringify({ delta, comment }) },
+    token,
+  );
+}
+
+export function getCustomerPurchaseHistory(token: string, id: string) {
+  return request<ApiReceipt[]>(`/customers/${id}/receipts`, {}, token);
 }

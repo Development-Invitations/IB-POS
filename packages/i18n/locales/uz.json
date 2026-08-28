@@ -113,6 +113,27 @@
     "searchPlaceholder": "Nomi, artikuli, shtrix-kodi boʻyicha qidirish...",
     "empty": "Mahsulotlar topilmadi"
   },
+  "customers": {
+    "addTitle": "Yangi mijoz",
+    "editTitle": "Mijozni tahrirlash",
+    "fullName": "F.I.Sh.",
+    "phone": "Telefon",
+    "bonusBalance": "Bonus balansi",
+    "edit": "Tahrirlash",
+    "save": "Saqlash",
+    "saveError": "Mijozni saqlab boʻlmadi",
+    "loadError": "Mijozlarni yuklab boʻlmadi",
+    "historyError": "Xarid tarixini yuklab boʻlmadi",
+    "searchPlaceholder": "Ism yoki telefon boʻyicha qidirish...",
+    "empty": "Mijozlar topilmadi",
+    "accessDenied": "Sizning rolingizda «Mijozlar» boʻlimiga kirish huquqi yoʻq",
+    "purchaseHistory": "Xarid tarixi",
+    "noPurchases": "Hozircha xaridlar yoʻq",
+    "statusOpen": "Ochiq",
+    "statusPaid": "Toʻlangan",
+    "statusReturned": "Qaytarilgan",
+    "statusVoid": "Bekor qilingan"
+  },
   "receipt": {
     "current": "Joriy chek",
     "total": "Jami",

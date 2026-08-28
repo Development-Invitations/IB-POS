@@ -113,6 +113,27 @@
     "searchPlaceholder": "Поиск по названию, артикулу, штрихкоду...",
     "empty": "Товары не найдены"
   },
+  "customers": {
+    "addTitle": "Новый клиент",
+    "editTitle": "Редактировать клиента",
+    "fullName": "ФИО",
+    "phone": "Телефон",
+    "bonusBalance": "Бонусный баланс",
+    "edit": "Изменить",
+    "save": "Сохранить",
+    "saveError": "Не удалось сохранить клиента",
+    "loadError": "Не удалось загрузить клиентов",
+    "historyError": "Не удалось загрузить историю покупок",
+    "searchPlaceholder": "Поиск по имени или телефону...",
+    "empty": "Клиенты не найдены",
+    "accessDenied": "У вашей роли нет доступа к разделу «Клиенты»",
+    "purchaseHistory": "История покупок",
+    "noPurchases": "Покупок пока нет",
+    "statusOpen": "Открыт",
+    "statusPaid": "Оплачен",
+    "statusReturned": "Возвращён",
+    "statusVoid": "Отменён"
+  },
   "receipt": {
     "current": "Текущий чек",
     "total": "Итого",

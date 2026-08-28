@@ -54,6 +54,15 @@ export interface ApiReceiptItem {
   price: string;
 }
 
+export type BackendPaymentMethod = "CASH" | "CARD" | "CLICK" | "PAYME" | "QR" | "MIXED";
+
+export interface ApiPayment {
+  id: string;
+  method: BackendPaymentMethod;
+  amount: string;
+  createdAt: string;
+}
+
 export interface ApiReceipt {
   id: string;
   storeId: string;
@@ -62,7 +71,14 @@ export interface ApiReceipt {
   status: ReceiptStatus;
   total: string;
   discountTotal: string;
+  createdAt: string;
   items: ApiReceiptItem[];
+  payments?: ApiPayment[];
 }
 
-export type BackendPaymentMethod = "CASH" | "CARD" | "CLICK" | "PAYME" | "QR" | "MIXED";
+export interface ApiCustomer {
+  id: string;
+  fullName: string;
+  phone: string | null;
+  bonusBalance: string;
+}

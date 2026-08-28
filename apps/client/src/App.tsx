@@ -9,6 +9,7 @@ import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
 import { ProductsScreen } from "./components/ProductsScreen";
+import { CustomersScreen } from "./components/CustomersScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
@@ -323,6 +324,12 @@ function App() {
         {activeScreen === "products" && (
           <main className="flex-1 overflow-y-auto p-6">
             <ProductsScreen session={session} onCatalogChanged={loadCatalog} />
+          </main>
+        )}
+
+        {activeScreen === "customers" && (
+          <main className="flex-1 overflow-y-auto p-6">
+            <CustomersScreen session={session} />
           </main>
         )}
       </div>
