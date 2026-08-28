@@ -271,6 +271,7 @@ function App() {
           setShift(readyShift);
           setWorkstation(readyWorkstation);
         }}
+        onLogout={handleLogout}
       />
     );
   }

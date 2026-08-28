@@ -15,11 +15,12 @@ import type { AuthSession } from "../types/auth";
 interface ShiftSetupScreenProps {
   session: AuthSession;
   onReady: (shift: ApiShift, workstation: ApiWorkstation) => void;
+  onLogout: () => void;
 }
 
 type Phase = "loading" | "pick" | "open-shift" | "error";
 
-export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
+export function ShiftSetupScreen({ session, onReady, onLogout }: ShiftSetupScreenProps) {
   const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +30,12 @@ export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
   const [workstationId, setWorkstationId] = useState<string | null>(null);
   const [openingCash, setOpeningCash] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setPhase("loading");
+    setError(null);
     async function load() {
       try {
         const [storeList, workstationList] = await Promise.all([
@@ -68,7 +72,7 @@ export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.accessToken]);
+  }, [session.accessToken, reloadToken]);
 
   async function proceedWithWorkstation(workstation: ApiWorkstation, token: string) {
     setStoreId(workstation.storeId);
@@ -121,6 +125,12 @@ export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
         {phase === "error" && (
           <div className="space-y-3 text-center">
             <p className="text-sm text-red-600">{error}</p>
+            <button
+              onClick={() => setReloadToken((v) => v + 1)}
+              className="w-full rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover"
+            >
+              {t("workstation.retry")}
+            </button>
           </div>
         )}
 
@@ -130,51 +140,64 @@ export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
               {t("workstation.setupTitle")}
             </h2>
 
-            <label className="block text-xs font-medium text-slate-500">
-              {t("workstation.store")}
-              <select
-                value={storeId ?? ""}
-                onChange={(e) => {
-                  setStoreId(e.target.value);
-                  setWorkstationId(null);
-                }}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
-              >
-                <option value="" disabled>
-                  —
-                </option>
-                {stores.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {stores.length === 0 ? (
+              <p className="text-center text-sm text-red-600">{t("workstation.noStores")}</p>
+            ) : (
+              <>
+                <label className="block text-xs font-medium text-slate-500">
+                  {t("workstation.store")}
+                  <select
+                    value={storeId ?? ""}
+                    onChange={(e) => {
+                      setStoreId(e.target.value);
+                      setWorkstationId(null);
+                    }}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  >
+                    <option value="" disabled>
+                      —
+                    </option>
+                    {stores.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            <label className="block text-xs font-medium text-slate-500">
-              {t("workstation.workstation")}
-              <select
-                value={workstationId ?? ""}
-                onChange={(e) => setWorkstationId(e.target.value)}
-                disabled={!storeId}
-                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-40"
-              >
-                <option value="" disabled>
-                  —
-                </option>
-                {storeWorkstations.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <label className="block text-xs font-medium text-slate-500">
+                  {t("workstation.workstation")}
+                  <select
+                    value={workstationId ?? ""}
+                    onChange={(e) => setWorkstationId(e.target.value)}
+                    disabled={!storeId}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent disabled:opacity-40"
+                  >
+                    <option value="" disabled>
+                      —
+                    </option>
+                    {storeWorkstations.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
-            {storeWorkstations.length === 0 && storeId && (
-              <p className="text-xs text-red-600">{t("workstation.noWorkstations")}</p>
+                {storeWorkstations.length === 0 && storeId && (
+                  <p className="text-xs text-red-600">{t("workstation.noWorkstations")}</p>
+                )}
+              </>
             )}
 
             {error && <p className="text-sm text-red-600">{error}</p>}
+
+            <button
+              onClick={() => setReloadToken((v) => v + 1)}
+              className="w-full text-center text-xs font-medium text-accent hover:underline"
+            >
+              {t("workstation.retry")}
+            </button>
 
             <button
               onClick={handlePickContinue}
@@ -213,6 +236,13 @@ export function ShiftSetupScreen({ session, onReady }: ShiftSetupScreenProps) {
             </button>
           </div>
         )}
+
+        <button
+          onClick={onLogout}
+          className="mt-5 w-full text-center text-xs font-medium text-slate-400 hover:text-slate-600"
+        >
+          {t("auth.logout")}
+        </button>
       </div>
     </div>
   );
