@@ -124,10 +124,11 @@ model User {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  shifts        Shift[]
-  auditLogs     AuditLog[]
-  cashMovements CashMovement[]
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  shifts         Shift[]
+  auditLogs      AuditLog[]
+  cashMovements  CashMovement[]
+  stockMovements StockMovement[]
 
   @@unique([organizationId, login])
   @@index([organizationId])
@@ -190,11 +191,37 @@ model Stock {
   quantity  Decimal  @default(0) @db.Decimal(14, 3)
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  store   Store   @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements StockMovement[]
 
   @@unique([storeId, productId])
   @@map("stock")
+}
+
+enum StockMovementType {
+  RECEIPT_IN
+  ADJUSTMENT
+  SALE
+  RETURN
+}
+
+// Журнал движений по складу — приёмка/инвентаризация/списание при продаже/возврате (Этап 7/9).
+// Stock.quantity — это текущий остаток, StockMovement — как он к нему пришёл.
+model StockMovement {
+  id            String            @id @default(uuid())
+  stockId       String            @map("stock_id")
+  type          StockMovementType
+  quantityDelta Decimal           @map("quantity_delta") @db.Decimal(14, 3)
+  comment       String?
+  userId        String?           @map("user_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id])
+
+  @@index([stockId])
+  @@map("stock_movements")
 }
 
 model Customer {

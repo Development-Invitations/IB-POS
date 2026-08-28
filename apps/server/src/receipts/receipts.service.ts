@@ -3,10 +3,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ReceiptStatus } from '@prisma/client';
+import { ReceiptStatus, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { AuditService } from '../audit/audit.service';
+import { StockService } from '../stock/stock.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
 
@@ -16,6 +17,7 @@ export class ReceiptsService {
     private readonly prisma: PrismaService,
     private readonly outbox: OutboxService,
     private readonly audit: AuditService,
+    private readonly stock: StockService,
   ) {}
 
   async create(organizationId: string, dto: CreateReceiptDto) {
@@ -117,6 +119,18 @@ export class ReceiptsService {
         include: { items: true, payments: true },
       });
 
+      // Списываем остаток по каждой позиции в той же транзакции, что и оплата.
+      for (const item of updated.items) {
+        await this.stock.applyMovement(
+          tx,
+          updated.storeId,
+          item.productId,
+          -Number(item.quantity),
+          StockMovementType.SALE,
+          userId,
+        );
+      }
+
       // Пишется в той же транзакции, что и оплата — при отсутствии сети чек остаётся
       // оплаченным локально, а событие остаётся в очереди PENDING до синка (Этап 5/8).
       await this.outbox.enqueue(tx, organizationId, 'receipt.paid', {
@@ -157,6 +171,18 @@ export class ReceiptsService {
         data: { status: ReceiptStatus.RETURNED },
         include: { items: true, payments: true },
       });
+
+      // Возвращаем товар на остаток по каждой позиции в той же транзакции.
+      for (const item of updated.items) {
+        await this.stock.applyMovement(
+          tx,
+          updated.storeId,
+          item.productId,
+          Number(item.quantity),
+          StockMovementType.RETURN,
+          userId,
+        );
+      }
 
       await this.outbox.enqueue(tx, organizationId, 'receipt.returned', {
         receiptId: updated.id,
