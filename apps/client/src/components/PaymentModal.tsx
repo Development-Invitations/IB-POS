@@ -14,18 +14,20 @@ const METHOD_ICON: Record<PaymentMethod, (p: { className?: string }) => ReactEle
 };
 
 export type PaymentStatus = "idle" | "processing" | "error";
+export type ClickProvider = "click" | "payme";
 
 interface PaymentModalProps {
   total: number;
   status: PaymentStatus;
   onClose: () => void;
-  onConfirm: (method: PaymentMethod, receivedAmount: number | null) => void;
+  onConfirm: (method: PaymentMethod, receivedAmount: number | null, clickProvider: ClickProvider) => void;
 }
 
 export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModalProps) {
   const { t } = useTranslation();
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [received, setReceived] = useState(total);
+  const [clickProvider, setClickProvider] = useState<ClickProvider>("click");
 
   const receivedAmount = method === "cash" ? received : null;
   const change = receivedAmount !== null ? receivedAmount - total : 0;
@@ -61,6 +63,24 @@ export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModal
             );
           })}
 
+          {method === "clickPayme" && (
+            <div className="flex gap-2 rounded-lg bg-slate-50 p-1">
+              {(["click", "payme"] as const).map((provider) => (
+                <button
+                  key={provider}
+                  onClick={() => setClickProvider(provider)}
+                  className={`flex-1 rounded-md py-1.5 text-xs font-semibold transition ${
+                    clickProvider === provider
+                      ? "bg-accent text-white"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  {t(`payment.${provider}`)}
+                </button>
+              ))}
+            </div>
+          )}
+
           {method === "cash" && (
             <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
               <label className="text-xs text-slate-500">
@@ -94,7 +114,7 @@ export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModal
             </div>
           </div>
           <button
-            onClick={() => onConfirm(method, receivedAmount)}
+            onClick={() => onConfirm(method, receivedAmount, clickProvider)}
             disabled={!canConfirm}
             className="rounded-lg bg-accent px-6 py-3 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
           >

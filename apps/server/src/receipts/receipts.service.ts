@@ -42,11 +42,15 @@ export class ReceiptsService {
 
     const priceById = new Map(products.map((p) => [p.id, p.price]));
     const costById = new Map(products.map((p) => [p.id, p.cost]));
-    const total = dto.items.reduce(
+    const subtotal = dto.items.reduce(
       (sum, item) =>
         sum + Number(priceById.get(item.productId)) * item.quantity,
       0,
     );
+    const discountTotal = Math.round(
+      (subtotal * (dto.discountPercent ?? 0)) / 100,
+    );
+    const total = subtotal - discountTotal;
 
     // Чек создаётся открытым (OPEN) без записи в очередь фискализации — на фискальный
     // регистратор/кассу уходит только фактически оплаченная продажа, см. pay() ниже.
@@ -58,6 +62,7 @@ export class ReceiptsService {
         shiftId: dto.shiftId,
         customerId: dto.customerId,
         total,
+        discountTotal,
         items: {
           create: dto.items.map((item) => ({
             productId: item.productId,

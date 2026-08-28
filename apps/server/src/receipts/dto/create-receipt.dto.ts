@@ -5,6 +5,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -31,6 +32,14 @@ export class CreateReceiptDto {
   @IsOptional()
   @IsString()
   customerId?: string;
+
+  // Скидка на весь чек в процентах (кнопки +/-5% на экране "Продажа").
+  // Позиционные/акционные скидки из модуля "Скидки и акции" — отдельная, ещё не подключённая к чеку логика.
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(50)
+  discountPercent?: number;
 
   @IsArray()
   @ArrayMinSize(1)

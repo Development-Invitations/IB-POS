@@ -1,25 +1,61 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
 import { ProductGrid } from "./components/ProductGrid";
 import { ReceiptPanel, type CartLine, type PaidReceipt } from "./components/ReceiptPanel";
-import { PaymentModal, type PaymentStatus } from "./components/PaymentModal";
+import { PaymentModal, type PaymentStatus, type ClickProvider } from "./components/PaymentModal";
 import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
-import { checkApiHealth } from "./lib/api";
+import { LoginScreen } from "./components/LoginScreen";
+import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
+import { CloseShiftModal } from "./components/CloseShiftModal";
+import {
+  ApiError,
+  closeShift,
+  createReceipt,
+  getCategories,
+  getProducts,
+  getShiftReport,
+  payReceipt,
+  returnReceipt,
+} from "./lib/api";
 import { computeTotals } from "./lib/cart";
 import { useBarcodeScanner } from "./lib/use-barcode-scanner";
-import { DEMO_PRODUCTS, type CategoryId, type CatalogProduct } from "./data/catalog";
+import { clearSession, loadSession, saveSession } from "./lib/session";
+import type { CartProduct } from "./types/catalog";
 import type { PaymentMethod } from "./types/payment";
 import type { ScreenKey } from "./types/screen";
+import type { AuthSession } from "./types/auth";
+import type { ApiShift, ApiWorkstation, BackendPaymentMethod } from "./types/api";
 import "./App.css";
 
+function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): BackendPaymentMethod {
+  switch (method) {
+    case "cash":
+      return "CASH";
+    case "card":
+      return "CARD";
+    case "qr":
+      return "QR";
+    case "mixed":
+      return "MIXED";
+    case "clickPayme":
+      return clickProvider === "payme" ? "PAYME" : "CLICK";
+  }
+}
+
 function App() {
+  const [session, setSession] = useState<AuthSession | null>(() => loadSession());
+  const [workstation, setWorkstation] = useState<ApiWorkstation | null>(null);
+  const [shift, setShift] = useState<ApiShift | null>(null);
+
   const [activeScreen, setActiveScreen] = useState<ScreenKey>("sale");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<CategoryId>("all");
+  const [activeCategory, setActiveCategory] = useState("all");
+  const [products, setProducts] = useState<CartProduct[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [discountPercent, setDiscountPercent] = useState(0);
 
@@ -29,15 +65,66 @@ function App() {
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [notFoundCode, setNotFoundCode] = useState<string | null>(null);
 
+  const [closeShiftOpen, setCloseShiftOpen] = useState(false);
+  const [expectedCash, setExpectedCash] = useState(0);
+  const [closeShiftSubmitting, setCloseShiftSubmitting] = useState(false);
+  const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
+
+  function handleLogout() {
+    clearSession();
+    setSession(null);
+    setShift(null);
+    setWorkstation(null);
+    setLines([]);
+  }
+
+  function handleUnauthorized() {
+    handleLogout();
+  }
+
+  useEffect(() => {
+    if (!session || !shift) return;
+    let cancelled = false;
+    async function load() {
+      try {
+        const [categoryList, productList] = await Promise.all([
+          getCategories(session!.accessToken),
+          getProducts(session!.accessToken),
+        ]);
+        if (cancelled) return;
+        setCategories(categoryList.map((c) => ({ id: c.id, name: c.name })));
+        setProducts(
+          productList
+            .filter((p) => p.isActive)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              price: Number(p.price),
+              unit: p.unit,
+              barcode: p.barcode,
+              categoryId: p.categoryId,
+            })),
+        );
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) handleUnauthorized();
+      }
+    }
+    load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, shift]);
+
   const visibleProducts = useMemo(
     () =>
       activeCategory === "all"
-        ? DEMO_PRODUCTS
-        : DEMO_PRODUCTS.filter((product) => product.categoryId === activeCategory),
-    [activeCategory],
+        ? products
+        : products.filter((product) => product.categoryId === activeCategory),
+    [products, activeCategory],
   );
 
-  function addToCart(product: CatalogProduct) {
+  function addToCart(product: CartProduct) {
     setLines((prev) => {
       const existing = prev.find((line) => line.product.id === product.id);
       if (existing) {
@@ -73,32 +160,72 @@ function App() {
     setPaymentModalOpen(true);
   }
 
-  async function confirmPayment(method: PaymentMethod, _receivedAmount: number | null) {
+  async function confirmPayment(method: PaymentMethod, _receivedAmount: number | null, clickProvider: ClickProvider) {
+    if (!session || !workstation || !shift) return;
     setPaymentStatus("processing");
-
-    // Реальная (не имитированная) проверка доступности backend — честно демонстрирует
-    // поведение из ТЗ: "ошибка оплаты не должна терять чек (сохраняется локально, повтор)".
-    const reachable = await checkApiHealth();
-    if (!reachable) {
+    try {
+      const receipt = await createReceipt(session.accessToken, {
+        storeId: workstation.storeId,
+        workstationId: workstation.id,
+        shiftId: shift.id,
+        discountPercent,
+        items: lines.map((line) => ({ productId: line.product.id, quantity: line.qty })),
+      });
+      const paid = await payReceipt(session.accessToken, receipt.id, [
+        { method: toBackendMethod(method, clickProvider), amount: Number(receipt.total) },
+      ]);
+      setLastReceipt({ id: paid.id, total: Number(paid.total), method });
+      setPaymentModalOpen(false);
+      setPaymentStatus("idle");
+      clear();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        handleUnauthorized();
+        return;
+      }
+      // Ошибка оплаты не должна терять чек: корзина (lines) остаётся как была,
+      // кассир может повторить попытку кнопкой "Повторить" в модалке (см. ТЗ, Этап 3).
       setPaymentStatus("error");
-      return;
     }
-
-    const { total } = computeTotals(lines, discountPercent);
-    setLastReceipt({ total, method });
-    setPaymentModalOpen(false);
-    setPaymentStatus("idle");
-    clear();
   }
 
-  function confirmReturn() {
+  async function confirmReturn(approver: AuthSession) {
+    if (!lastReceipt) return;
+    await returnReceipt(approver.accessToken, lastReceipt.id);
     setLastReceipt(null);
     setReturnModalOpen(false);
   }
 
+  async function openCloseShiftModal() {
+    if (!session || !shift) return;
+    setCloseShiftError(null);
+    try {
+      const report = await getShiftReport(session.accessToken, shift.id);
+      setExpectedCash(report.expectedCash);
+      setCloseShiftOpen(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) handleUnauthorized();
+    }
+  }
+
+  async function handleCloseShift(closingCash: number) {
+    if (!session || !shift) return;
+    setCloseShiftSubmitting(true);
+    setCloseShiftError(null);
+    try {
+      await closeShift(session.accessToken, shift.id, closingCash);
+      setCloseShiftOpen(false);
+      setShift(null);
+    } catch (err) {
+      setCloseShiftError(err instanceof ApiError ? err.message : "error");
+    } finally {
+      setCloseShiftSubmitting(false);
+    }
+  }
+
   useBarcodeScanner((code) => {
     if (activeScreen !== "sale") return;
-    const product = DEMO_PRODUCTS.find((p) => p.barcode === code);
+    const product = products.find((p) => p.barcode === code);
     if (product) {
       addToCart(product);
     } else {
@@ -106,9 +233,38 @@ function App() {
     }
   });
 
+  if (!session) {
+    return (
+      <LoginScreen
+        onSuccess={(s) => {
+          saveSession(s);
+          setSession(s);
+        }}
+      />
+    );
+  }
+
+  if (!shift || !workstation) {
+    return (
+      <ShiftSetupScreen
+        session={session}
+        onReady={(readyShift, readyWorkstation) => {
+          setShift(readyShift);
+          setWorkstation(readyWorkstation);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
-      <Header />
+      <Header
+        session={session}
+        workstationName={workstation.name}
+        shiftOpenedAt={shift.openedAt}
+        onLogout={handleLogout}
+        onCloseShift={openCloseShiftModal}
+      />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           collapsed={sidebarCollapsed}
@@ -120,7 +276,7 @@ function App() {
         {activeScreen === "sale" ? (
           <>
             <main className="flex-1 space-y-4 overflow-y-auto p-4">
-              <CategoryTabs active={activeCategory} onChange={setActiveCategory} />
+              <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
               <ProductGrid products={visibleProducts} onAdd={addToCart} />
             </main>
 
@@ -154,11 +310,25 @@ function App() {
       )}
 
       {returnModalOpen && (
-        <ReturnConfirmModal onClose={() => setReturnModalOpen(false)} onConfirm={confirmReturn} />
+        <ReturnConfirmModal
+          organizationId={session.organizationId}
+          onClose={() => setReturnModalOpen(false)}
+          onConfirm={confirmReturn}
+        />
       )}
 
       {notFoundCode && (
         <ProductNotFoundModal code={notFoundCode} onClose={() => setNotFoundCode(null)} />
+      )}
+
+      {closeShiftOpen && (
+        <CloseShiftModal
+          expectedCash={expectedCash}
+          submitting={closeShiftSubmitting}
+          error={closeShiftError}
+          onClose={() => setCloseShiftOpen(false)}
+          onConfirm={handleCloseShift}
+        />
       )}
     </div>
   );

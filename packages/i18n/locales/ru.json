@@ -36,12 +36,37 @@
     "categories": "Категории"
   },
   "categories": {
-    "all": "Все",
-    "drinks": "Напитки",
-    "food": "Еда",
-    "desserts": "Десерты",
-    "tobacco": "Табак",
-    "other": "Прочее"
+    "all": "Все"
+  },
+  "auth": {
+    "orgId": "ID организации",
+    "orgIdHint": "Выдаётся при регистрации организации",
+    "login": "Логин",
+    "password": "Пароль",
+    "signIn": "Войти",
+    "signingIn": "Вход...",
+    "invalidCredentials": "Неверный логин, пароль или ID организации",
+    "networkError": "Нет соединения с сервером",
+    "logout": "Выйти"
+  },
+  "workstation": {
+    "setupTitle": "Выбор кассы",
+    "store": "Точка продаж",
+    "workstation": "Касса",
+    "continue": "Продолжить",
+    "loadError": "Не удалось загрузить кассы",
+    "noWorkstations": "Для организации не настроено ни одной кассы",
+    "openShiftTitle": "Открытие смены",
+    "openingCash": "Наличные в кассе на начало смены",
+    "openShift": "Открыть смену",
+    "opening": "Открытие...",
+    "closeShiftTitle": "Закрытие смены",
+    "closingCash": "Наличные в кассе на конец смены",
+    "closeShift": "Закрыть смену",
+    "closing": "Закрытие...",
+    "closeConfirm": "Закрыть текущую смену?",
+    "expectedCash": "Ожидаемая сумма наличных",
+    "error": "Ошибка"
   },
   "product": {
     "addProduct": "Добавить товар"
@@ -66,6 +91,8 @@
     "cash": "Наличные",
     "card": "Карта (POS-терминал)",
     "clickPayme": "Click / Payme",
+    "click": "Click",
+    "payme": "Payme",
     "qr": "QR-код",
     "mixed": "Смешанная оплата",
     "toPay": "К оплате",
@@ -81,10 +108,12 @@
     "action": "Возврат",
     "title": "Возврат чека",
     "confirmText": "Возврат требует подтверждения правами управляющего или администратора",
+    "managerLogin": "Логин управляющего",
     "pinPlaceholder": "PIN",
     "confirm": "Подтвердить возврат",
     "cancel": "Отмена",
-    "wrongPin": "Неверный PIN",
+    "wrongPin": "Неверный логин или PIN",
+    "notAuthorized": "У этого пользователя нет прав подтверждать возврат",
     "done": "Чек возвращён"
   },
   "scanner": {

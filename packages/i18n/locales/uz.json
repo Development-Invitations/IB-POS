@@ -36,12 +36,37 @@
     "categories": "Kategoriyalar"
   },
   "categories": {
-    "all": "Barchasi",
-    "drinks": "Ichimliklar",
-    "food": "Ovqat",
-    "desserts": "Desertlar",
-    "tobacco": "Tamaki",
-    "other": "Boshqa"
+    "all": "Barchasi"
+  },
+  "auth": {
+    "orgId": "Tashkilot ID",
+    "orgIdHint": "Tashkilot roʻyxatdan oʻtganda beriladi",
+    "login": "Login",
+    "password": "Parol",
+    "signIn": "Kirish",
+    "signingIn": "Kirilmoqda...",
+    "invalidCredentials": "Login, parol yoki Tashkilot ID notoʻgʻri",
+    "networkError": "Server bilan aloqa yoʻq",
+    "logout": "Chiqish"
+  },
+  "workstation": {
+    "setupTitle": "Kassani tanlash",
+    "store": "Savdo nuqtasi",
+    "workstation": "Kassa",
+    "continue": "Davom etish",
+    "loadError": "Kassalarni yuklab boʻlmadi",
+    "noWorkstations": "Tashkilot uchun bironta kassa sozlanmagan",
+    "openShiftTitle": "Smenani ochish",
+    "openingCash": "Smena boshida kassadagi naqd pul",
+    "openShift": "Smenani ochish",
+    "opening": "Ochilmoqda...",
+    "closeShiftTitle": "Smenani yopish",
+    "closingCash": "Smena oxirida kassadagi naqd pul",
+    "closeShift": "Smenani yopish",
+    "closing": "Yopilmoqda...",
+    "closeConfirm": "Joriy smena yopilsinmi?",
+    "expectedCash": "Kutilayotgan naqd pul summasi",
+    "error": "Xato"
   },
   "product": {
     "addProduct": "Mahsulot qoʻshish"
@@ -66,6 +91,8 @@
     "cash": "Naqd pul",
     "card": "Karta (POS-terminal)",
     "clickPayme": "Click / Payme",
+    "click": "Click",
+    "payme": "Payme",
     "qr": "QR-kod",
     "mixed": "Aralash toʻlov",
     "toPay": "Toʻlanadi",
@@ -81,10 +108,12 @@
     "action": "Qaytarish",
     "title": "Chekni qaytarish",
     "confirmText": "Qaytarish uchun boshqaruvchi yoki administrator huquqi tasdiqlanishi kerak",
+    "managerLogin": "Boshqaruvchi login",
     "pinPlaceholder": "PIN",
     "confirm": "Qaytarishni tasdiqlash",
     "cancel": "Bekor qilish",
-    "wrongPin": "PIN notoʻgʻri",
+    "wrongPin": "Login yoki PIN notoʻgʻri",
+    "notAuthorized": "Bu foydalanuvchida qaytarishni tasdiqlash huquqi yoʻq",
     "done": "Chek qaytarildi"
   },
   "scanner": {

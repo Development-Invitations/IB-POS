@@ -36,12 +36,37 @@
     "categories": "Категориялар"
   },
   "categories": {
-    "all": "Барчаси",
-    "drinks": "Ичимликлар",
-    "food": "Овқат",
-    "desserts": "Десертлар",
-    "tobacco": "Тамаки",
-    "other": "Бошқа"
+    "all": "Барчаси"
+  },
+  "auth": {
+    "orgId": "Ташкилот ID",
+    "orgIdHint": "Ташкилот рўйхатдан ўтганда берилади",
+    "login": "Логин",
+    "password": "Парол",
+    "signIn": "Кириш",
+    "signingIn": "Кирилмоқда...",
+    "invalidCredentials": "Логин, парол ёки Ташкилот ID нотўғри",
+    "networkError": "Сервер билан алоқа йўқ",
+    "logout": "Чиқиш"
+  },
+  "workstation": {
+    "setupTitle": "Кассани танлаш",
+    "store": "Савдо нуқтаси",
+    "workstation": "Касса",
+    "continue": "Давом этиш",
+    "loadError": "Кассаларни юклаб бўлмади",
+    "noWorkstations": "Ташкилот учун бирорта касса созланмаган",
+    "openShiftTitle": "Сменани очиш",
+    "openingCash": "Смена бошида кассадаги нақд пул",
+    "openShift": "Сменани очиш",
+    "opening": "Очилмоқда...",
+    "closeShiftTitle": "Сменани ёпиш",
+    "closingCash": "Смена охирида кассадаги нақд пул",
+    "closeShift": "Сменани ёпиш",
+    "closing": "Ёпилмоқда...",
+    "closeConfirm": "Жорий смена ёпилсинми?",
+    "expectedCash": "Кутилаётган нақд пул суммаси",
+    "error": "Хато"
   },
   "product": {
     "addProduct": "Маҳсулот қўшиш"
@@ -66,6 +91,8 @@
     "cash": "Нақд пул",
     "card": "Карта (POS-терминал)",
     "clickPayme": "Click / Payme",
+    "click": "Click",
+    "payme": "Payme",
     "qr": "QR-код",
     "mixed": "Аралаш тўлов",
     "toPay": "Тўланади",
@@ -81,10 +108,12 @@
     "action": "Қайтариш",
     "title": "Чекни қайтариш",
     "confirmText": "Қайтариш учун бошқарувчи ёки администратор ҳуқуқи тасдиқланиши керак",
+    "managerLogin": "Бошқарувчи логин",
     "pinPlaceholder": "PIN",
     "confirm": "Қайтаришни тасдиқлаш",
     "cancel": "Бекор қилиш",
-    "wrongPin": "PIN нотўғри",
+    "wrongPin": "Логин ёки PIN нотўғри",
+    "notAuthorized": "Бу фойдаланувчида қайтаришни тасдиқлаш ҳуқуқи йўқ",
     "done": "Чек қайтарилди"
   },
   "scanner": {

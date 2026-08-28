@@ -1,11 +1,30 @@
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import logo from "../assets/logo-mark.png";
-import { SearchIcon, BellIcon } from "./icons";
+import { useOnlineStatus } from "../lib/use-online-status";
+import type { AuthSession, Role } from "../types/auth";
+import { SearchIcon, BellIcon, LogOutIcon } from "./icons";
 
-export function Header() {
+const ROLE_KEY: Record<Role, string> = {
+  CASHIER: "roles.cashier",
+  MANAGER: "roles.manager",
+  WAREHOUSE: "roles.warehouse",
+  ADMIN: "roles.admin",
+  ACCOUNTANT: "roles.accountant",
+};
+
+interface HeaderProps {
+  session: AuthSession;
+  workstationName: string;
+  shiftOpenedAt: string;
+  onLogout: () => void;
+  onCloseShift: () => void;
+}
+
+export function Header({ session, workstationName, shiftOpenedAt, onLogout, onCloseShift }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const now = new Date();
+  const online = useOnlineStatus();
 
   return (
     <header className="flex shrink-0 items-center gap-6 border-b border-slate-200 bg-white px-6 py-3">
@@ -28,21 +47,21 @@ export function Header() {
 
       <div className="flex items-center gap-4 text-sm">
         <div className="text-right">
-          <div className="font-semibold text-slate-800">{t("header.workstation")} 1</div>
-          <div className="flex items-center justify-end gap-1 text-xs text-emerald-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            {t("header.online")}
+          <div className="font-semibold text-slate-800">{workstationName}</div>
+          <div className={`flex items-center justify-end gap-1 text-xs ${online ? "text-emerald-600" : "text-red-600"}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-red-500"}`} />
+            {online ? t("header.online") : t("auth.networkError")}
           </div>
         </div>
 
         <div className="h-8 w-px bg-slate-200" />
 
-        <div className="text-right">
-          <div className="font-semibold text-slate-800">
-            {t("header.shift")} №12
+        <button className="text-right hover:opacity-70" onClick={onCloseShift}>
+          <div className="font-semibold text-slate-800">{t("header.shift")}</div>
+          <div className="text-xs text-slate-400">
+            {new Date(shiftOpenedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </div>
-          <div className="text-xs text-slate-400">09:00 - 23:00</div>
-        </div>
+        </button>
 
         <div className="h-8 w-px bg-slate-200" />
 
@@ -75,9 +94,16 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
-            И
+            {session.login.slice(0, 2).toUpperCase()}
           </div>
-          <div className="hidden text-xs text-slate-500 lg:block">{t("roles.cashier")}</div>
+          <div className="hidden text-xs text-slate-500 lg:block">{t(ROLE_KEY[session.role])}</div>
+          <button
+            onClick={onLogout}
+            className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+            aria-label={t("auth.logout")}
+          >
+            <LogOutIcon />
+          </button>
         </div>
       </div>
     </header>
