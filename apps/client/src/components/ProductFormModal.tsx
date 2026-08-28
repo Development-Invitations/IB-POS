@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
-import { ApiError, createCategory, createProduct, updateProduct } from "../lib/api";
+import { API_BASE, ApiError, createCategory, createProduct, updateProduct, uploadProductImage } from "../lib/api";
+import { resizeImageToJpeg } from "../lib/resize-image";
 import type { ApiCategory, ApiProduct } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -19,6 +20,7 @@ const NEW_CATEGORY_VALUE = "__new__";
 export function ProductFormModal({ session, categories, product, onClose, onSaved }: ProductFormModalProps) {
   const { t } = useTranslation();
   const isEdit = product !== null;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(product?.name ?? "");
   const [categoryId, setCategoryId] = useState(product?.categoryId ?? "");
@@ -28,8 +30,34 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
   const [price, setPrice] = useState(product ? Number(product.price) : 0);
   const [cost, setCost] = useState(product?.cost ? Number(product.cost) : 0);
   const [unit, setUnit] = useState(product?.unit ?? "pcs");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    product?.imageUrl ? `${API_BASE}${product.imageUrl}` : null,
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (imageFile && previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function handlePickImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (imageFile && previewUrl) URL.revokeObjectURL(previewUrl);
+    setImageFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function handleRemoveImage() {
+    if (imageFile && previewUrl) URL.revokeObjectURL(previewUrl);
+    setImageFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -58,9 +86,14 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
         unit: unit.trim() || "pcs",
       };
 
-      const saved = isEdit
+      let saved = isEdit
         ? await updateProduct(session.accessToken, product.id, payload)
         : await createProduct(session.accessToken, payload);
+
+      if (imageFile) {
+        const resized = await resizeImageToJpeg(imageFile);
+        saved = await uploadProductImage(session.accessToken, saved.id, resized, "photo.jpg");
+      }
 
       onSaved(saved, createdCategory);
     } catch (err) {
@@ -83,6 +116,45 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
         </div>
 
         <div className="max-h-[70vh] space-y-3 overflow-y-auto px-5 py-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-400 hover:border-accent/50"
+            >
+              {previewUrl ? (
+                <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-xs">{t("products.photo")}</span>
+              )}
+            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-medium text-accent hover:underline"
+              >
+                {previewUrl ? t("products.changePhoto") : t("products.addPhoto")}
+              </button>
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="text-left text-xs font-medium text-slate-400 hover:text-slate-700"
+                >
+                  {t("products.removePhoto")}
+                </button>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePickImage}
+              className="hidden"
+            />
+          </div>
+
           <label className="block text-xs font-medium text-slate-500">
             {t("products.name")}
             <input

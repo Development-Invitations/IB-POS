@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -7,8 +8,15 @@ import {
   Patch,
   Post,
   Res,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { existsSync, mkdirSync } from 'fs';
+import { extname, join } from 'path';
+import { randomUUID } from 'crypto';
 import type { Response } from 'express';
 import { Role } from '@prisma/client';
 import { ProductsService } from './products.service';
@@ -20,6 +28,14 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
+
+// Фото товаров хранятся на диске (не в базе — см. Product.imageUrl), не в облаке: облачного
+// хранилища у проекта пока нет (см. Этап 8, sync-worker). Каталог создаётся один раз при
+// старте процесса.
+const UPLOADS_DIR = join(process.cwd(), 'uploads', 'products');
+if (!existsSync(UPLOADS_DIR)) {
+  mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
@@ -78,6 +94,46 @@ export class ProductsController {
     @Body() dto: UpdateProductDto,
   ) {
     return this.products.update(user.organizationId, id, dto);
+  }
+
+  // Клиент уменьшает фото до превью размером через canvas перед отправкой (см.
+  // apps/client ProductFormModal), но лимит на бэкенде — не доверяем клиенту.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
+  @Post(':id/image')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: UPLOADS_DIR,
+        filename: (_req, file, cb) => {
+          cb(null, `${randomUUID()}${extname(file.originalname)}`);
+        },
+      }),
+      limits: { fileSize: 3 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (!/^image\/(jpeg|png|webp)$/.test(file.mimetype)) {
+          cb(
+            new BadRequestException('Допустимы только JPEG, PNG, WEBP'),
+            false,
+          );
+          return;
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  uploadImage(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл не передан');
+    }
+    return this.products.setImage(
+      user.organizationId,
+      id,
+      `/uploads/products/${file.filename}`,
+    );
   }
 
   @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)

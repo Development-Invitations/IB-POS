@@ -7,4 +7,5 @@ export interface CartProduct {
   unit: string;
   barcode: string | null;
   categoryId: string | null;
+  imageUrl: string | null;
 }

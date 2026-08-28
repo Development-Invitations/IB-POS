@@ -107,6 +107,7 @@ function App() {
             unit: p.unit,
             barcode: p.barcode,
             categoryId: p.categoryId,
+            imageUrl: p.imageUrl,
           })),
       );
     } catch (err) {

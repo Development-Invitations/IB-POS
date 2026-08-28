@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError, deactivateProduct, getCategories, getProducts, updateProduct } from "../lib/api";
+import { API_BASE, ApiError, deactivateProduct, getCategories, getProducts, updateProduct } from "../lib/api";
 import { formatSum } from "../lib/format";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ProductFormModal } from "./ProductFormModal";
@@ -153,6 +153,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
+                <th className="px-4 py-3 font-medium" />
                 <th className="px-4 py-3 font-medium">{t("products.name")}</th>
                 <th className="px-4 py-3 font-medium">{t("products.category")}</th>
                 <th className="px-4 py-3 font-medium">{t("products.sku")}</th>
@@ -166,6 +167,15 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3">
+                    <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
+                      {p.imageUrl ? (
+                        <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        p.name.trim().slice(0, 2).toUpperCase()
+                      )}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
                   <td className="px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
                   <td className="px-4 py-3 text-slate-500">{p.sku}</td>
@@ -210,7 +220,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={canManage ? 8 : 7} className="px-4 py-8 text-center text-sm text-slate-400">
+                  <td colSpan={canManage ? 9 : 8} className="px-4 py-8 text-center text-sm text-slate-400">
                     {t("products.empty")}
                   </td>
                 </tr>

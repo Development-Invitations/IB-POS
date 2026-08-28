@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { API_BASE } from "../lib/api";
 import { formatSum } from "../lib/format";
 import type { CartProduct } from "../types/catalog";
 import { PlusIcon } from "./icons";
@@ -23,8 +24,12 @@ export function ProductGrid({ products, onAdd }: ProductGridProps) {
           onClick={() => onAdd(product)}
           className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md active:translate-y-0"
         >
-          <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-slate-50 text-sm font-bold text-slate-500">
-            {initials(product.name)}
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-bold text-slate-500">
+            {product.imageUrl ? (
+              <img src={`${API_BASE}${product.imageUrl}`} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initials(product.name)
+            )}
           </span>
           <span className="text-sm font-semibold text-slate-800">{product.name}</span>
           <span className="text-xs text-slate-400">{product.unit}</span>

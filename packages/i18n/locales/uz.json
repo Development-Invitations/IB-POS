@@ -111,7 +111,11 @@
     "saveError": "Mahsulotni saqlab boʻlmadi",
     "loadError": "Mahsulotlarni yuklab boʻlmadi",
     "searchPlaceholder": "Nomi, artikuli, shtrix-kodi boʻyicha qidirish...",
-    "empty": "Mahsulotlar topilmadi"
+    "empty": "Mahsulotlar topilmadi",
+    "photo": "Foto",
+    "addPhoto": "Foto qoʻshish",
+    "changePhoto": "Fotoni almashtirish",
+    "removePhoto": "Fotoni olib tashlash"
   },
   "customers": {
     "addTitle": "Yangi mijoz",

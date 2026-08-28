@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { API_BASE } from "../lib/api";
 import { formatSum } from "../lib/format";
 import { computeTotals } from "../lib/cart";
 import type { CartProduct } from "../types/catalog";
@@ -81,8 +82,12 @@ export function ReceiptPanel({
 
         {lines.map((line) => (
           <div key={line.product.id} className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-slate-50">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-xs font-bold text-slate-500">
-              {initials(line.product.name)}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-500">
+              {line.product.imageUrl ? (
+                <img src={`${API_BASE}${line.product.imageUrl}`} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initials(line.product.name)
+              )}
             </span>
 
             <div className="min-w-0 flex-1">

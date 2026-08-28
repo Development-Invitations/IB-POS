@@ -166,6 +166,9 @@ model Product {
   // Себестоимость (не обязательна) — нужна только для расчёта прибыли в отчётах (Этап 8).
   cost           Decimal? @db.Decimal(14, 2)
   unit           String   @default("pcs")
+  // Относительный путь на статику (/uploads/products/<file>) — файл лежит на диске сервера,
+  // не в базе, чтобы GET /products не таскал бинарные данные на каждый запрос каталога.
+  imageUrl       String?  @map("image_url")
   isActive       Boolean  @default(true) @map("is_active")
   // Ид товара из 1С (CommerceML) — ключ сопоставления номенклатуры при синке (Этап 6).
   externalId     String?  @map("external_id")

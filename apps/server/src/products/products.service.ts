@@ -3,6 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { existsSync, unlinkSync } from 'fs';
+import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -52,6 +54,24 @@ export class ProductsService {
       where: { id },
       data: { isActive: false },
     });
+  }
+
+  async setImage(organizationId: string, id: string, imageUrl: string) {
+    const existing = await this.findOne(organizationId, id);
+    const updated = await this.prisma.product.update({
+      where: { id },
+      data: { imageUrl },
+    });
+
+    // Старый файл больше не нужен — иначе каждая замена фото копит мёртвые файлы на диске.
+    if (existing.imageUrl && existing.imageUrl !== imageUrl) {
+      const oldPath = join(process.cwd(), existing.imageUrl.replace(/^\//, ''));
+      if (existsSync(oldPath)) {
+        unlinkSync(oldPath);
+      }
+    }
+
+    return updated;
   }
 
   // Экспорт каталога в CSV (Этап 7 — модуль "Товары": импорт/экспорт).

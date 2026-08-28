@@ -35,3 +35,6 @@ coverage/
 
 # Misc
 *.tsbuildinfo
+
+# Uploaded product photos (local disk storage, see apps/server/src/products/products.controller.ts)
+apps/server/uploads/

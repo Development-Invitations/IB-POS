@@ -18,6 +18,7 @@ export interface ApiProduct {
   price: string;
   cost: string | null;
   unit: string;
+  imageUrl: string | null;
   isActive: boolean;
 }
 
