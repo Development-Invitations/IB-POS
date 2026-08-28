@@ -20,6 +20,8 @@ import { OneCModule } from './onec/onec.module';
 import { DiscountsModule } from './discounts/discounts.module';
 import { AuditModule } from './audit/audit.module';
 import { ReportsModule } from './reports/reports.module';
+import { SettingsModule } from './settings/settings.module';
+import { BackupsModule } from './backups/backups.module';
 
 @Module({
   imports: [
@@ -42,6 +44,8 @@ import { ReportsModule } from './reports/reports.module';
     OneCModule,
     DiscountsModule,
     ReportsModule,
+    SettingsModule,
+    BackupsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

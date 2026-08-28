@@ -25,8 +25,47 @@ model Organization {
   integrations Integration[]
   auditLogs    AuditLog[]
   outboxEvents OutboxEvent[]
+  settings     OrganizationSettings?
+  backups      Backup[]
 
   @@map("organizations")
+}
+
+// Общие настройки (Этап 9): название берётся из Organization.name, здесь — остальное.
+model OrganizationSettings {
+  id                String   @id @default(uuid())
+  organizationId    String   @unique @map("organization_id")
+  currency          String   @default("UZS")
+  defaultLanguage   String   @default("ru") @map("default_language")
+  taxRatePercent    Decimal? @map("tax_rate_percent") @db.Decimal(5, 2)
+  autoBackupEnabled Boolean  @default(false) @map("auto_backup_enabled")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_settings")
+}
+
+enum BackupTrigger {
+  MANUAL
+  AUTO
+}
+
+// Резервная копия данных организации — прикладной JSON-снимок (не pg_dump: одна БД
+// на всех арендаторов, физический бэкап уровня Postgres не делится по организациям).
+model Backup {
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  trigger         BackupTrigger @default(MANUAL)
+  createdByUserId String?       @map("created_by_user_id")
+  sizeBytes       Int           @map("size_bytes")
+  snapshot        Json
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("backups")
 }
 
 model Store {
