@@ -6,13 +6,14 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { parseCsv, toCsv } from './csv';
+import { parseCsv, toCsv } from '../common/csv';
 
 const CSV_HEADER = [
   'name',
   'sku',
   'barcode',
   'price',
+  'cost',
   'unit',
   'category',
   'isActive',
@@ -66,6 +67,7 @@ export class ProductsService {
       p.sku ?? '',
       p.barcode ?? '',
       p.price.toString(),
+      p.cost?.toString() ?? '',
       p.unit,
       p.category?.name ?? '',
       p.isActive ? 'true' : 'false',
@@ -88,6 +90,7 @@ export class ProductsService {
     const skuIdx = col('sku');
     const barcodeIdx = col('barcode');
     const priceIdx = col('price');
+    const costIdx = col('cost');
     const unitIdx = col('unit');
     const categoryIdx = col('category');
 
@@ -106,6 +109,9 @@ export class ProductsService {
 
       const price = Number(priceRaw);
       if (Number.isNaN(price)) continue;
+
+      const costRaw = costIdx !== -1 ? row[costIdx]?.trim() : undefined;
+      const cost = costRaw ? Number(costRaw) : undefined;
 
       const sku = skuIdx !== -1 ? row[skuIdx]?.trim() || undefined : undefined;
       const barcode =
@@ -148,7 +154,7 @@ export class ProductsService {
       if (existing) {
         await this.prisma.product.update({
           where: { id: existing.id },
-          data: { name, barcode, price, unit, categoryId },
+          data: { name, barcode, price, cost, unit, categoryId },
         });
         updated++;
       } else {
@@ -159,6 +165,7 @@ export class ProductsService {
             sku,
             barcode,
             price,
+            cost,
             unit: unit ?? 'pcs',
             categoryId,
           },

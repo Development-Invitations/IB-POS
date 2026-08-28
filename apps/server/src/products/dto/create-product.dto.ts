@@ -21,6 +21,11 @@ export class CreateProductDto {
   price!: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  cost?: number;
+
+  @IsOptional()
   @IsString()
   unit?: string;
 }

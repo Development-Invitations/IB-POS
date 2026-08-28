@@ -39,6 +39,7 @@ export class ReceiptsService {
     }
 
     const priceById = new Map(products.map((p) => [p.id, p.price]));
+    const costById = new Map(products.map((p) => [p.id, p.cost]));
     const total = dto.items.reduce(
       (sum, item) =>
         sum + Number(priceById.get(item.productId)) * item.quantity,
@@ -47,6 +48,7 @@ export class ReceiptsService {
 
     // Чек создаётся открытым (OPEN) без записи в очередь фискализации — на фискальный
     // регистратор/кассу уходит только фактически оплаченная продажа, см. pay() ниже.
+    // Себестоимость снимается в момент продажи (как и цена) — см. ReceiptItem.cost.
     return this.prisma.receipt.create({
       data: {
         storeId: dto.storeId,
@@ -59,6 +61,7 @@ export class ReceiptsService {
             productId: item.productId,
             quantity: item.quantity,
             price: priceById.get(item.productId)!,
+            cost: costById.get(item.productId) ?? undefined,
           })),
         },
       },

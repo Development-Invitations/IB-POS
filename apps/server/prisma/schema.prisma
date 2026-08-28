@@ -123,6 +123,8 @@ model Product {
   sku            String?
   barcode        String?
   price          Decimal  @db.Decimal(14, 2)
+  // Себестоимость (не обязательна) — нужна только для расчёта прибыли в отчётах (Этап 8).
+  cost           Decimal? @db.Decimal(14, 2)
   unit           String   @default("pcs")
   isActive       Boolean  @default(true) @map("is_active")
   // Ид товара из 1С (CommerceML) — ключ сопоставления номенклатуры при синке (Этап 6).
@@ -281,12 +283,15 @@ model Receipt {
 }
 
 model ReceiptItem {
-  id        String  @id @default(uuid())
-  receiptId String  @map("receipt_id")
-  productId String  @map("product_id")
-  quantity  Decimal @db.Decimal(14, 3)
-  price     Decimal @db.Decimal(14, 2)
-  discount  Decimal @default(0) @db.Decimal(14, 2)
+  id        String   @id @default(uuid())
+  receiptId String   @map("receipt_id")
+  productId String   @map("product_id")
+  quantity  Decimal  @db.Decimal(14, 3)
+  price     Decimal  @db.Decimal(14, 2)
+  // Себестоимость товара на момент продажи (снимок, как и price) — расчёт прибыли (Этап 8)
+  // не должен искажаться, если себестоимость товара изменится позже.
+  cost      Decimal? @db.Decimal(14, 2)
+  discount  Decimal  @default(0) @db.Decimal(14, 2)
 
   receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
