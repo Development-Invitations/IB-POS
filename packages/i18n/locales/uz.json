@@ -157,6 +157,27 @@
     "deactivateTitle": "Chegirmani faolsizlantirish",
     "deactivateConfirm": "«{{name}}» chegirmasi endi qoʻllash uchun mavjud boʻlmaydi."
   },
+  "reports": {
+    "tabDashboard": "Sotuvlar",
+    "tabStock": "Qoldiqlar",
+    "from": "Dan",
+    "to": "Gacha",
+    "today": "Bugun",
+    "week": "Hafta",
+    "month": "Oy",
+    "allStores": "Barcha nuqtalar",
+    "totalSales": "Sotuvlar",
+    "receiptsCount": "Cheklar",
+    "averageCheck": "Oʻrtacha chek",
+    "profit": "Foyda",
+    "profitIncomplete": "Barcha mahsulotlar uchun tannarx koʻrsatilmagan",
+    "salesByHour": "Soatlar boʻyicha sotuvlar",
+    "quantity": "Qoldiq",
+    "stockEmpty": "Qoldiqlar boʻyicha maʻlumot yoʻq",
+    "exportCsv": "CSV formatida eksport",
+    "loadError": "Hisobotni yuklab boʻlmadi",
+    "accessDenied": "Sizning rolingizda hisobotlarga kirish huquqi yoʻq"
+  },
   "receipt": {
     "current": "Joriy chek",
     "total": "Jami",

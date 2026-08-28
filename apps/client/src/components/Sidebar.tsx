@@ -30,7 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon, screen: "customers" },
   { key: "discounts", labelKey: "nav.discounts", icon: TagIcon, screen: "discounts" },
   { key: "returns", labelKey: "nav.returns", icon: ReturnIcon },
-  { key: "reports", labelKey: "nav.reports", icon: ChartIcon },
+  { key: "reports", labelKey: "nav.reports", icon: ChartIcon, screen: "reports" },
   { key: "shifts", labelKey: "nav.shifts", icon: ClockIcon },
   { key: "integrations", labelKey: "nav.integrations", icon: PlugIcon },
   { key: "equipment", labelKey: "nav.equipment", icon: MonitorIcon, screen: "equipment" },

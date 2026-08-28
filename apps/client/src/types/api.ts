@@ -97,3 +97,24 @@ export interface ApiDiscount {
   minRole: Role;
   isActive: boolean;
 }
+
+// getDashboard считает суммы через Number() на бэкенде (не Decimal-объекты Prisma),
+// поэтому в отличие от ApiProduct/ApiReceipt эти поля реально приходят числами.
+export interface DashboardReport {
+  period: { from: string; to: string };
+  totalSales: number;
+  receiptsCount: number;
+  averageCheck: number;
+  profit: number;
+  profitDataIncomplete: boolean;
+  salesByHour: { hour: number; total: number }[];
+}
+
+export interface ApiStockEntry {
+  id: string;
+  storeId: string;
+  productId: string;
+  quantity: string;
+  product: ApiProduct;
+  store: ApiStore;
+}

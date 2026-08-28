@@ -5,9 +5,11 @@ import type {
   ApiProduct,
   ApiReceipt,
   ApiShift,
+  ApiStockEntry,
   ApiStore,
   ApiWorkstation,
   BackendPaymentMethod,
+  DashboardReport,
   DiscountType,
 } from "../types/api";
 import type { Role } from "../types/auth";
@@ -297,4 +299,40 @@ export function updateDiscount(
 
 export function deactivateDiscount(token: string, id: string) {
   return request<void>(`/discounts/${id}`, { method: "DELETE" }, token);
+}
+
+export interface PeriodFilter {
+  from?: string;
+  to?: string;
+  storeId?: string;
+}
+
+function periodQuery(filter: PeriodFilter): string {
+  const params = new URLSearchParams();
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.storeId) params.set("storeId", filter.storeId);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export function getDashboard(token: string, filter: PeriodFilter) {
+  return request<DashboardReport>(`/reports/dashboard${periodQuery(filter)}`, {}, token);
+}
+
+// CSV — не JSON, поэтому не через общий request(): нужен сырой текст ответа.
+export async function getReportsCsv(token: string, filter: PeriodFilter): Promise<string> {
+  const res = await fetch(`${API_BASE}/reports/export${periodQuery(filter)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    throw new ApiError(res.statusText, res.status);
+  }
+  return res.text();
+}
+
+export function getStockReport(token: string, storeId?: string) {
+  const qs = storeId ? `?storeId=${encodeURIComponent(storeId)}` : "";
+  return request<ApiStockEntry[]>(`/reports/stock${qs}`, {}, token);
 }

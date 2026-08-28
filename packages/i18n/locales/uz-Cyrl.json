@@ -157,6 +157,27 @@
     "deactivateTitle": "Чегирмани фаолсизлантириш",
     "deactivateConfirm": "«{{name}}» чегирмаси энди қўллаш учун мавжуд бўлмайди."
   },
+  "reports": {
+    "tabDashboard": "Сотувлар",
+    "tabStock": "Қолдиқлар",
+    "from": "Дан",
+    "to": "Гача",
+    "today": "Бугун",
+    "week": "Ҳафта",
+    "month": "Ой",
+    "allStores": "Барча нуқталар",
+    "totalSales": "Сотувлар",
+    "receiptsCount": "Чеклар",
+    "averageCheck": "Ўртача чек",
+    "profit": "Фойда",
+    "profitIncomplete": "Барча маҳсулотлар учун таннарх кўрсатилмаган",
+    "salesByHour": "Соатлар бўйича сотувлар",
+    "quantity": "Қолдиқ",
+    "stockEmpty": "Қолдиқлар бўйича маълумот йўқ",
+    "exportCsv": "CSV форматида экспорт",
+    "loadError": "Ҳисоботни юклаб бўлмади",
+    "accessDenied": "Сизнинг ролингизда ҳисоботларга кириш ҳуқуқи йўқ"
+  },
   "receipt": {
     "current": "Жорий чек",
     "total": "Жами",

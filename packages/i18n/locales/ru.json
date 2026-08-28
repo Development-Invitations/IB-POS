@@ -157,6 +157,27 @@
     "deactivateTitle": "Деактивировать скидку",
     "deactivateConfirm": "Скидка «{{name}}» перестанет быть доступной для применения."
   },
+  "reports": {
+    "tabDashboard": "Продажи",
+    "tabStock": "Остатки",
+    "from": "С",
+    "to": "По",
+    "today": "Сегодня",
+    "week": "Неделя",
+    "month": "Месяц",
+    "allStores": "Все точки",
+    "totalSales": "Продажи",
+    "receiptsCount": "Чеков",
+    "averageCheck": "Средний чек",
+    "profit": "Прибыль",
+    "profitIncomplete": "Не по всем товарам указана себестоимость",
+    "salesByHour": "Продажи по часам",
+    "quantity": "Остаток",
+    "stockEmpty": "Нет данных по остаткам",
+    "exportCsv": "Экспорт в CSV",
+    "loadError": "Не удалось загрузить отчёт",
+    "accessDenied": "У вашей роли нет доступа к отчётам"
+  },
   "receipt": {
     "current": "Текущий чек",
     "total": "Итого",
