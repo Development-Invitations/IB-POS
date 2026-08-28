@@ -45,6 +45,20 @@ export interface ApiShift {
   closedAt: string | null;
   openingCash: string;
   closingCash: string | null;
+  fiscalShiftNumber: string | null;
+  zReportNumber: string | null;
+}
+
+export type CashMovementType = "DEPOSIT" | "WITHDRAWAL";
+
+export interface ApiCashMovement {
+  id: string;
+  shiftId: string;
+  userId: string;
+  type: CashMovementType;
+  amount: string;
+  comment: string | null;
+  createdAt: string;
 }
 
 export type ReceiptStatus = "OPEN" | "PAID" | "RETURNED" | "VOID";

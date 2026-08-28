@@ -3,6 +3,9 @@ import type {
   AdapterResult,
   FiscalReceiptPayload,
   FiscalSendResult,
+  FiscalShiftClosePayload,
+  FiscalShiftCloseResult,
+  FiscalShiftOpenResult,
   IntegrationAdapter,
 } from './adapter.interface';
 
@@ -68,6 +71,33 @@ export function createMockAdapter(
     async getStatus(config): Promise<AdapterResult> {
       await delay(100);
       return { success: hasCredentials(config) };
+    },
+
+    async openShift(config): Promise<FiscalShiftOpenResult> {
+      await delay(300);
+      if (!hasCredentials(config)) {
+        return { success: false, message: `${provider}: нет учётных данных` };
+      }
+      return {
+        success: true,
+        fiscalShiftNumber: `${provider}-SH-${Date.now().toString().slice(-8)}`,
+        message: `${provider}: смена открыта на кассе (симуляция)`,
+      };
+    },
+
+    async closeShift(
+      config,
+      payload: FiscalShiftClosePayload,
+    ): Promise<FiscalShiftCloseResult> {
+      await delay(500);
+      if (!hasCredentials(config)) {
+        return { success: false, message: `${provider}: нет учётных данных` };
+      }
+      return {
+        success: true,
+        zReportNumber: `${provider}-Z-${Date.now().toString().slice(-8)}`,
+        message: `${provider}: Z-отчёт сформирован, продажи за смену: ${payload.salesTotal} (симуляция)`,
+      };
     },
   };
 }

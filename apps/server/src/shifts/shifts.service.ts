@@ -6,6 +6,11 @@ import {
 import { PaymentMethod, ShiftStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { FISCAL_PROVIDERS } from '../integrations/adapters/adapter.interface';
+import {
+  getAdapter,
+  isFiscalProvider,
+} from '../integrations/adapters/registry';
 import { OpenShiftDto } from './dto/open-shift.dto';
 import { CloseShiftDto } from './dto/close-shift.dto';
 import { CashMovementDto } from './dto/cash-movement.dto';
@@ -32,12 +37,17 @@ export class ShiftsService {
       throw new BadRequestException('На этой кассе уже открыта смена');
     }
 
+    // Открытие смены на фискальном регистраторе — не блокирует локальное открытие смены,
+    // если касса не подключена или недоступна (офлайн-first, как и очередь фискализации чеков).
+    const fiscalShiftNumber = await this.openFiscalShift(organizationId);
+
     const shift = await this.prisma.shift.create({
       data: {
         storeId: dto.storeId,
         workstationId: dto.workstationId,
         userId,
         openingCash: dto.openingCash,
+        fiscalShiftNumber,
       },
     });
 
@@ -50,6 +60,7 @@ export class ShiftsService {
       {
         workstationId: dto.workstationId,
         openingCash: dto.openingCash,
+        fiscalShiftNumber,
       },
     );
 
@@ -72,17 +83,27 @@ export class ShiftsService {
       throw new BadRequestException('Смена уже закрыта');
     }
 
+    // Тот же расчёт продаж, что и в getReport() — иначе сумма в Z-отчёте разойдётся
+    // с тем, что кассир видит на экране отчёта по смене.
+    const salesTotal = await this.computeSalesTotal(id);
+    const zReportNumber = await this.closeFiscalShift(
+      organizationId,
+      salesTotal,
+    );
+
     const updated = await this.prisma.shift.update({
       where: { id },
       data: {
         status: ShiftStatus.CLOSED,
         closedAt: new Date(),
         closingCash: dto.closingCash,
+        zReportNumber,
       },
     });
 
     await this.audit.log(organizationId, userId, 'shift.closed', 'Shift', id, {
       closingCash: dto.closingCash,
+      zReportNumber,
     });
 
     return updated;
@@ -91,6 +112,7 @@ export class ShiftsService {
   findAll(organizationId: string, storeId?: string) {
     return this.prisma.shift.findMany({
       where: { store: { organizationId }, ...(storeId ? { storeId } : {}) },
+      orderBy: { openedAt: 'desc' },
     });
   }
 
@@ -126,6 +148,54 @@ export class ShiftsService {
         comment: dto.comment,
       },
     });
+  }
+
+  private async computeSalesTotal(shiftId: string): Promise<number> {
+    const receipts = await this.prisma.receipt.findMany({
+      where: { shiftId },
+      select: { total: true },
+    });
+    return receipts.reduce((sum, r) => sum + Number(r.total), 0);
+  }
+
+  // Ищем подключённую фискальную кассу организации (Этап 5) — если её нет или она недоступна,
+  // открытие/закрытие смены в IB-POS всё равно происходит, просто без номера от регистратора.
+  private async findFiscalAdapter(organizationId: string) {
+    const integration = await this.prisma.integration.findFirst({
+      where: {
+        organizationId,
+        isConnected: true,
+        provider: { in: [...FISCAL_PROVIDERS] },
+      },
+    });
+    if (!integration || !isFiscalProvider(integration.provider)) {
+      return null;
+    }
+    return {
+      adapter: getAdapter(integration.provider),
+      config: (integration.config as Record<string, unknown>) ?? {},
+    };
+  }
+
+  private async openFiscalShift(
+    organizationId: string,
+  ): Promise<string | null> {
+    const fiscal = await this.findFiscalAdapter(organizationId);
+    if (!fiscal) return null;
+    const result = await fiscal.adapter.openShift(fiscal.config);
+    return result.success ? (result.fiscalShiftNumber ?? null) : null;
+  }
+
+  private async closeFiscalShift(
+    organizationId: string,
+    salesTotal: number,
+  ): Promise<string | null> {
+    const fiscal = await this.findFiscalAdapter(organizationId);
+    if (!fiscal) return null;
+    const result = await fiscal.adapter.closeShift(fiscal.config, {
+      salesTotal,
+    });
+    return result.success ? (result.zReportNumber ?? null) : null;
   }
 
   // Отчёт по смене: продажи по способам оплаты, внесения/изъятия, ожидаемая

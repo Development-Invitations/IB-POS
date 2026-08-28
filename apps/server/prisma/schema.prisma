@@ -272,15 +272,21 @@ enum ShiftStatus {
 }
 
 model Shift {
-  id            String      @id @default(uuid())
-  storeId       String      @map("store_id")
-  workstationId String      @map("workstation_id")
-  userId        String      @map("user_id")
-  status        ShiftStatus @default(OPEN)
-  openedAt      DateTime    @default(now()) @map("opened_at")
-  closedAt      DateTime?   @map("closed_at")
-  openingCash   Decimal     @default(0) @map("opening_cash") @db.Decimal(14, 2)
-  closingCash   Decimal?    @map("closing_cash") @db.Decimal(14, 2)
+  id                String      @id @default(uuid())
+  storeId           String      @map("store_id")
+  workstationId     String      @map("workstation_id")
+  userId            String      @map("user_id")
+  status            ShiftStatus @default(OPEN)
+  openedAt          DateTime    @default(now()) @map("opened_at")
+  closedAt          DateTime?   @map("closed_at")
+  openingCash       Decimal     @default(0) @map("opening_cash") @db.Decimal(14, 2)
+  closingCash       Decimal?    @map("closing_cash") @db.Decimal(14, 2)
+  // Номер смены/Z-отчёта от фискального регистратора (если касса подключена и интеграция
+  // ответила) — см. IntegrationAdapter.openShift/closeShift. Не блокирует локальное
+  // открытие/закрытие смены при недоступности фискальной кассы (тот же офлайн-first принцип,
+  // что и у очереди фискализации чеков в FiscalizationService).
+  fiscalShiftNumber String?     @map("fiscal_shift_number")
+  zReportNumber     String?     @map("z_report_number")
 
   store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
   workstation   Workstation    @relation(fields: [workstationId], references: [id], onDelete: Cascade)

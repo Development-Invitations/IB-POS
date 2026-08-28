@@ -26,7 +26,22 @@ export interface FiscalSendResult extends AdapterResult {
   fiscalId?: string;
 }
 
-// Единый интерфейс адаптера виртуальной кассы: connect / testConnection / sendReceipt / getStatus.
+export interface FiscalShiftOpenResult extends AdapterResult {
+  fiscalShiftNumber?: string;
+}
+
+export interface FiscalShiftClosePayload {
+  salesTotal: number;
+}
+
+export interface FiscalShiftCloseResult extends AdapterResult {
+  zReportNumber?: string;
+}
+
+// Единый интерфейс адаптера виртуальной кассы: connect / testConnection / sendReceipt / getStatus /
+// openShift / closeShift. X/Z-отчёты — обязательная часть фискального цикла смены (открытие смены на
+// регистраторе перед первым чеком, Z-отчёт с обнулением счётчиков при закрытии), отдельная операция
+// от отправки самих чеков через sendReceipt.
 export interface IntegrationAdapter {
   connect(config: Record<string, unknown>): Promise<AdapterResult>;
   testConnection(config: Record<string, unknown>): Promise<AdapterResult>;
@@ -35,4 +50,9 @@ export interface IntegrationAdapter {
     payload: FiscalReceiptPayload,
   ): Promise<FiscalSendResult>;
   getStatus(config: Record<string, unknown>): Promise<AdapterResult>;
+  openShift(config: Record<string, unknown>): Promise<FiscalShiftOpenResult>;
+  closeShift(
+    config: Record<string, unknown>,
+    payload: FiscalShiftClosePayload,
+  ): Promise<FiscalShiftCloseResult>;
 }

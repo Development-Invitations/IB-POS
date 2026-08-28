@@ -12,6 +12,7 @@ import { ProductsScreen } from "./components/ProductsScreen";
 import { CustomersScreen } from "./components/CustomersScreen";
 import { DiscountsScreen } from "./components/DiscountsScreen";
 import { ReportsScreen } from "./components/ReportsScreen";
+import { ShiftsScreen } from "./components/ShiftsScreen";
 import { LoginScreen } from "./components/LoginScreen";
 import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
@@ -75,8 +76,6 @@ function App() {
 
   const [closeShiftOpen, setCloseShiftOpen] = useState(false);
   const [expectedCash, setExpectedCash] = useState(0);
-  const [closeShiftSubmitting, setCloseShiftSubmitting] = useState(false);
-  const [closeShiftError, setCloseShiftError] = useState<string | null>(null);
 
   function handleLogout() {
     clearSession();
@@ -204,7 +203,6 @@ function App() {
 
   async function openCloseShiftModal() {
     if (!session || !shift) return;
-    setCloseShiftError(null);
     try {
       const report = await getShiftReport(session.accessToken, shift.id);
       setExpectedCash(report.expectedCash);
@@ -214,19 +212,14 @@ function App() {
     }
   }
 
-  async function handleCloseShift(closingCash: number) {
-    if (!session || !shift) return;
-    setCloseShiftSubmitting(true);
-    setCloseShiftError(null);
-    try {
-      await closeShift(session.accessToken, shift.id, closingCash);
-      setCloseShiftOpen(false);
-      setShift(null);
-    } catch (err) {
-      setCloseShiftError(err instanceof ApiError ? err.message : "error");
-    } finally {
-      setCloseShiftSubmitting(false);
-    }
+  function handleCloseShift(closingCash: number) {
+    if (!session || !shift) return Promise.reject(new Error("no active shift"));
+    return closeShift(session.accessToken, shift.id, closingCash);
+  }
+
+  function handleCloseShiftDone() {
+    setCloseShiftOpen(false);
+    setShift(null);
   }
 
   useBarcodeScanner((code) => {
@@ -346,6 +339,12 @@ function App() {
             <ReportsScreen session={session} />
           </main>
         )}
+
+        {activeScreen === "shifts" && (
+          <main className="flex-1 overflow-y-auto p-4">
+            <ShiftsScreen session={session} storeId={workstation.storeId} />
+          </main>
+        )}
       </div>
 
       {paymentModalOpen && (
@@ -372,10 +371,9 @@ function App() {
       {closeShiftOpen && (
         <CloseShiftModal
           expectedCash={expectedCash}
-          submitting={closeShiftSubmitting}
-          error={closeShiftError}
           onClose={() => setCloseShiftOpen(false)}
           onConfirm={handleCloseShift}
+          onDone={handleCloseShiftDone}
         />
       )}
     </div>

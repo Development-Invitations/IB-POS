@@ -1,4 +1,5 @@
 import type {
+  ApiCashMovement,
   ApiCategory,
   ApiCustomer,
   ApiDiscount,
@@ -9,6 +10,7 @@ import type {
   ApiStore,
   ApiWorkstation,
   BackendPaymentMethod,
+  CashMovementType,
   DashboardReport,
   DiscountType,
 } from "../types/api";
@@ -179,11 +181,32 @@ export function openShift(
 }
 
 export interface ShiftReport {
+  shift: ApiShift;
+  receiptsCount: number;
+  salesTotal: number;
+  paymentsByMethod: Partial<Record<BackendPaymentMethod, number>>;
+  cashMovements: ApiCashMovement[];
+  deposits: number;
+  withdrawals: number;
   expectedCash: number;
 }
 
 export function getShiftReport(token: string, shiftId: string) {
   return request<ShiftReport>(`/shifts/${shiftId}/report`, {}, token);
+}
+
+export function createCashMovement(
+  token: string,
+  shiftId: string,
+  type: CashMovementType,
+  amount: number,
+  comment?: string,
+) {
+  return request<ApiCashMovement>(
+    `/shifts/${shiftId}/cash-movements`,
+    { method: "POST", body: JSON.stringify({ type, amount, comment }) },
+    token,
+  );
 }
 
 export function closeShift(token: string, shiftId: string, closingCash: number) {
