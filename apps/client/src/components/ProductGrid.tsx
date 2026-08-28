@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { API_BASE } from "../lib/api";
 import { formatSum } from "../lib/format";
+import { loadShowProductImages } from "../lib/preferences";
 import type { CartProduct } from "../types/catalog";
 
 interface ProductGridProps {
@@ -14,6 +15,7 @@ function initials(name: string): string {
 
 export function ProductGrid({ products, onAdd }: ProductGridProps) {
   const { t } = useTranslation();
+  const showImages = loadShowProductImages();
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
@@ -24,7 +26,7 @@ export function ProductGrid({ products, onAdd }: ProductGridProps) {
           className="flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md active:translate-y-0"
         >
           <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-bold text-slate-500">
-            {product.imageUrl ? (
+            {showImages && product.imageUrl ? (
               <img src={`${API_BASE}${product.imageUrl}`} alt="" className="h-full w-full object-cover" />
             ) : (
               initials(product.name)

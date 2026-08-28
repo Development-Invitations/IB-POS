@@ -302,5 +302,33 @@
       "payment_terminal": "Карталар, Payme, Click қабул қилинади",
       "barcode_scanner": "USB / Bluetooth, клавиатура киритиш режими"
     }
+  },
+  "settings": {
+    "tabs": {
+      "general": "Умумий",
+      "sale": "Сотув",
+      "discounts": "Чегирмалар",
+      "receipts": "Чеклар",
+      "notifications": "Билдиришномалар"
+    },
+    "companyName": "Компания номи",
+    "currency": "Валюта",
+    "language": "Стандарт тил",
+    "taxRate": "Солиқ ставкаси, %",
+    "showProductImages": "Маҳсулот фотоларини кўрсатиш",
+    "save": "Сақлаш",
+    "saved": "Сақланди",
+    "saveError": "Созламаларни сақлаб бўлмади",
+    "loadError": "Созламаларни юклаб бўлмади",
+    "accessDenied": "Сизнинг ролингизда созламаларга кириш ҳуқуқи йўқ",
+    "backupTitle": "Захира нусхалаш",
+    "lastBackup": "Охирги нусха",
+    "noBackups": "Ҳозирча захира нусхалар йўқ",
+    "createBackup": "Нусха яратиш",
+    "exportTitle": "Маълумотларни экспорт қилиш",
+    "exportCsv": "Маҳсулотларни CSV форматида экспорт қилиш",
+    "printSettings": "Чоп этиш",
+    "integrationsRedirect": "Интеграцияларни созлаш алоҳида бўлимга чиқарилган",
+    "tabNotReady": "Бўлим ишлаб чиқилмоқда"
   }
 }

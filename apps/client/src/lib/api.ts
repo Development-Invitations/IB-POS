@@ -1,5 +1,6 @@
 import type {
   AdapterActionResult,
+  ApiBackup,
   ApiCashMovement,
   ApiCategory,
   ApiCustomer,
@@ -7,6 +8,7 @@ import type {
   ApiIntegration,
   ApiProduct,
   ApiReceipt,
+  ApiSettings,
   ApiShift,
   ApiStockEntry,
   ApiStore,
@@ -71,10 +73,15 @@ async function request<T>(
     throw new ApiError(message, res.status);
   }
 
-  if (res.status === 204) {
+  // Не полагаемся только на статус 204 — некоторые эндпоинты (например DELETE
+  // /products/:id, /discounts/:id) отвечают 200 с пустым телом, и res.json() на пустой
+  // строке бросает SyntaxError. Без этой проверки та ошибка тихо проглатывалась вызывающим
+  // кодом (catch {}), и деактивация "зависала" на клиенте, хотя на сервере уже прошла.
+  const text = await res.text();
+  if (!text) {
     return undefined as T;
   }
-  return (await res.json()) as T;
+  return JSON.parse(text) as T;
 }
 
 export async function checkApiHealth(): Promise<boolean> {
@@ -384,6 +391,18 @@ export async function getReportsCsv(token: string, filter: PeriodFilter): Promis
   return res.text();
 }
 
+// Тот же экспорт каталога, что backend умел с Этапа 7 — просто раньше не было кнопки в клиенте.
+export async function getProductsCsv(token: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/products/export`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    throw new ApiError(res.statusText, res.status);
+  }
+  return res.text();
+}
+
 export function getStockReport(token: string, storeId?: string) {
   const qs = storeId ? `?storeId=${encodeURIComponent(storeId)}` : "";
   return request<ApiStockEntry[]>(`/reports/stock${qs}`, {}, token);
@@ -419,4 +438,28 @@ export function getOneCStatus(token: string) {
 
 export function configureOneC(token: string) {
   return request<OneCCredentials>("/integrations/onec/configure", { method: "POST", body: JSON.stringify({}) }, token);
+}
+
+export function getSettings(token: string) {
+  return request<ApiSettings>("/settings", {}, token);
+}
+
+export interface UpdateSettingsPayload {
+  name?: string;
+  currency?: string;
+  defaultLanguage?: string;
+  taxRatePercent?: number;
+  autoBackupEnabled?: boolean;
+}
+
+export function updateSettings(token: string, payload: UpdateSettingsPayload) {
+  return request<ApiSettings>("/settings", { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export function getBackups(token: string) {
+  return request<ApiBackup[]>("/backups", {}, token);
+}
+
+export function runBackup(token: string) {
+  return request<ApiBackup>("/backups/run", { method: "POST" }, token);
 }

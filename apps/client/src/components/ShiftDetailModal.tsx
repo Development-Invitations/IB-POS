@@ -35,8 +35,10 @@ export function ShiftDetailModal({ session, shift, workstationName, onClose }: S
   const [movementSubmitting, setMovementSubmitting] = useState(false);
   const [movementError, setMovementError] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
+  // quiet=true — обновление после внесения/изъятия наличных: отчёт уже отрисован,
+  // не нужно прятать его за "Загрузка..." на время повторного запроса.
+  async function load(quiet = false) {
+    if (!quiet) setLoading(true);
     setLoadError(null);
     try {
       const r = await getShiftReport(session.accessToken, shift.id);
@@ -44,7 +46,7 @@ export function ShiftDetailModal({ session, shift, workstationName, onClose }: S
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : t("shifts.loadError"));
     } finally {
-      setLoading(false);
+      if (!quiet) setLoading(false);
     }
   }
 
@@ -61,7 +63,7 @@ export function ShiftDetailModal({ session, shift, workstationName, onClose }: S
       await createCashMovement(session.accessToken, shift.id, movementType, movementAmount, movementComment.trim() || undefined);
       setMovementAmount(0);
       setMovementComment("");
-      await load();
+      await load(true);
     } catch (err) {
       setMovementError(err instanceof ApiError ? err.message : t("shifts.movementError"));
     } finally {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, getCustomers } from "../lib/api";
 import { formatSum } from "../lib/format";
@@ -45,16 +45,22 @@ export function CustomersScreen({ session }: CustomersScreenProps) {
     }
   }
 
+  // Раньше это были два отдельных useEffect (по session.accessToken и по search) — оба
+  // срабатывают при первом монтировании (search стартует с "", это тоже "изменение" с точки
+  // зрения React), поэтому при каждом переходе на экран уходило два запроса подряд: сразу и
+  // ещё раз через 300 мс — экран дёргался. Один эффект, debounce пропускается только на
+  // первом срабатывании.
+  const isFirstRun = useRef(true);
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.accessToken]);
-
-  useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      load();
+      return;
+    }
     const id = setTimeout(() => load(search), 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [session.accessToken, search]);
 
   function openCreate() {
     setEditingCustomer(null);

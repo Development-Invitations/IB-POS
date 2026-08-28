@@ -176,3 +176,21 @@ export interface OneCCredentials {
   token: string;
   exchangePath: string;
 }
+
+export interface ApiSettings {
+  name: string;
+  currency: string;
+  defaultLanguage: string;
+  taxRatePercent: string | null;
+  autoBackupEnabled: boolean;
+  warnings: string[];
+}
+
+export type BackupTrigger = "MANUAL" | "AUTO";
+
+export interface ApiBackup {
+  id: string;
+  trigger: BackupTrigger;
+  sizeBytes: number;
+  createdAt: string;
+}

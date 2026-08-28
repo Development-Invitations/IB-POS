@@ -34,7 +34,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "shifts", labelKey: "nav.shifts", icon: ClockIcon, screen: "shifts" },
   { key: "integrations", labelKey: "nav.integrations", icon: PlugIcon, screen: "integrations" },
   { key: "equipment", labelKey: "nav.equipment", icon: MonitorIcon, screen: "equipment" },
-  { key: "settings", labelKey: "nav.settings", icon: SettingsIcon },
+  { key: "settings", labelKey: "nav.settings", icon: SettingsIcon, screen: "settings" },
 ];
 
 interface SidebarProps {

@@ -29,6 +29,8 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
   const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ApiProduct | null>(null);
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -91,21 +93,24 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
 
   async function handleToggleActive(product: ApiProduct) {
     if (product.isActive) {
+      setConfirmError(null);
       setConfirmTarget(product);
       return;
     }
+    setRowError(null);
     try {
       const saved = await updateProduct(session.accessToken, product.id, { isActive: true });
       setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
       onCatalogChanged();
-    } catch {
-      // молча игнорируем — точка не критична для основного потока, кнопка останется активной
+    } catch (err) {
+      setRowError(err instanceof ApiError ? err.message : t("products.saveError"));
     }
   }
 
   async function confirmDeactivate() {
     if (!confirmTarget) return;
     setConfirmSubmitting(true);
+    setConfirmError(null);
     try {
       await deactivateProduct(session.accessToken, confirmTarget.id);
       setProducts((prev) =>
@@ -113,8 +118,10 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
       );
       onCatalogChanged();
       setConfirmTarget(null);
-    } catch {
-      // ошибку молча оставляем — диалог остаётся открытым, пользователь может повторить
+    } catch (err) {
+      // Диалог остаётся открытым, с реальной причиной сбоя — раньше ошибка терялась молча,
+      // и деактивация выглядела зависшей, даже если на сервере уже всё прошло (см. фикс request()).
+      setConfirmError(err instanceof ApiError ? err.message : t("products.saveError"));
     } finally {
       setConfirmSubmitting(false);
     }
@@ -147,6 +154,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
 
       {loading && <p className="text-sm text-slate-400">{t("common.loading")}</p>}
       {loadError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>}
+      {rowError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{rowError}</p>}
 
       {!loading && !loadError && (
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
@@ -247,6 +255,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
           confirmLabel={t("products.deactivate")}
           danger
           submitting={confirmSubmitting}
+          error={confirmError}
           onClose={() => setConfirmTarget(null)}
           onConfirm={confirmDeactivate}
         />

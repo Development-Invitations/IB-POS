@@ -7,6 +7,7 @@ interface ConfirmDialogProps {
   confirmLabel: string;
   danger?: boolean;
   submitting?: boolean;
+  error?: string | null;
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -17,6 +18,7 @@ export function ConfirmDialog({
   confirmLabel,
   danger,
   submitting,
+  error,
   onClose,
   onConfirm,
 }: ConfirmDialogProps) {
@@ -32,8 +34,9 @@ export function ConfirmDialog({
           </button>
         </div>
 
-        <div className="px-5 py-4">
+        <div className="space-y-2 px-5 py-4">
           <p className="text-sm text-slate-500">{message}</p>
+          {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         </div>
 
         <div className="flex gap-2 border-t border-slate-100 px-5 py-4">

@@ -35,6 +35,8 @@ export function DiscountsScreen({ session }: DiscountsScreenProps) {
   const [editingDiscount, setEditingDiscount] = useState<ApiDiscount | null>(null);
   const [confirmTarget, setConfirmTarget] = useState<ApiDiscount | null>(null);
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -96,28 +98,31 @@ export function DiscountsScreen({ session }: DiscountsScreenProps) {
 
   async function handleToggleActive(discount: ApiDiscount) {
     if (discount.isActive) {
+      setConfirmError(null);
       setConfirmTarget(discount);
       return;
     }
+    setRowError(null);
     try {
       const saved = await updateDiscount(session.accessToken, discount.id, { isActive: true });
       setDiscounts((prev) => prev.map((d) => (d.id === saved.id ? saved : d)));
-    } catch {
-      // не критично — кнопка остаётся доступной для повтора
+    } catch (err) {
+      setRowError(err instanceof ApiError ? err.message : t("discounts.saveError"));
     }
   }
 
   async function confirmDeactivate() {
     if (!confirmTarget) return;
     setConfirmSubmitting(true);
+    setConfirmError(null);
     try {
       await deactivateDiscount(session.accessToken, confirmTarget.id);
       setDiscounts((prev) =>
         prev.map((d) => (d.id === confirmTarget.id ? { ...d, isActive: false } : d)),
       );
       setConfirmTarget(null);
-    } catch {
-      // ошибку молча оставляем — диалог остаётся открытым
+    } catch (err) {
+      setConfirmError(err instanceof ApiError ? err.message : t("discounts.saveError"));
     } finally {
       setConfirmSubmitting(false);
     }
@@ -142,6 +147,7 @@ export function DiscountsScreen({ session }: DiscountsScreenProps) {
 
       {loading && <p className="text-sm text-slate-400">{t("common.loading")}</p>}
       {loadError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>}
+      {rowError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{rowError}</p>}
 
       {!loading && !loadError && (
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
@@ -227,6 +233,7 @@ export function DiscountsScreen({ session }: DiscountsScreenProps) {
           confirmLabel={t("products.deactivate")}
           danger
           submitting={confirmSubmitting}
+          error={confirmError}
           onClose={() => setConfirmTarget(null)}
           onConfirm={confirmDeactivate}
         />

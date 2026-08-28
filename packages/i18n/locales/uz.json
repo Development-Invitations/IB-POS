@@ -302,5 +302,32 @@
       "payment_terminal": "Kartalar, Payme, Click qabul qilinadi",
       "barcode_scanner": "USB / Bluetooth, klaviatura kiritish rejimi"
     }
+  },
+  "settings": {
+    "tabs": {
+      "general": "Umumiy",
+      "sale": "Sotuv",
+      "discounts": "Chegirmalar",
+      "receipts": "Cheklar",
+      "notifications": "Bildirishnomalar"
+    },
+    "companyName": "Kompaniya nomi",
+    "currency": "Valyuta",
+    "language": "Standart til",
+    "taxRate": "Soliq stavkasi, %",
+    "showProductImages": "Mahsulot fotolarini koʻrsatish",
+    "save": "Saqlash",
+    "saved": "Saqlandi",
+    "saveError": "Sozlamalarni saqlab boʻlmadi",
+    "loadError": "Sozlamalarni yuklab boʻlmadi",
+    "accessDenied": "Sizning rolingizda sozlamalarga kirish huquqi yoʻq",
+    "backupTitle": "Zaxira nusxalash",
+    "lastBackup": "Oxirgi nusxa",
+    "noBackups": "Hozircha zaxira nusxalar yoʻq",
+    "createBackup": "Nusxa yaratish",
+    "exportTitle": "Maʻlumotlarni eksport qilish",
+    "exportCsv": "Mahsulotlarni CSV formatida eksport qilish",
+    "printSettings": "Chop etish",
+    "tabNotReady": "Boʻlim ishlab chiqilmoqda"
   }
 }

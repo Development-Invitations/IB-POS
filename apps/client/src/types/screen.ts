@@ -6,4 +6,5 @@ export type ScreenKey =
   | "discounts"
   | "reports"
   | "shifts"
-  | "integrations";
+  | "integrations"
+  | "settings";

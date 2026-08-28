@@ -302,5 +302,32 @@
       "payment_terminal": "Приём карт, Payme, Click",
       "barcode_scanner": "USB / Bluetooth, режим клавиатурного ввода"
     }
+  },
+  "settings": {
+    "tabs": {
+      "general": "Общее",
+      "sale": "Продажа",
+      "discounts": "Скидки",
+      "receipts": "Чеки",
+      "notifications": "Уведомления"
+    },
+    "companyName": "Название компании",
+    "currency": "Валюта",
+    "language": "Язык по умолчанию",
+    "taxRate": "Ставка налога, %",
+    "showProductImages": "Показывать фото товаров",
+    "save": "Сохранить",
+    "saved": "Сохранено",
+    "saveError": "Не удалось сохранить настройки",
+    "loadError": "Не удалось загрузить настройки",
+    "accessDenied": "У вашей роли нет доступа к настройкам",
+    "backupTitle": "Резервное копирование",
+    "lastBackup": "Последняя копия",
+    "noBackups": "Резервных копий пока нет",
+    "createBackup": "Создать копию",
+    "exportTitle": "Экспорт данных",
+    "exportCsv": "Экспорт товаров в CSV",
+    "printSettings": "Печать",
+    "tabNotReady": "Раздел в разработке"
   }
 }
