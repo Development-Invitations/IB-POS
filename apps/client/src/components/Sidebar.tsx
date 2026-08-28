@@ -32,7 +32,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "returns", labelKey: "nav.returns", icon: ReturnIcon },
   { key: "reports", labelKey: "nav.reports", icon: ChartIcon, screen: "reports" },
   { key: "shifts", labelKey: "nav.shifts", icon: ClockIcon, screen: "shifts" },
-  { key: "integrations", labelKey: "nav.integrations", icon: PlugIcon },
+  { key: "integrations", labelKey: "nav.integrations", icon: PlugIcon, screen: "integrations" },
   { key: "equipment", labelKey: "nav.equipment", icon: MonitorIcon, screen: "equipment" },
   { key: "settings", labelKey: "nav.settings", icon: SettingsIcon },
 ];

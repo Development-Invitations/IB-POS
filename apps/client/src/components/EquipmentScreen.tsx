@@ -1,6 +1,22 @@
+import type { ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useDeviceAgent } from "../lib/use-device-agent";
-import { MonitorIcon, CheckCircleIcon, CloseIcon } from "./icons";
+import { CheckCircleIcon, CloseIcon } from "./icons";
+import {
+  BarcodeScannerArt,
+  CashDrawerArt,
+  CustomerDisplayArt,
+  FiscalPrinterArt,
+  PaymentTerminalArt,
+} from "./equipment-art";
+import type { DeviceKind } from "@ib-pos/shared";
+
+const DEVICE_ART: Record<DeviceKind, (p: { className?: string }) => ReactElement> = {
+  fiscal_registrar: FiscalPrinterArt,
+  cash_drawer: CashDrawerArt,
+  customer_display: CustomerDisplayArt,
+  payment_terminal: PaymentTerminalArt,
+};
 
 export function EquipmentScreen() {
   const { t } = useTranslation();
@@ -20,9 +36,9 @@ export function EquipmentScreen() {
       <div className="divide-y divide-slate-100 rounded-xl bg-white shadow-sm">
         {/* Сканер штрихкодов — не отдельное устройство агента, а клавиатурный ввод
             (см. use-barcode-scanner.ts): работает через сам браузер/WebView, драйвер не нужен. */}
-        <div className="flex items-center gap-3 px-4 py-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
-            <MonitorIcon />
+        <div className="flex items-center gap-4 px-4 py-3">
+          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+            <BarcodeScannerArt className="h-12 w-12" />
           </span>
           <div className="flex-1">
             <div className="text-sm font-semibold text-slate-800">{t("equipment.devices.barcode_scanner")}</div>
@@ -35,10 +51,11 @@ export function EquipmentScreen() {
 
         {devices.map((device) => {
           const state = testState[device.kind] ?? "idle";
+          const DeviceArt = DEVICE_ART[device.kind];
           return (
-            <div key={device.kind} className="flex items-center gap-3 px-4 py-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 text-slate-500">
-                <MonitorIcon />
+            <div key={device.kind} className="flex items-center gap-4 px-4 py-3">
+              <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                <DeviceArt className="h-12 w-12" />
               </span>
 
               <div className="flex-1">

@@ -180,3 +180,44 @@ export const CheckCircleIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="m8 12.5 2.6 2.6L16 9.5" />
   </svg>
 );
+
+export const BarcodeIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M4 5v14M8 5v14M11 5v14M15 5v14M18 5v14M21 5v14" strokeWidth={1.6} />
+    <path d="M4 5v14" strokeWidth={2.6} />
+    <path d="M13 5v14" strokeWidth={2.6} />
+    <path d="M19.5 5v14" strokeWidth={2.6} />
+  </svg>
+);
+
+export const ReceiptPrinterIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M6 3h12v9H6z" />
+    <path d="M6 14v6l1.5-1.2L9 20l1.5-1.2L12 20l1.5-1.2L15 20l1.5-1.2L18 20v-6" />
+    <path d="M9 6.5h6M9 9h4" />
+  </svg>
+);
+
+export const CashDrawerIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="3" y="6" width="18" height="12" rx="1.5" />
+    <path d="M3 11h18" />
+    <path d="M10 14h4" />
+  </svg>
+);
+
+export const CustomerDisplayIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="4" y="7" width="16" height="9" rx="1.5" />
+    <path d="M9 20h6M12 16v4" />
+    <path d="M7.5 11.5h9" />
+  </svg>
+);
+
+export const PaymentTerminalIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="5" y="2.5" width="14" height="19" rx="2" />
+    <rect x="7.5" y="5" width="9" height="5" rx="0.8" />
+    <path d="M8 13.5h1.5M11.25 13.5h1.5M14.5 13.5h1.5M8 16.5h1.5M11.25 16.5h1.5M14.5 16.5h1.5" />
+  </svg>
+);

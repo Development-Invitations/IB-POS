@@ -133,3 +133,30 @@ export interface ApiStockEntry {
   product: ApiProduct;
   store: ApiStore;
 }
+
+export type FiscalProviderName = "REGOS" | "EPOS" | "SMARTPOS" | "ARCAGROUP" | "RAHMATPOS";
+
+export interface ApiIntegration {
+  provider: FiscalProviderName;
+  isConnected: boolean;
+  config: Record<string, unknown> | null;
+  updatedAt: string | null;
+}
+
+export interface AdapterActionResult {
+  success: boolean;
+  message?: string;
+}
+
+export interface OneCStatus {
+  isConnected: boolean;
+  login: string | null;
+  exchangePath: string;
+  updatedAt: string | null;
+}
+
+export interface OneCCredentials {
+  login: string;
+  token: string;
+  exchangePath: string;
+}

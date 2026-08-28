@@ -1,1 +1,9 @@
-export type ScreenKey = "sale" | "equipment" | "products" | "customers" | "discounts" | "reports" | "shifts";
+export type ScreenKey =
+  | "sale"
+  | "equipment"
+  | "products"
+  | "customers"
+  | "discounts"
+  | "reports"
+  | "shifts"
+  | "integrations";

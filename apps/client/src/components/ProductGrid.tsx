@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { API_BASE } from "../lib/api";
 import { formatSum } from "../lib/format";
 import type { CartProduct } from "../types/catalog";
-import { PlusIcon } from "./icons";
 
 interface ProductGridProps {
   products: CartProduct[];
@@ -38,11 +37,6 @@ export function ProductGrid({ products, onAdd }: ProductGridProps) {
           </span>
         </button>
       ))}
-
-      <button className="flex min-h-[168px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 transition hover:border-accent/40 hover:text-accent">
-        <PlusIcon />
-        <span className="text-sm font-medium">{t("product.addProduct")}</span>
-      </button>
     </div>
   );
 }

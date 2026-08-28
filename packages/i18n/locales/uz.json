@@ -205,6 +205,28 @@
     "withdrawal": "Olish",
     "zReportNumber": "Z-hisobot raqami"
   },
+  "integrations": {
+    "accessDenied": "Sizning rolingizda integratsiyalarga kirish huquqi yoʻq",
+    "loadError": "Integratsiyalarni yuklab boʻlmadi",
+    "kassaTitle": "Virtual kassalar",
+    "runQueue": "Fiskalizatsiya navbatini qayta ishlash",
+    "queueProcessed": "Qayta ishlangan hodisalar: {{count}}",
+    "queueError": "Navbatni qayta ishlab boʻlmadi",
+    "connected": "Ulangan",
+    "notConnected": "Ulanmagan",
+    "configure": "Sozlash",
+    "reconfigure": "Qayta ulash",
+    "testConnection": "Aloqani tekshirish",
+    "connectError": "Ulab boʻlmadi",
+    "testOk": "Aloqa oʻrnatildi",
+    "testError": "Aloqa xatosi",
+    "connect": "Ulash",
+    "token": "Token",
+    "onecTitle": "1C — maʻlumot almashinuvi",
+    "generateOnec": "Ulanish maʻlumotlarini yaratish",
+    "exchangePath": "Almashinuv manzili",
+    "onecHint": "Bu maʻlumotlarni 1C almashinuv sozlamalariga kiriting (saqlab qoʻying — token boshqa koʻrsatilmaydi)"
+  },
   "receipt": {
     "current": "Joriy chek",
     "total": "Jami",

@@ -1,8 +1,10 @@
 import type {
+  AdapterActionResult,
   ApiCashMovement,
   ApiCategory,
   ApiCustomer,
   ApiDiscount,
+  ApiIntegration,
   ApiProduct,
   ApiReceipt,
   ApiShift,
@@ -13,6 +15,8 @@ import type {
   CashMovementType,
   DashboardReport,
   DiscountType,
+  OneCCredentials,
+  OneCStatus,
 } from "../types/api";
 import type { Role } from "../types/auth";
 
@@ -382,4 +386,32 @@ export async function getReportsCsv(token: string, filter: PeriodFilter): Promis
 export function getStockReport(token: string, storeId?: string) {
   const qs = storeId ? `?storeId=${encodeURIComponent(storeId)}` : "";
   return request<ApiStockEntry[]>(`/reports/stock${qs}`, {}, token);
+}
+
+export function getIntegrations(token: string) {
+  return request<ApiIntegration[]>("/integrations", {}, token);
+}
+
+export function connectIntegration(token: string, provider: string, login: string, providerToken: string) {
+  return request<AdapterActionResult>(
+    `/integrations/${provider}/connect`,
+    { method: "POST", body: JSON.stringify({ config: { login, token: providerToken } }) },
+    token,
+  );
+}
+
+export function testIntegration(token: string, provider: string) {
+  return request<AdapterActionResult>(`/integrations/${provider}/test`, { method: "POST" }, token);
+}
+
+export function runFiscalizationQueue(token: string) {
+  return request<{ processed: number }>("/integrations/fiscalize/run", { method: "POST" }, token);
+}
+
+export function getOneCStatus(token: string) {
+  return request<OneCStatus>("/integrations/onec", {}, token);
+}
+
+export function configureOneC(token: string) {
+  return request<OneCCredentials>("/integrations/onec/configure", { method: "POST", body: JSON.stringify({}) }, token);
 }
