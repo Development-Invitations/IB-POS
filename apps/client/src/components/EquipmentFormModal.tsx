@@ -22,17 +22,23 @@ const KINDS: EquipmentKind[] = [
   "OTHER",
 ];
 
-type ConnectionMode = "manual" | "ip";
+type ConnectionMode = "manual" | "ip" | "bluetooth";
 
-// Тот же строгий IPv4(:порт) паттерн, что и на сервере (equipment.service.ts) — нужен здесь
-// только чтобы при редактировании понять, в каком режиме показать форму, сама проверка при
-// сохранении не выполняется.
+// Те же паттерны, что и на сервере (equipment.service.ts) — нужны здесь только чтобы при
+// редактировании понять, в каком режиме показать форму, сама проверка при сохранении не
+// выполняется.
 const IP_PATTERN =
   /\b((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})(?::(\d{1,5}))?\b/;
+const BT_PATTERN = /^BT\s+(.+)$/i;
 
 function parseIp(info: string | null | undefined): { ip: string; port: string } | null {
   const match = info?.match(IP_PATTERN);
   return match ? { ip: match[1], port: match[2] ?? "" } : null;
+}
+
+function parseBt(info: string | null | undefined): string | null {
+  const match = info?.match(BT_PATTERN);
+  return match ? match[1].trim() : null;
 }
 
 export function EquipmentFormModal({ session, equipment, onClose, onSaved }: EquipmentFormModalProps) {
@@ -41,14 +47,18 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initialIp = parseIp(equipment?.connectionInfo);
+  const initialBt = !initialIp ? parseBt(equipment?.connectionInfo) : null;
 
   const [kind, setKind] = useState<EquipmentKind>(equipment?.kind ?? "OTHER");
   const [label, setLabel] = useState(equipment?.label ?? "");
   const [description, setDescription] = useState(equipment?.description ?? "");
-  const [connectionMode, setConnectionMode] = useState<ConnectionMode>(initialIp ? "ip" : "manual");
-  const [manualInfo, setManualInfo] = useState(initialIp ? "" : (equipment?.connectionInfo ?? ""));
+  const [connectionMode, setConnectionMode] = useState<ConnectionMode>(
+    initialIp ? "ip" : initialBt ? "bluetooth" : "manual",
+  );
+  const [manualInfo, setManualInfo] = useState(initialIp || initialBt ? "" : (equipment?.connectionInfo ?? ""));
   const [ipAddress, setIpAddress] = useState(initialIp?.ip ?? "");
   const [ipPort, setIpPort] = useState(initialIp?.port ?? "");
+  const [btName, setBtName] = useState(initialBt ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     equipment?.imageUrl ? `${API_BASE}${equipment.imageUrl}` : null,
@@ -87,7 +97,11 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
           ? ipAddress.trim()
             ? `IP ${ipAddress.trim()}${ipPort.trim() ? `:${ipPort.trim()}` : ""}`
             : undefined
-          : manualInfo.trim() || undefined;
+          : connectionMode === "bluetooth"
+            ? btName.trim()
+              ? `BT ${btName.trim()}`
+              : undefined
+            : manualInfo.trim() || undefined;
 
       const payload = {
         kind,
@@ -224,10 +238,19 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
               >
                 {t("equipment.connectionModeIp")}
               </button>
+              <button
+                type="button"
+                onClick={() => setConnectionMode("bluetooth")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  connectionMode === "bluetooth" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("equipment.connectionModeBluetooth")}
+              </button>
             </div>
           </div>
 
-          {connectionMode === "manual" ? (
+          {connectionMode === "manual" && (
             <label className="block text-xs font-medium text-slate-500">
               {t("equipment.connectionInfo")}
               <input
@@ -240,7 +263,9 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
                 {t("equipment.connectionInfoHint")}
               </span>
             </label>
-          ) : (
+          )}
+
+          {connectionMode === "ip" && (
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-xs font-medium text-slate-500">
                 {t("equipment.ipAddress")}
@@ -264,6 +289,19 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
                 {t("equipment.ipHint")}
               </span>
             </div>
+          )}
+
+          {connectionMode === "bluetooth" && (
+            <label className="block text-xs font-medium text-slate-500">
+              {t("equipment.btName")}
+              <input
+                value={btName}
+                onChange={(e) => setBtName(e.target.value)}
+                placeholder={t("equipment.btNamePlaceholder")}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <span className="mt-1 block text-[11px] font-normal text-slate-400">{t("equipment.btHint")}</span>
+            </label>
           )}
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

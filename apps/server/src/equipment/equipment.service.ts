@@ -14,11 +14,15 @@ import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 
 const execFileAsync = promisify(execFile);
 
-// Строгий IPv4 (каждый октет 0–255) с необязательным портом через двоеточие — единственный
-// способ подключения, который можно честно проверить без реального драйвера устройства
-// (см. testConnection ниже). COM-порт/модель и т.п. остаются на ручное подтверждение админом.
+// Строгий IPv4 (каждый октет 0–255) с необязательным портом через двоеточие — сетевые
+// устройства можно честно проверить без реального драйвера (см. testConnection ниже).
 const IP_PATTERN =
   /\b((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})(?::(\d{1,5}))?\b/;
+
+// "BT <имя устройства>" — второй проверяемый способ (см. EquipmentFormModal.tsx, режим
+// "По Bluetooth"). COM-порт/модель и произвольный текст остаются на ручное подтверждение —
+// для них честной проверки без реального драйвера нет.
+const BT_PATTERN = /^BT\s+(.+)$/i;
 
 function tcpProbe(
   host: string,
@@ -50,6 +54,33 @@ async function pingProbe(host: string): Promise<boolean> {
   try {
     await execFileAsync('ping', args);
     return true;
+  } catch {
+    return false;
+  }
+}
+
+// Windows-only: спрашиваем у диспетчера устройств, есть ли Bluetooth-устройство с таким именем
+// в состоянии "OK". Ограничение честности: PnP-статус на Windows не всегда отличает "устройство
+// сопряжено, но сейчас выключено/вне зоны" от "реально подключено прямо сейчас" — это тот же
+// класс приближения, что и ping для IP, не гарантия работы устройства. Имя передаём отдельным
+// аргументом процесса (через $args[0] в скрипте), а не подставляем в текст команды, чтобы
+// свободный текст пользователя не мог быть интерпретирован как часть PowerShell-скрипта.
+async function bluetoothProbe(name: string): Promise<boolean> {
+  if (process.platform !== 'win32') return false;
+  const script =
+    '$n = $args[0]; ' +
+    'Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | ' +
+    "Where-Object { $_.FriendlyName -like ('*' + $n + '*') -and $_.Status -eq 'OK' } | " +
+    "Select-Object -First 1 | ForEach-Object { 'FOUND' }";
+  try {
+    const { stdout } = await execFileAsync('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      script,
+      name,
+    ]);
+    return stdout.includes('FOUND');
   } catch {
     return false;
   }
@@ -124,37 +155,49 @@ export class EquipmentService {
       throw new NotFoundException('Оборудование не найдено');
     }
 
-    const match = existing.connectionInfo?.match(IP_PATTERN);
-    if (!match) {
+    const ipMatch = existing.connectionInfo?.match(IP_PATTERN);
+    const btMatch = !ipMatch
+      ? existing.connectionInfo?.match(BT_PATTERN)
+      : undefined;
+
+    if (!ipMatch && !btMatch) {
       throw new BadRequestException(
-        'В параметрах подключения не найден IP-адрес — автоматическая проверка доступна только для сетевых устройств. Для остальных отметьте подключение вручную.',
+        'В параметрах подключения не найден ни IP-адрес, ни Bluetooth-устройство — автоматическая проверка доступна только для них. Для остальных отметьте подключение вручную.',
       );
     }
-    const host = match[1];
-    const port = match[2] ? Number(match[2]) : undefined;
 
-    const reachable = port ? await tcpProbe(host, port) : await pingProbe(host);
+    let reachable: boolean;
+    let successMessage: string;
+    let failureMessage: string;
+
+    if (ipMatch) {
+      const host = ipMatch[1];
+      const port = ipMatch[2] ? Number(ipMatch[2]) : undefined;
+      reachable = port ? await tcpProbe(host, port) : await pingProbe(host);
+      successMessage = port
+        ? `Устройство отвечает на ${host}:${port}`
+        : `${host} отвечает на ping`;
+      failureMessage = port
+        ? `Нет ответа от ${host}:${port}. Проверьте, что устройство включено, IP и порт указаны верно, и оно в одной сети с этим компьютером.`
+        : `${host} не отвечает на ping. Проверьте, что устройство включено, IP указан верно, и оно в одной сети с этим компьютером.`;
+    } else {
+      const name = btMatch![1].trim();
+      reachable = await bluetoothProbe(name);
+      successMessage = `Bluetooth-устройство «${name}» подключено`;
+      failureMessage =
+        process.platform === 'win32'
+          ? `Bluetooth-устройство «${name}» не найдено среди подключённых. Проверьте, что оно включено и сопряжено с этим компьютером.`
+          : 'Автоматическая проверка Bluetooth поддерживается только на Windows. Отметьте подключение вручную.';
+    }
 
     if (reachable) {
       const updated = await this.prisma.equipment.update({
         where: { id },
         data: { isConnected: true },
       });
-      return {
-        equipment: updated,
-        reachable: true,
-        message: port
-          ? `Устройство отвечает на ${host}:${port}`
-          : `${host} отвечает на ping`,
-      };
+      return { equipment: updated, reachable: true, message: successMessage };
     }
 
-    return {
-      equipment: existing,
-      reachable: false,
-      message: port
-        ? `Нет ответа от ${host}:${port}. Проверьте, что устройство включено, IP и порт указаны верно, и оно в одной сети с этим компьютером.`
-        : `${host} не отвечает на ping. Проверьте, что устройство включено, IP указан верно, и оно в одной сети с этим компьютером.`,
-    };
+    return { equipment: existing, reachable: false, message: failureMessage };
   }
 }
