@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useDeviceAgent } from "../lib/use-device-agent";
-import { ApiError, deactivateEquipment, getEquipment, updateEquipment } from "../lib/api";
+import { API_BASE, ApiError, deactivateEquipment, getEquipment, updateEquipment } from "../lib/api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EquipmentFormModal } from "./EquipmentFormModal";
 import { CheckCircleIcon, CloseIcon, MonitorIcon, PlusIcon } from "./icons";
@@ -12,7 +12,7 @@ import {
   PaymentTerminalArt,
 } from "./equipment-art";
 import barcodeScannerPhoto from "../assets/equipment/barcode-scanner.png";
-import type { ApiEquipment, EquipmentKind } from "../types/api";
+import type { ApiEquipment } from "../types/api";
 import type { AuthSession } from "../types/auth";
 import type { DeviceKind } from "@ib-pos/shared";
 
@@ -30,8 +30,11 @@ interface EquipmentScreenProps {
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER"];
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
 
-function equipmentIcon(kind: EquipmentKind, className: string) {
-  switch (kind) {
+function equipmentIcon(item: ApiEquipment, className: string) {
+  if (item.imageUrl) {
+    return <img src={`${API_BASE}${item.imageUrl}`} alt="" className={`${className} object-contain`} />;
+  }
+  switch (item.kind) {
     case "FISCAL_REGISTRAR":
       return <FiscalPrinterArt className={className} />;
     case "CASH_DRAWER":
@@ -226,7 +229,7 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
             {items.map((item) => (
               <div key={item.id} className="flex items-center gap-4 px-4 py-3">
                 <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-                  {equipmentIcon(item.kind, "h-12 w-12")}
+                  {equipmentIcon(item, "h-12 w-12")}
                 </span>
 
                 <div className="flex-1">

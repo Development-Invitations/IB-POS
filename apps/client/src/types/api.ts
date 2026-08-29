@@ -126,6 +126,7 @@ export interface ApiEquipment {
   kind: EquipmentKind;
   label: string;
   description: string | null;
+  imageUrl: string | null;
   isActive: boolean;
   createdAt: string;
 }

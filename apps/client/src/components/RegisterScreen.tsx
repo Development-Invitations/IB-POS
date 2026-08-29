@@ -56,7 +56,7 @@ export function RegisterScreen({ onDone, onBackToLogin }: RegisterScreenProps) {
   }
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-100 px-4">
+    <div className="flex h-full items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-sm">
         <div className="mb-6 flex flex-col items-center gap-2">
           <img src={logo} alt="IB-POS" className="h-12 w-12" />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { TitleBar } from "./components/TitleBar";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
@@ -266,50 +267,65 @@ function App() {
   });
 
   if (!session) {
-    if (authMode === "register") {
-      return (
-        <RegisterScreen
-          onBackToLogin={() => setAuthMode("login")}
-          onDone={(organizationId, login) => {
-            setPrefillOrgId(organizationId);
-            setPrefillLogin(login);
-            setAuthMode("login");
-          }}
-        />
-      );
-    }
     return (
-      <LoginScreen
-        initialOrgId={prefillOrgId}
-        initialLogin={prefillLogin}
-        onRegisterClick={() => setAuthMode("register")}
-        onSuccess={(s) => {
-          saveSession(s);
-          setSession(s);
-        }}
-      />
+      <div className="flex h-screen flex-col overflow-hidden">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          {authMode === "register" ? (
+            <RegisterScreen
+              onBackToLogin={() => setAuthMode("login")}
+              onDone={(organizationId, login) => {
+                setPrefillOrgId(organizationId);
+                setPrefillLogin(login);
+                setAuthMode("login");
+              }}
+            />
+          ) : (
+            <LoginScreen
+              initialOrgId={prefillOrgId}
+              initialLogin={prefillLogin}
+              onRegisterClick={() => setAuthMode("register")}
+              onSuccess={(s) => {
+                saveSession(s);
+                setSession(s);
+              }}
+            />
+          )}
+        </div>
+      </div>
     );
   }
 
   if (!shift || !workstation) {
     return (
-      <ShiftSetupScreen
-        session={session}
-        onReady={(readyShift, readyWorkstation) => {
-          setShift(readyShift);
-          setWorkstation(readyWorkstation);
-        }}
-        onLogout={handleLogout}
-      />
+      <div className="flex h-screen flex-col overflow-hidden">
+        <TitleBar />
+        <div className="flex-1 overflow-hidden">
+          <ShiftSetupScreen
+            session={session}
+            onReady={(readyShift, readyWorkstation) => {
+              setShift(readyShift);
+              setWorkstation(readyWorkstation);
+            }}
+            onLogout={handleLogout}
+          />
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
+      <TitleBar />
       <Header
         session={session}
         workstationName={workstation.name}
         shiftOpenedAt={shift.openedAt}
+        products={products}
+        onSelectProduct={(product) => {
+          addToCart(product);
+          setActiveScreen("sale");
+        }}
         onLogout={handleLogout}
         onCloseShift={openCloseShiftModal}
         className="no-print"

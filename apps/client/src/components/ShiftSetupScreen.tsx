@@ -118,7 +118,7 @@ export function ShiftSetupScreen({ session, onReady, onLogout }: ShiftSetupScree
   const storeWorkstations = workstations.filter((w) => !storeId || w.storeId === storeId);
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-100 px-4">
+    <div className="flex h-full items-center justify-center bg-slate-100 px-4">
       <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-sm">
         {phase === "loading" && <p className="text-center text-sm text-slate-400">{t("common.loading")}</p>}
 

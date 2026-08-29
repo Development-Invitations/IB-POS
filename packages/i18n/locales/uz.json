@@ -3,9 +3,15 @@
     "title": "IB-POS",
     "subtitle": "Biznes uchun zamonaviy POS-tizim"
   },
+  "titleBar": {
+    "minimize": "Yigʻish",
+    "maximize": "Yoyish",
+    "close": "Yopish"
+  },
   "common": {
     "language": "Til",
     "search": "Mahsulotlarni qidirish...",
+    "searchEmpty": "Hech narsa topilmadi",
     "loading": "Yuklanmoqda...",
     "currency": "soʻm",
     "notifications": "Bildirishnomalar",

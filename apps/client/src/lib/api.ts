@@ -415,6 +415,28 @@ export function deactivateEquipment(token: string, id: string) {
   return request<void>(`/equipment/${id}`, { method: "DELETE" }, token);
 }
 
+export async function uploadEquipmentImage(token: string, id: string, file: Blob, filename: string) {
+  const form = new FormData();
+  form.append("file", file, filename);
+  const res = await fetch(`${API_BASE}/equipment/${id}/image`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      message = Array.isArray(body.message) ? body.message.join("; ") : (body.message ?? message);
+    } catch {
+      // тело не JSON — оставляем statusText
+    }
+    throw new ApiError(message, res.status);
+  }
+  return (await res.json()) as ApiEquipment;
+}
+
 export interface PeriodFilter {
   from?: string;
   to?: string;
