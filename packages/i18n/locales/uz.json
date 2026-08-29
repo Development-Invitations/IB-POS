@@ -326,7 +326,12 @@
     "empty": "Uskunalar hali qoʻshilmagan",
     "accessDenied": "Sizning rolingizda «Uskunalar» boʻlimiga kirish huquqi yoʻq",
     "deactivateTitle": "Uskunani faolsizlantirish",
-    "deactivateConfirm": "«{{name}}» faol roʻyxatdan yashiriladi. Yozuv saqlanadi va uni qaytadan yoqish mumkin."
+    "deactivateConfirm": "«{{name}}» faol roʻyxatdan yashiriladi. Yozuv saqlanadi va uni qaytadan yoqish mumkin.",
+    "connectionInfo": "Ulanish parametrlari",
+    "connectionInfoPlaceholder": "Masalan, COM3 9600 yoki IP 192.168.1.20",
+    "connectionInfoHint": "Ixtiyoriy — port, IP, model va h.k., eslab qolish uchun",
+    "markConnected": "Ulangan deb belgilash",
+    "markDisconnected": "Uzilgan deb belgilash"
   },
   "settings": {
     "tabs": {

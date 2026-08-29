@@ -291,6 +291,14 @@ model Equipment {
   label          String
   description    String?
   imageUrl       String?       @map("image_url")
+  // Параметры подключения (COM-порт, IP, модель и т.п.) — свободный текст: у реестра нет
+  // реальной интеграции с драйверами (это не Device Agent), поэтому структурированные поля
+  // под конкретный протокол каждого вида устройства были бы избыточны.
+  connectionInfo String?       @map("connection_info")
+  // Отдельно от isActive (запись включена/в архиве — как у Товаров/Скидок): по умолчанию
+  // false, потому что просто заведённая запись ещё не значит, что устройство реально
+  // настроено и подключено. Админ отмечает вручную после того, как физически всё настроил.
+  isConnected    Boolean       @default(false) @map("is_connected")
   isActive       Boolean       @default(true) @map("is_active")
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")

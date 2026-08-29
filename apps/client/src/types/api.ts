@@ -127,6 +127,8 @@ export interface ApiEquipment {
   label: string;
   description: string | null;
   imageUrl: string | null;
+  connectionInfo: string | null;
+  isConnected: boolean;
   isActive: boolean;
   createdAt: string;
 }

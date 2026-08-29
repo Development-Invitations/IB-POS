@@ -118,6 +118,16 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
     }
   }
 
+  async function handleToggleConnected(item: ApiEquipment) {
+    setRowError(null);
+    try {
+      const saved = await updateEquipment(session.accessToken, item.id, { isConnected: !item.isConnected });
+      setItems((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
+    } catch (err) {
+      setRowError(err instanceof ApiError ? err.message : t("equipment.saveError"));
+    }
+  }
+
   async function confirmDeactivate() {
     if (!confirmTarget) return;
     setConfirmSubmitting(true);
@@ -226,42 +236,71 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
 
         {!loading && !loadError && (
           <div className="divide-y divide-slate-100 rounded-xl bg-white shadow-sm">
-            {items.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 px-4 py-3">
-                <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-                  {equipmentIcon(item, "h-12 w-12")}
-                </span>
+            {/* Подключённые — сверху, требующие настройки — ниже, чтобы то, что реально
+                готово к работе, не терялось среди только что заведённых записей. */}
+            {[...items]
+              .sort((a, b) => Number(b.isConnected) - Number(a.isConnected))
+              .map((item) => (
+                <div key={item.id} className="flex items-center gap-4 px-4 py-3">
+                  <span className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+                    {equipmentIcon(item, "h-12 w-12")}
+                  </span>
 
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-slate-800">{item.label}</div>
-                  <div className="text-xs text-slate-400">{t(`equipment.devices.${item.kind.toLowerCase()}`)}</div>
-                  {item.description && <div className="mt-0.5 text-xs text-slate-400">{item.description}</div>}
-                  <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${item.isActive ? "bg-emerald-500" : "bg-slate-300"}`}
-                    />
-                    {item.isActive ? t("products.active") : t("products.inactive")}
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold text-slate-800">{item.label}</div>
+                    <div className="text-xs text-slate-400">{t(`equipment.devices.${item.kind.toLowerCase()}`)}</div>
+                    {item.description && <div className="mt-0.5 text-xs text-slate-400">{item.description}</div>}
+                    {item.connectionInfo && (
+                      <div className="mt-0.5 text-xs text-slate-400">{item.connectionInfo}</div>
+                    )}
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-400">
+                      {!item.isActive ? (
+                        <>
+                          <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                          {t("products.inactive")}
+                        </>
+                      ) : item.isConnected ? (
+                        <>
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          {t("equipment.connected")}
+                        </>
+                      ) : (
+                        <>
+                          <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                          {t("equipment.disconnected")}
+                        </>
+                      )}
+                    </div>
                   </div>
+
+                  {canManage && (
+                    <div className="flex shrink-0 flex-col items-end gap-1.5">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => openEdit(item)}
+                          className="text-xs font-medium text-accent hover:underline"
+                        >
+                          {t("products.edit")}
+                        </button>
+                        <button
+                          onClick={() => handleToggleActive(item)}
+                          className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                        >
+                          {item.isActive ? t("products.deactivate") : t("products.activate")}
+                        </button>
+                      </div>
+                      {item.isActive && (
+                        <button
+                          onClick={() => handleToggleConnected(item)}
+                          className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                        >
+                          {item.isConnected ? t("equipment.markDisconnected") : t("equipment.markConnected")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                {canManage && (
-                  <div className="flex shrink-0 gap-3">
-                    <button
-                      onClick={() => openEdit(item)}
-                      className="text-xs font-medium text-accent hover:underline"
-                    >
-                      {t("products.edit")}
-                    </button>
-                    <button
-                      onClick={() => handleToggleActive(item)}
-                      className="text-xs font-medium text-slate-400 hover:text-slate-700"
-                    >
-                      {item.isActive ? t("products.deactivate") : t("products.activate")}
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
 
             {items.length === 0 && (
               <p className="px-4 py-8 text-center text-sm text-slate-400">{t("equipment.empty")}</p>

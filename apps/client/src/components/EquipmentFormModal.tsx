@@ -30,6 +30,7 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
   const [kind, setKind] = useState<EquipmentKind>(equipment?.kind ?? "OTHER");
   const [label, setLabel] = useState(equipment?.label ?? "");
   const [description, setDescription] = useState(equipment?.description ?? "");
+  const [connectionInfo, setConnectionInfo] = useState(equipment?.connectionInfo ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     equipment?.imageUrl ? `${API_BASE}${equipment.imageUrl}` : null,
@@ -67,6 +68,7 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
         kind,
         label: label.trim(),
         description: description.trim() || undefined,
+        connectionInfo: connectionInfo.trim() || undefined,
       };
       let saved = isEdit
         ? await updateEquipment(session.accessToken, equipment.id, payload)
@@ -174,6 +176,19 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
               placeholder={t("equipment.descriptionPlaceholder")}
               className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
             />
+          </label>
+
+          <label className="block text-xs font-medium text-slate-500">
+            {t("equipment.connectionInfo")}
+            <input
+              value={connectionInfo}
+              onChange={(e) => setConnectionInfo(e.target.value)}
+              placeholder={t("equipment.connectionInfoPlaceholder")}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            <span className="mt-1 block text-[11px] font-normal text-slate-400">
+              {t("equipment.connectionInfoHint")}
+            </span>
           </label>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}

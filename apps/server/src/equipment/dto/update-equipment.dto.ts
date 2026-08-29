@@ -10,4 +10,8 @@ export class UpdateEquipmentDto extends PartialType(CreateEquipmentDto) {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isConnected?: boolean;
 }

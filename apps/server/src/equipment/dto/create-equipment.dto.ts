@@ -13,4 +13,9 @@ export class CreateEquipmentDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  connectionInfo?: string;
 }

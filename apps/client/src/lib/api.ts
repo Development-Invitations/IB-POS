@@ -389,6 +389,7 @@ export interface EquipmentPayload {
   kind: EquipmentKind;
   label: string;
   description?: string;
+  connectionInfo?: string;
 }
 
 export function createEquipment(token: string, payload: EquipmentPayload) {
@@ -402,7 +403,7 @@ export function createEquipment(token: string, payload: EquipmentPayload) {
 export function updateEquipment(
   token: string,
   id: string,
-  payload: Partial<EquipmentPayload> & { isActive?: boolean },
+  payload: Partial<EquipmentPayload> & { isActive?: boolean; isConnected?: boolean },
 ) {
   return request<ApiEquipment>(
     `/equipment/${id}`,
