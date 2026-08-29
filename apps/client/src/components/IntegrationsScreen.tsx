@@ -11,20 +11,30 @@ import {
 } from "../lib/api";
 import type { ApiIntegration, FiscalProviderName, OneCCredentials, OneCStatus } from "../types/api";
 import type { AuthSession } from "../types/auth";
+import arcaGroupLogo from "../assets/integrations/arcagroup.svg";
+import eposLogo from "../assets/integrations/epos.svg";
+import rahmatPosLogo from "../assets/integrations/rahmatpos.svg";
+import smartPosLogo from "../assets/integrations/smartpos.svg";
+import regosLogo from "../assets/integrations/regos.png";
+import onecLogo from "../assets/integrations/1c.png";
 
 interface IntegrationsScreenProps {
   session: AuthSession;
 }
 
-// Реальных лого этих касс у нас нет (и не будет без лицензии на бренд) — вместо чужих
-// товарных знаков показываем свою узнаваемую цветную плашку с инициалами провайдера,
-// тот же приём, что у Slack/Stripe для интеграций без загруженной иконки.
-const PROVIDER_META: Record<FiscalProviderName, { label: string; initials: string; color: string }> = {
-  REGOS: { label: "Regos", initials: "RG", color: "bg-blue-600" },
-  EPOS: { label: "Epos", initials: "EP", color: "bg-teal-600" },
-  SMARTPOS: { label: "SmartPOS", initials: "SP", color: "bg-violet-600" },
-  ARCAGROUP: { label: "ArcaGroup", initials: "AG", color: "bg-orange-600" },
-  RAHMATPOS: { label: "RahmatPOS", initials: "RP", color: "bg-emerald-600" },
+// Лого касс, для которых оно предоставлено (см. apps/client/src/assets/integrations/) —
+// показывается как есть на светлой карточке. Пока лого нет — цветная плашка с инициалами
+// провайдера (как у Slack/Stripe для интеграций без загруженной иконки); заменяется на
+// реальное лого по мере поступления.
+const PROVIDER_META: Record<
+  FiscalProviderName,
+  { label: string; initials: string; color: string; logo?: string }
+> = {
+  REGOS: { label: "Regos", initials: "RG", color: "bg-slate-100", logo: regosLogo },
+  EPOS: { label: "Epos", initials: "EP", color: "bg-teal-600", logo: eposLogo },
+  SMARTPOS: { label: "SmartPOS", initials: "SP", color: "bg-slate-100", logo: smartPosLogo },
+  ARCAGROUP: { label: "ArcaGroup", initials: "AG", color: "bg-slate-100", logo: arcaGroupLogo },
+  RAHMATPOS: { label: "RahmatPOS", initials: "RP", color: "bg-slate-100", logo: rahmatPosLogo },
 };
 
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
@@ -187,11 +197,19 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
                 return (
                   <div key={integration.provider} className="rounded-xl bg-white p-4 shadow-sm">
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${meta.color}`}
-                      >
-                        {meta.initials}
-                      </span>
+                      {meta.logo ? (
+                        <img
+                          src={meta.logo}
+                          alt={meta.label}
+                          className="h-8 max-w-[88px] shrink-0 object-contain object-left"
+                        />
+                      ) : (
+                        <span
+                          className={`flex h-10 w-16 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white ${meta.color}`}
+                        >
+                          {meta.initials}
+                        </span>
+                      )}
                       <div className="flex-1">
                         <div className="text-sm font-semibold text-slate-800">{meta.label}</div>
                         <div className="flex items-center gap-1 text-xs text-slate-400">
@@ -230,9 +248,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
 
           <section className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-sm font-bold text-white">
-                1C
-              </span>
+              <img src={onecLogo} alt="1C" className="h-10 max-w-[64px] shrink-0 object-contain object-left" />
               <div className="flex-1">
                 <div className="text-sm font-semibold text-slate-800">{t("integrations.onecTitle")}</div>
                 <div className="flex items-center gap-1 text-xs text-slate-400">

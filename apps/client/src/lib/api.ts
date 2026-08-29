@@ -5,6 +5,7 @@ import type {
   ApiCategory,
   ApiCustomer,
   ApiDiscount,
+  ApiEquipment,
   ApiIntegration,
   ApiProduct,
   ApiReceipt,
@@ -17,6 +18,7 @@ import type {
   CashMovementType,
   DashboardReport,
   DiscountType,
+  EquipmentKind,
   OneCCredentials,
   OneCStatus,
   TopProduct,
@@ -377,6 +379,40 @@ export function updateDiscount(
 
 export function deactivateDiscount(token: string, id: string) {
   return request<void>(`/discounts/${id}`, { method: "DELETE" }, token);
+}
+
+export function getEquipment(token: string) {
+  return request<ApiEquipment[]>("/equipment", {}, token);
+}
+
+export interface EquipmentPayload {
+  kind: EquipmentKind;
+  label: string;
+  description?: string;
+}
+
+export function createEquipment(token: string, payload: EquipmentPayload) {
+  return request<ApiEquipment>(
+    "/equipment",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function updateEquipment(
+  token: string,
+  id: string,
+  payload: Partial<EquipmentPayload> & { isActive?: boolean },
+) {
+  return request<ApiEquipment>(
+    `/equipment/${id}`,
+    { method: "PATCH", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export function deactivateEquipment(token: string, id: string) {
+  return request<void>(`/equipment/${id}`, { method: "DELETE" }, token);
 }
 
 export interface PeriodFilter {

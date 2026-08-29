@@ -289,13 +289,15 @@
     "disconnected": "Уланмаган",
     "test": "Тест",
     "testing": "Текширилмоқда...",
-    "agentOffline": "Device Agent мавжуд эмас",
+    "agentOffline": "Ускунани автоматик аниқлаш мавжуд эмас",
+    "barcodeScannerHint": "Клавиатура киритиш режимида ишлайди — уланиш ҳолати аниқланмайди",
     "devices": {
       "fiscal_registrar": "Фискал регистратор",
       "cash_drawer": "Пул қутиси",
       "customer_display": "Харидор дисплейи",
       "payment_terminal": "Тўлов терминали",
-      "barcode_scanner": "Штрих-код сканери"
+      "barcode_scanner": "Штрих-код сканери",
+      "other": "Бошқа ускуна"
     },
     "descriptions": {
       "fiscal_registrar": "Device Agent орқали фискал чекларни чоп этиш",
@@ -303,7 +305,22 @@
       "customer_display": "Харидорга чек суммаси ва позицияларини кўрсатади",
       "payment_terminal": "Карталар, Payme, Click қабул қилинади",
       "barcode_scanner": "USB / Bluetooth, клавиатура киритиш режими"
-    }
+    },
+    "autoDetected": "Автоматик аниқланган",
+    "myEquipment": "Менинг ускуналарим",
+    "addTitle": "Ускуна қўшиш",
+    "editTitle": "Ускунани таҳрирлаш",
+    "kind": "Тури",
+    "label": "Номи",
+    "labelPlaceholder": "Масалан, «2-касса — сканер»",
+    "description": "Тавсиф",
+    "descriptionPlaceholder": "Модел, серия рақами, жойлашуви — ихтиёрий",
+    "saveError": "Ускунани сақлаб бўлмади",
+    "loadError": "Ускуналарни юклаб бўлмади",
+    "empty": "Ускуналар ҳали қўшилмаган",
+    "accessDenied": "Сизнинг ролингизда «Ускуналар» бўлимига кириш ҳуқуқи йўқ",
+    "deactivateTitle": "Ускунани фаолсизлантириш",
+    "deactivateConfirm": "«{{name}}» фаол рўйхатдан яширилади. Ёзув сақланади ва уни қайтадан ёқиш мумкин."
   },
   "settings": {
     "tabs": {

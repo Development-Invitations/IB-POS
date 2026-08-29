@@ -289,13 +289,15 @@
     "disconnected": "Не подключено",
     "test": "Тест",
     "testing": "Проверка...",
-    "agentOffline": "Device Agent недоступен",
+    "agentOffline": "Автоопределение оборудования недоступно",
+    "barcodeScannerHint": "Работает как клавиатурный ввод — статус подключения система не определяет",
     "devices": {
       "fiscal_registrar": "Фискальный регистратор",
       "cash_drawer": "Денежный ящик",
       "customer_display": "Дисплей покупателя",
       "payment_terminal": "Терминал оплаты",
-      "barcode_scanner": "Сканер штрих-кодов"
+      "barcode_scanner": "Сканер штрих-кодов",
+      "other": "Другое оборудование"
     },
     "descriptions": {
       "fiscal_registrar": "Печать фискальных чеков через Device Agent",
@@ -303,7 +305,22 @@
       "customer_display": "Показывает сумму и позиции чека покупателю",
       "payment_terminal": "Приём карт, Payme, Click",
       "barcode_scanner": "USB / Bluetooth, режим клавиатурного ввода"
-    }
+    },
+    "autoDetected": "Определено автоматически",
+    "myEquipment": "Моё оборудование",
+    "addTitle": "Добавить оборудование",
+    "editTitle": "Редактировать оборудование",
+    "kind": "Тип",
+    "label": "Название",
+    "labelPlaceholder": "Например, «Касса 2 — сканер»",
+    "description": "Описание",
+    "descriptionPlaceholder": "Модель, серийный номер, расположение — по желанию",
+    "saveError": "Не удалось сохранить оборудование",
+    "loadError": "Не удалось загрузить оборудование",
+    "empty": "Оборудование ещё не добавлено",
+    "accessDenied": "У вашей роли нет доступа к разделу «Оборудование»",
+    "deactivateTitle": "Деактивировать оборудование",
+    "deactivateConfirm": "«{{name}}» будет скрыто из активного списка. Запись сохранится и её можно будет включить обратно."
   },
   "settings": {
     "tabs": {

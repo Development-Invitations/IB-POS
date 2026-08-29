@@ -289,13 +289,15 @@
     "disconnected": "Ulanmagan",
     "test": "Test",
     "testing": "Tekshirilmoqda...",
-    "agentOffline": "Device Agent mavjud emas",
+    "agentOffline": "Uskunani avtomatik aniqlash mavjud emas",
+    "barcodeScannerHint": "Klaviatura kiritish rejimida ishlaydi — ulanish holati aniqlanmaydi",
     "devices": {
       "fiscal_registrar": "Fiskal registrator",
       "cash_drawer": "Pul qutisi",
       "customer_display": "Xaridor displeyi",
       "payment_terminal": "Toʻlov terminali",
-      "barcode_scanner": "Shtrix-kod skaneri"
+      "barcode_scanner": "Shtrix-kod skaneri",
+      "other": "Boshqa uskuna"
     },
     "descriptions": {
       "fiscal_registrar": "Device Agent orqali fiskal cheklarni chop etish",
@@ -303,7 +305,22 @@
       "customer_display": "Xaridorga chek summasi va pozitsiyalarini koʻrsatadi",
       "payment_terminal": "Kartalar, Payme, Click qabul qilinadi",
       "barcode_scanner": "USB / Bluetooth, klaviatura kiritish rejimi"
-    }
+    },
+    "autoDetected": "Avtomatik aniqlangan",
+    "myEquipment": "Mening uskunalarim",
+    "addTitle": "Uskuna qoʻshish",
+    "editTitle": "Uskunani tahrirlash",
+    "kind": "Turi",
+    "label": "Nomi",
+    "labelPlaceholder": "Masalan, «2-kassa — skaner»",
+    "description": "Tavsif",
+    "descriptionPlaceholder": "Model, seriya raqami, joylashuvi — ixtiyoriy",
+    "saveError": "Uskunani saqlab boʻlmadi",
+    "loadError": "Uskunalarni yuklab boʻlmadi",
+    "empty": "Uskunalar hali qoʻshilmagan",
+    "accessDenied": "Sizning rolingizda «Uskunalar» boʻlimiga kirish huquqi yoʻq",
+    "deactivateTitle": "Uskunani faolsizlantirish",
+    "deactivateConfirm": "«{{name}}» faol roʻyxatdan yashiriladi. Yozuv saqlanadi va uni qaytadan yoqish mumkin."
   },
   "settings": {
     "tabs": {

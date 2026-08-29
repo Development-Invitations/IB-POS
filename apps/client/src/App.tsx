@@ -348,7 +348,7 @@ function App() {
 
         {activeScreen === "equipment" && (
           <main className="flex-1 overflow-y-auto p-4">
-            <EquipmentScreen />
+            <EquipmentScreen session={session} />
           </main>
         )}
 

@@ -27,6 +27,7 @@ model Organization {
   outboxEvents OutboxEvent[]
   settings     OrganizationSettings?
   backups      Backup[]
+  equipment    Equipment[]
 
   @@map("organizations")
 }
@@ -267,6 +268,36 @@ model Discount {
 
   @@index([organizationId])
   @@map("discounts")
+}
+
+// Ручной реестр оборудования (Этап 4 доп.) — отдельно от live-статуса Device Agent
+// (websocket ws://127.0.0.1:8765, см. use-device-agent.ts): агент показывает то, что реально
+// подключено и определилось драйвером прямо сейчас на этой машине, а этот реестр — просто
+// список того, что есть на точке, с возможностью завести любое количество и любого вида,
+// даже когда сам Device Agent не запущен или устройство не поддерживает авто-определение.
+enum EquipmentKind {
+  FISCAL_REGISTRAR
+  CASH_DRAWER
+  CUSTOMER_DISPLAY
+  PAYMENT_TERMINAL
+  BARCODE_SCANNER
+  OTHER
+}
+
+model Equipment {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  kind           EquipmentKind
+  label          String
+  description    String?
+  isActive       Boolean       @default(true) @map("is_active")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("equipment")
 }
 
 enum ShiftStatus {

@@ -113,6 +113,23 @@ export interface ApiDiscount {
   isActive: boolean;
 }
 
+export type EquipmentKind =
+  | "FISCAL_REGISTRAR"
+  | "CASH_DRAWER"
+  | "CUSTOMER_DISPLAY"
+  | "PAYMENT_TERMINAL"
+  | "BARCODE_SCANNER"
+  | "OTHER";
+
+export interface ApiEquipment {
+  id: string;
+  kind: EquipmentKind;
+  label: string;
+  description: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
 // getDashboard считает суммы через Number() на бэкенде (не Decimal-объекты Prisma),
 // поэтому в отличие от ApiProduct/ApiReceipt эти поля реально приходят числами.
 export interface DashboardChange {
