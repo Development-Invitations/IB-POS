@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
-import { ApiError, getBackups, getProductsCsv, getSettings, runBackup, updateSettings } from "../lib/api";
+import { ApiError, downloadBackup, getBackups, getProductsCsv, getSettings, runBackup, updateSettings } from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
 import type { ApiBackup, ApiSettings } from "../types/api";
 import type { AuthSession } from "../types/auth";
@@ -36,6 +36,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [backupBusy, setBackupBusy] = useState(false);
+  const [downloadingBackupId, setDownloadingBackupId] = useState<string | null>(null);
   const [exportBusy, setExportBusy] = useState(false);
 
   useEffect(() => {
@@ -113,6 +114,24 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     }
   }
 
+  async function handleDownloadBackup(backup: ApiBackup) {
+    setDownloadingBackupId(backup.id);
+    try {
+      const json = await downloadBackup(session.accessToken, backup.id);
+      const blob = new Blob([json], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup-${backup.id}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // не критично — кнопка остаётся доступной для повтора
+    } finally {
+      setDownloadingBackupId(null);
+    }
+  }
+
   async function handleExportCsv() {
     setExportBusy(true);
     try {
@@ -138,8 +157,6 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       </div>
     );
   }
-
-  const lastBackup = backups[0];
 
   return (
     <div className="space-y-4">
@@ -261,12 +278,39 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
 
           <div className="space-y-4">
             <div className="rounded-xl bg-white p-4 shadow-sm">
-              <h3 className="mb-2 text-sm font-semibold text-slate-700">{t("settings.backupTitle")}</h3>
-              <p className="text-xs text-slate-400">
-                {lastBackup
-                  ? `${t("settings.lastBackup")}: ${new Date(lastBackup.createdAt).toLocaleString("ru-RU")}`
-                  : t("settings.noBackups")}
-              </p>
+              <h3 className="mb-1 text-sm font-semibold text-slate-700">{t("settings.backupTitle")}</h3>
+              <p className="mb-3 text-xs text-slate-400">{t("settings.backupHint")}</p>
+
+              {backups.length === 0 ? (
+                <p className="text-xs text-slate-400">{t("settings.noBackups")}</p>
+              ) : (
+                <div className="max-h-48 space-y-1 overflow-y-auto">
+                  {backups.map((backup) => (
+                    <div
+                      key={backup.id}
+                      className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-medium text-slate-700">
+                          {new Date(backup.createdAt).toLocaleString("ru-RU")}
+                        </div>
+                        <div className="text-[11px] text-slate-400">
+                          {t("settings.backupSizeKb", { size: (backup.sizeBytes / 1024).toFixed(1) })} ·{" "}
+                          {backup.trigger === "MANUAL" ? t("settings.backupManual") : t("settings.backupAuto")}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDownloadBackup(backup)}
+                        disabled={downloadingBackupId === backup.id}
+                        className="shrink-0 text-xs font-medium text-accent hover:underline disabled:opacity-40"
+                      >
+                        {downloadingBackupId === backup.id ? t("common.loading") : t("settings.downloadBackup")}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               <button
                 onClick={handleCreateBackup}
                 disabled={backupBusy}

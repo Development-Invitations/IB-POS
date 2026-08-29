@@ -37,11 +37,17 @@ interface EquipmentScreenProps {
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER"];
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
 
-// Только грубая проверка "похоже на IP/Bluetooth" для выбора, какую кнопку показать (тест vs
-// ручная отметка) — точную проверку и саму проверку связи делает сервер (equipment.service.ts).
+// Только грубая проверка "похоже на IP/COM/Bluetooth/USB" для выбора, какую кнопку показать
+// (тест vs ручная отметка, если способ подключения вообще не указан) — точную проверку и саму
+// проверку связи делает сервер (equipment.service.ts).
 const IP_HINT_PATTERN = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
+const COM_HINT_PATTERN = /\bCOM\d{1,3}\b/i;
 const BT_HINT_PATTERN = /^BT\s+/i;
-const TESTABLE_PATTERN = new RegExp(`${IP_HINT_PATTERN.source}|${BT_HINT_PATTERN.source}`, "i");
+const USB_HINT_PATTERN = /^USB\s+/i;
+const TESTABLE_PATTERN = new RegExp(
+  `${IP_HINT_PATTERN.source}|${COM_HINT_PATTERN.source}|${BT_HINT_PATTERN.source}|${USB_HINT_PATTERN.source}`,
+  "i",
+);
 
 function equipmentIcon(item: ApiEquipment, className: string) {
   if (item.imageUrl) {

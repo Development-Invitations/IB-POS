@@ -1,7 +1,15 @@
 // Минимальный CSV-парсер/сериализатор (Этап 7/8 — импорт/экспорт товаров и отчётов).
-// Поддерживает запятую как разделитель, поля в кавычках (в т.ч. с запятыми/переводами
+// Разделитель — точка с запятой, а не запятая: у Excel на русской/узбекской локали Windows
+// системный разделитель списков — ";", и при обычном открытии .csv двойным щелчком Excel режет
+// строки именно по нему, а не по запятой из содержимого файла (без BOM+";" всё содержимое
+// уезжало в одну колонку A). Поддерживает поля в кавычках (в т.ч. с разделителем/переводами
 // строк внутри) и экранирование кавычек удвоением — этого достаточно для файлов из Excel/1С,
 // не тянем отдельную библиотеку ради этого.
+
+const DELIMITER = ';';
+// BOM — иначе Excel угадывает кодировку по системной кодовой странице и кириллица превращается
+// в мусор; с BOM он однозначно определяет UTF-8.
+const BOM = '﻿';
 
 export function parseCsv(text: string): string[][] {
   const rows: string[][] = [];
@@ -19,7 +27,10 @@ export function parseCsv(text: string): string[][] {
     row = [];
   };
 
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const normalized = text
+    .replace(/^﻿/, '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n');
   for (let i = 0; i < normalized.length; i++) {
     const ch = normalized[i];
 
@@ -39,7 +50,7 @@ export function parseCsv(text: string): string[][] {
 
     if (ch === '"') {
       inQuotes = true;
-    } else if (ch === ',') {
+    } else if (ch === DELIMITER) {
       pushField();
     } else if (ch === '\n') {
       pushRow();
@@ -55,14 +66,21 @@ export function parseCsv(text: string): string[][] {
 }
 
 function escapeCell(value: string): string {
-  if (/[",\n]/.test(value)) {
+  if (
+    value.includes('"') ||
+    value.includes(DELIMITER) ||
+    value.includes('\n')
+  ) {
     return `"${value.replace(/"/g, '""')}"`;
   }
   return value;
 }
 
 export function toCsv(rows: (string | number | null | undefined)[][]): string {
-  return rows
-    .map((row) => row.map((cell) => escapeCell(String(cell ?? ''))).join(','))
+  const body = rows
+    .map((row) =>
+      row.map((cell) => escapeCell(String(cell ?? ''))).join(DELIMITER),
+    )
     .join('\r\n');
+  return BOM + body;
 }

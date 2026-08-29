@@ -22,22 +22,34 @@ const KINDS: EquipmentKind[] = [
   "OTHER",
 ];
 
-type ConnectionMode = "manual" | "ip" | "bluetooth";
+type ConnectionMode = "com" | "ip" | "bluetooth" | "usb";
 
 // Те же паттерны, что и на сервере (equipment.service.ts) — нужны здесь только чтобы при
 // редактировании понять, в каком режиме показать форму, сама проверка при сохранении не
 // выполняется.
 const IP_PATTERN =
   /\b((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})(?::(\d{1,5}))?\b/;
+const COM_PATTERN = /\bCOM(\d{1,3})\b/i;
 const BT_PATTERN = /^BT\s+(.+)$/i;
+const USB_PATTERN = /^USB\s+(.+)$/i;
 
 function parseIp(info: string | null | undefined): { ip: string; port: string } | null {
   const match = info?.match(IP_PATTERN);
   return match ? { ip: match[1], port: match[2] ?? "" } : null;
 }
 
+function parseCom(info: string | null | undefined): string | null {
+  const match = info?.match(COM_PATTERN);
+  return match ? `COM${match[1]}` : null;
+}
+
 function parseBt(info: string | null | undefined): string | null {
   const match = info?.match(BT_PATTERN);
+  return match ? match[1].trim() : null;
+}
+
+function parseUsb(info: string | null | undefined): string | null {
+  const match = info?.match(USB_PATTERN);
   return match ? match[1].trim() : null;
 }
 
@@ -48,17 +60,20 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
 
   const initialIp = parseIp(equipment?.connectionInfo);
   const initialBt = !initialIp ? parseBt(equipment?.connectionInfo) : null;
+  const initialUsb = !initialIp && !initialBt ? parseUsb(equipment?.connectionInfo) : null;
+  const initialCom = !initialIp && !initialBt && !initialUsb ? parseCom(equipment?.connectionInfo) : null;
 
   const [kind, setKind] = useState<EquipmentKind>(equipment?.kind ?? "OTHER");
   const [label, setLabel] = useState(equipment?.label ?? "");
   const [description, setDescription] = useState(equipment?.description ?? "");
   const [connectionMode, setConnectionMode] = useState<ConnectionMode>(
-    initialIp ? "ip" : initialBt ? "bluetooth" : "manual",
+    initialIp ? "ip" : initialBt ? "bluetooth" : initialUsb ? "usb" : "com",
   );
-  const [manualInfo, setManualInfo] = useState(initialIp || initialBt ? "" : (equipment?.connectionInfo ?? ""));
+  const [comPort, setComPort] = useState(initialCom ?? "");
   const [ipAddress, setIpAddress] = useState(initialIp?.ip ?? "");
   const [ipPort, setIpPort] = useState(initialIp?.port ?? "");
   const [btName, setBtName] = useState(initialBt ?? "");
+  const [usbName, setUsbName] = useState(initialUsb ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     equipment?.imageUrl ? `${API_BASE}${equipment.imageUrl}` : null,
@@ -101,7 +116,11 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
             ? btName.trim()
               ? `BT ${btName.trim()}`
               : undefined
-            : manualInfo.trim() || undefined;
+            : connectionMode === "usb"
+              ? usbName.trim()
+                ? `USB ${usbName.trim()}`
+                : undefined
+              : comPort.trim() || undefined;
 
       const payload = {
         kind,
@@ -219,20 +238,20 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
 
           <div>
             <span className="block text-xs font-medium text-slate-500">{t("equipment.connectionMode")}</span>
-            <div className="mt-1 flex gap-2 rounded-lg bg-slate-100 p-1">
+            <div className="mt-1 grid grid-cols-4 gap-1 rounded-lg bg-slate-100 p-1">
               <button
                 type="button"
-                onClick={() => setConnectionMode("manual")}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                  connectionMode === "manual" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                onClick={() => setConnectionMode("com")}
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+                  connectionMode === "com" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                {t("equipment.connectionModeManual")}
+                {t("equipment.connectionModeCom")}
               </button>
               <button
                 type="button"
                 onClick={() => setConnectionMode("ip")}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
                   connectionMode === "ip" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
@@ -241,27 +260,34 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
               <button
                 type="button"
                 onClick={() => setConnectionMode("bluetooth")}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
                   connectionMode === "bluetooth" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 {t("equipment.connectionModeBluetooth")}
               </button>
+              <button
+                type="button"
+                onClick={() => setConnectionMode("usb")}
+                className={`rounded-md px-2 py-1.5 text-xs font-semibold transition ${
+                  connectionMode === "usb" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("equipment.connectionModeUsb")}
+              </button>
             </div>
           </div>
 
-          {connectionMode === "manual" && (
+          {connectionMode === "com" && (
             <label className="block text-xs font-medium text-slate-500">
-              {t("equipment.connectionInfo")}
+              {t("equipment.comPort")}
               <input
-                value={manualInfo}
-                onChange={(e) => setManualInfo(e.target.value)}
-                placeholder={t("equipment.connectionInfoPlaceholder")}
+                value={comPort}
+                onChange={(e) => setComPort(e.target.value)}
+                placeholder={t("equipment.comPortPlaceholder")}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
-              <span className="mt-1 block text-[11px] font-normal text-slate-400">
-                {t("equipment.connectionInfoHint")}
-              </span>
+              <span className="mt-1 block text-[11px] font-normal text-slate-400">{t("equipment.comHint")}</span>
             </label>
           )}
 
@@ -301,6 +327,19 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
               <span className="mt-1 block text-[11px] font-normal text-slate-400">{t("equipment.btHint")}</span>
+            </label>
+          )}
+
+          {connectionMode === "usb" && (
+            <label className="block text-xs font-medium text-slate-500">
+              {t("equipment.usbName")}
+              <input
+                value={usbName}
+                onChange={(e) => setUsbName(e.target.value)}
+                placeholder={t("equipment.usbNamePlaceholder")}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <span className="mt-1 block text-[11px] font-normal text-slate-400">{t("equipment.usbHint")}</span>
             </label>
           )}
 

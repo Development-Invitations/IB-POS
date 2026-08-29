@@ -555,3 +555,15 @@ export function getBackups(token: string) {
 export function runBackup(token: string) {
   return request<ApiBackup>("/backups/run", { method: "POST" }, token);
 }
+
+// JSON-снимок, не через общий request() — нужен сырой текст ответа для скачивания файлом.
+export async function downloadBackup(token: string, id: string): Promise<string> {
+  const res = await fetch(`${API_BASE}/backups/${id}/download`, {
+    headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) {
+    throw new ApiError(res.statusText, res.status);
+  }
+  return res.text();
+}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError, getCustomers } from "../lib/api";
 import { formatSum } from "../lib/format";
@@ -47,17 +47,16 @@ export function CustomersScreen({ session }: CustomersScreenProps) {
 
   // Раньше это были два отдельных useEffect (по session.accessToken и по search) — оба
   // срабатывают при первом монтировании (search стартует с "", это тоже "изменение" с точки
-  // зрения React), поэтому при каждом переходе на экран уходило два запроса подряд: сразу и
-  // ещё раз через 300 мс — экран дёргался. Один эффект, debounce пропускается только на
-  // первом срабатывании.
-  const isFirstRun = useRef(true);
+  // зрения React), поэтому при каждом переходе на экран уходило два запроса подряд — экран
+  // дёргался. Промежуточная версия с ref-флагом "первый запуск" тоже дёргалась — в
+  // React.StrictMode (см. main.tsx) эффекты в dev-сборке нарочно вызываются дважды подряд
+  // (mount → cleanup → mount), а ref переживает этот цикл, поэтому второй вызов уже считал
+  // себя "не первым" и всё равно планировал debounce-перезапрос. Без ref: задержка вместо
+  // ветвления — на монтировании (search === "") эффективно 0 мс, при поиске — 300 мс, а
+  // cleanup всегда отменяет предыдущий таймер, включая тот, что StrictMode планирует и тут же
+  // размонтирует синхронно до того, как setTimeout успеет сработать.
   useEffect(() => {
-    if (isFirstRun.current) {
-      isFirstRun.current = false;
-      load();
-      return;
-    }
-    const id = setTimeout(() => load(search), 300);
+    const id = setTimeout(() => load(search), search ? 300 : 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.accessToken, search]);

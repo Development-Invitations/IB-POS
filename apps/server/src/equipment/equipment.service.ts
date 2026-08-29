@@ -14,15 +14,18 @@ import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 
 const execFileAsync = promisify(execFile);
 
-// Строгий IPv4 (каждый октет 0–255) с необязательным портом через двоеточие — сетевые
-// устройства можно честно проверить без реального драйвера (см. testConnection ниже).
+// Строгий IPv4 (каждый октет 0–255) с необязательным портом через двоеточие.
 const IP_PATTERN =
   /\b((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})(?::(\d{1,5}))?\b/;
 
-// "BT <имя устройства>" — второй проверяемый способ (см. EquipmentFormModal.tsx, режим
-// "По Bluetooth"). COM-порт/модель и произвольный текст остаются на ручное подтверждение —
-// для них честной проверки без реального драйвера нет.
+// COM-порт, например "COM3" (см. EquipmentFormModal.tsx, режим "COM-порт").
+const COM_PATTERN = /\bCOM(\d{1,3})\b/i;
+
+// "BT <имя устройства>" (режим "По Bluetooth") и "USB <имя устройства>" (режим "По USB") —
+// имя произвольное, поэтому, в отличие от IP/COM, у него нет собственной распознаваемой формы,
+// и нужен префикс-тег, чтобы отличить один режим от другого.
 const BT_PATTERN = /^BT\s+(.+)$/i;
+const USB_PATTERN = /^USB\s+(.+)$/i;
 
 function tcpProbe(
   host: string,
@@ -59,17 +62,14 @@ async function pingProbe(host: string): Promise<boolean> {
   }
 }
 
-// Windows-only: спрашиваем у диспетчера устройств, есть ли Bluetooth-устройство с таким именем
-// в состоянии "OK". Ограничение честности: PnP-статус на Windows не всегда отличает "устройство
-// сопряжено, но сейчас выключено/вне зоны" от "реально подключено прямо сейчас" — это тот же
-// класс приближения, что и ping для IP, не гарантия работы устройства. Имя передаём отдельным
-// аргументом процесса (через $args[0] в скрипте), а не подставляем в текст команды, чтобы
-// свободный текст пользователя не мог быть интерпретирован как часть PowerShell-скрипта.
-async function bluetoothProbe(name: string): Promise<boolean> {
+// Общая обвязка для проверок через PnP-диспетчер устройств Windows (Bluetooth/USB ниже) —
+// свободный текст пользователя передаётся отдельным аргументом процесса ($args[0] в скрипте),
+// а не подставляется в текст команды, чтобы его нельзя было интерпретировать как код PowerShell.
+async function pnpDeviceProbe(name: string, filter: string): Promise<boolean> {
   if (process.platform !== 'win32') return false;
   const script =
     '$n = $args[0]; ' +
-    'Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | ' +
+    `Get-PnpDevice ${filter} -ErrorAction SilentlyContinue | ` +
     "Where-Object { $_.FriendlyName -like ('*' + $n + '*') -and $_.Status -eq 'OK' } | " +
     "Select-Object -First 1 | ForEach-Object { 'FOUND' }";
   try {
@@ -81,6 +81,34 @@ async function bluetoothProbe(name: string): Promise<boolean> {
       name,
     ]);
     return stdout.includes('FOUND');
+  } catch {
+    return false;
+  }
+}
+
+// Windows-only: спрашиваем у диспетчера устройств, есть ли Bluetooth/USB-устройство с таким
+// именем в состоянии "OK". Ограничение честности: PnP-статус на Windows не всегда отличает
+// "устройство сопряжено/подключалось раньше, но сейчас выключено" от "реально подключено прямо
+// сейчас" — тот же класс приближения, что и ping для IP, не гарантия работы устройства.
+function bluetoothProbe(name: string): Promise<boolean> {
+  return pnpDeviceProbe(name, '-Class Bluetooth');
+}
+
+// USB — без -Class (устройство может числиться в разных классах: Printer/HIDClass/Ports/USB),
+// но обязательно с реальным USB InstanceId, чтобы не зацепить случайное устройство с похожим
+// именем на другой шине.
+function usbProbe(name: string): Promise<boolean> {
+  return pnpDeviceProbe(name, "| Where-Object { $_.InstanceId -like 'USB*' }");
+}
+
+// Windows-only: пытаемся открыть COM-порт через встроенную команду `mode` — если порта не
+// существует или он занят другим процессом, команда завершится с ошибкой. Это подтверждает
+// только то, что порт есть и доступен ОС, а не то, что за ним действительно нужное устройство.
+async function comProbe(portName: string): Promise<boolean> {
+  if (process.platform !== 'win32') return false;
+  try {
+    await execFileAsync('mode', [portName]);
+    return true;
   } catch {
     return false;
   }
@@ -156,13 +184,21 @@ export class EquipmentService {
     }
 
     const ipMatch = existing.connectionInfo?.match(IP_PATTERN);
-    const btMatch = !ipMatch
-      ? existing.connectionInfo?.match(BT_PATTERN)
+    const comMatch = !ipMatch
+      ? existing.connectionInfo?.match(COM_PATTERN)
       : undefined;
+    const btMatch =
+      !ipMatch && !comMatch
+        ? existing.connectionInfo?.match(BT_PATTERN)
+        : undefined;
+    const usbMatch =
+      !ipMatch && !comMatch && !btMatch
+        ? existing.connectionInfo?.match(USB_PATTERN)
+        : undefined;
 
-    if (!ipMatch && !btMatch) {
+    if (!ipMatch && !comMatch && !btMatch && !usbMatch) {
       throw new BadRequestException(
-        'В параметрах подключения не найден ни IP-адрес, ни Bluetooth-устройство — автоматическая проверка доступна только для них. Для остальных отметьте подключение вручную.',
+        'В параметрах подключения не указан ни один проверяемый способ (IP, COM-порт, Bluetooth, USB) — заполните способ подключения в форме оборудования.',
       );
     }
 
@@ -180,14 +216,30 @@ export class EquipmentService {
       failureMessage = port
         ? `Нет ответа от ${host}:${port}. Проверьте, что устройство включено, IP и порт указаны верно, и оно в одной сети с этим компьютером.`
         : `${host} не отвечает на ping. Проверьте, что устройство включено, IP указан верно, и оно в одной сети с этим компьютером.`;
-    } else {
-      const name = btMatch![1].trim();
+    } else if (comMatch) {
+      const port = `COM${comMatch[1]}`;
+      reachable = await comProbe(port);
+      successMessage = `Порт ${port} доступен`;
+      failureMessage =
+        process.platform === 'win32'
+          ? `Порт ${port} не найден или занят другим приложением. Проверьте, что устройство подключено и порт указан верно.`
+          : 'Автоматическая проверка COM-порта поддерживается только на Windows. Отметьте подключение вручную.';
+    } else if (btMatch) {
+      const name = btMatch[1].trim();
       reachable = await bluetoothProbe(name);
       successMessage = `Bluetooth-устройство «${name}» подключено`;
       failureMessage =
         process.platform === 'win32'
           ? `Bluetooth-устройство «${name}» не найдено среди подключённых. Проверьте, что оно включено и сопряжено с этим компьютером.`
           : 'Автоматическая проверка Bluetooth поддерживается только на Windows. Отметьте подключение вручную.';
+    } else {
+      const name = usbMatch![1].trim();
+      reachable = await usbProbe(name);
+      successMessage = `USB-устройство «${name}» подключено`;
+      failureMessage =
+        process.platform === 'win32'
+          ? `USB-устройство «${name}» не найдено среди подключённых. Проверьте, что оно включено и подключено к этому компьютеру.`
+          : 'Автоматическая проверка USB поддерживается только на Windows. Отметьте подключение вручную.';
     }
 
     if (reachable) {
