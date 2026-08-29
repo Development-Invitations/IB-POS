@@ -15,6 +15,7 @@ import {
   ChevronLeftIcon,
 } from "./icons";
 import type { ScreenKey } from "../types/screen";
+import type { Role } from "../types/auth";
 
 interface NavItem {
   key: string;
@@ -37,16 +38,34 @@ const NAV_ITEMS: NavItem[] = [
   { key: "settings", labelKey: "nav.settings", icon: SettingsIcon, screen: "settings" },
 ];
 
+// Раздел 3 ТЗ (docs/Roadmap_TZ.md) — кто вообще имеет доступ к модулю (✅ или 👁), не важно,
+// полный или только просмотр: сами экраны внутри уже разводят полный/ограниченный доступ.
+// Пункты без screen ("Главная", "Возвраты" — ещё не отдельные экраны) не фильтруются, они и
+// так никуда не ведут.
+const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
+  sale: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
+  products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
+  customers: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
+  discounts: ["ADMIN", "MANAGER", "ACCOUNTANT"],
+  reports: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
+  shifts: ["ADMIN", "MANAGER", "CASHIER"],
+  integrations: ["ADMIN"],
+  equipment: ["ADMIN", "MANAGER", "CASHIER"],
+  settings: ["ADMIN"],
+};
+
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   activeScreen: ScreenKey;
   onNavigate: (screen: ScreenKey) => void;
+  role: Role;
   className?: string;
 }
 
-export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, className }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, role, className }: SidebarProps) {
   const { t } = useTranslation();
+  const visibleItems = NAV_ITEMS.filter((item) => !item.screen || SCREEN_ACCESS[item.screen].includes(role));
 
   return (
     <aside
@@ -55,7 +74,7 @@ export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, classNa
       } ${className ?? ""}`}
     >
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = item.screen === activeScreen;
           return (

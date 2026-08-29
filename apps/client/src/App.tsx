@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TitleBar } from "./components/TitleBar";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
@@ -38,9 +39,15 @@ import { clearSession, loadSession, saveSession } from "./lib/session";
 import type { CartProduct } from "./types/catalog";
 import type { PaymentMethod } from "./types/payment";
 import type { ScreenKey } from "./types/screen";
-import type { AuthSession } from "./types/auth";
+import type { AuthSession, Role } from "./types/auth";
 import type { ApiShift, ApiWorkstation, BackendPaymentMethod } from "./types/api";
 import "./App.css";
+
+// Только у кассира вся работа в системе сводится к кассе — открыть смену для него обязательно
+// с самого входа. Остальным ролям (Раздел 3 ТЗ) смена нужна, только если они сами захотят
+// пробить чек на экране «Продажа» — админ, управляющий и т.д. должны сразу попадать в панель
+// и видеть отчёты/настройки/список сотрудников без выбора кассы.
+const SHIFT_GATED_ROLES: Role[] = ["CASHIER"];
 
 function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): BackendPaymentMethod {
   switch (method) {
@@ -58,6 +65,7 @@ function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): B
 }
 
 function App() {
+  const { t } = useTranslation();
   const [session, setSession] = useState<AuthSession | null>(() => loadSession());
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [prefillOrgId, setPrefillOrgId] = useState<string | undefined>(undefined);
@@ -123,10 +131,10 @@ function App() {
   }, [session]);
 
   useEffect(() => {
-    if (!session || !shift) return;
+    if (!session) return;
     loadCatalog();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, shift]);
+  }, [session]);
 
   const visibleProducts = useMemo(
     () =>
@@ -296,7 +304,7 @@ function App() {
     );
   }
 
-  if (!shift || !workstation) {
+  if ((!shift || !workstation) && SHIFT_GATED_ROLES.includes(session.role)) {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <TitleBar />
@@ -319,8 +327,8 @@ function App() {
       <TitleBar />
       <Header
         session={session}
-        workstationName={workstation.name}
-        shiftOpenedAt={shift.openedAt}
+        workstationName={workstation?.name ?? null}
+        shiftOpenedAt={shift?.openedAt ?? null}
         products={products}
         onSelectProduct={(product) => {
           addToCart(product);
@@ -336,10 +344,24 @@ function App() {
           onToggle={() => setSidebarCollapsed((v) => !v)}
           activeScreen={activeScreen}
           onNavigate={setActiveScreen}
+          role={session.role}
           className="no-print"
         />
 
-        {activeScreen === "sale" && (
+        {activeScreen === "sale" && (!shift || !workstation) && (
+          <main className="flex-1 overflow-y-auto">
+            <ShiftSetupScreen
+              session={session}
+              onReady={(readyShift, readyWorkstation) => {
+                setShift(readyShift);
+                setWorkstation(readyWorkstation);
+              }}
+              onLogout={handleLogout}
+            />
+          </main>
+        )}
+
+        {activeScreen === "sale" && shift && workstation && (
           <>
             <main className="flex-1 space-y-4 overflow-y-auto p-4">
               <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
@@ -394,7 +416,13 @@ function App() {
 
         {activeScreen === "shifts" && (
           <main className="flex-1 overflow-y-auto p-4">
-            <ShiftsScreen session={session} storeId={workstation.storeId} />
+            {workstation ? (
+              <ShiftsScreen session={session} storeId={workstation.storeId} />
+            ) : (
+              <p className="mx-auto max-w-md pt-16 text-center text-sm text-slate-500">
+                {t("shifts.selectWorkstationFirst")}
+              </p>
+            )}
           </main>
         )}
 

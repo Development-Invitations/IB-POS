@@ -438,6 +438,20 @@ export async function uploadEquipmentImage(token: string, id: string, file: Blob
   return (await res.json()) as ApiEquipment;
 }
 
+export interface EquipmentConnectionTestResult {
+  equipment: ApiEquipment;
+  reachable: boolean;
+  message: string;
+}
+
+export function testEquipmentConnection(token: string, id: string) {
+  return request<EquipmentConnectionTestResult>(
+    `/equipment/${id}/test-connection`,
+    { method: "POST" },
+    token,
+  );
+}
+
 export interface PeriodFilter {
   from?: string;
   to?: string;

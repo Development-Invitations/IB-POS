@@ -35,7 +35,8 @@
   "header": {
     "workstation": "Касса",
     "online": "Онлайн",
-    "shift": "Смена"
+    "shift": "Смена",
+    "noShift": "Смена очилмаган"
   },
   "tabs": {
     "products": "Маҳсулотлар",
@@ -205,6 +206,7 @@
     "commentPlaceholder": "Изоҳ (ихтиёрий)",
     "deposit": "Киритиш",
     "empty": "Сменалар топилмади",
+    "selectWorkstationFirst": "Бу нуқтанинг сменаларини кўриш учун «Сотув» экранида кассани танланг",
     "loadError": "Смена маълумотларини юклаб бўлмади",
     "movementError": "Амални бажариб бўлмади",
     "noFiscalDevice": "Касса уланмаган — Z-ҳисобот шакллантирилмади",
@@ -327,11 +329,18 @@
     "accessDenied": "Сизнинг ролингизда «Ускуналар» бўлимига кириш ҳуқуқи йўқ",
     "deactivateTitle": "Ускунани фаолсизлантириш",
     "deactivateConfirm": "«{{name}}» фаол рўйхатдан яширилади. Ёзув сақланади ва уни қайтадан ёқиш мумкин.",
+    "connectionMode": "Уланиш усули",
+    "connectionModeManual": "Оддий",
+    "connectionModeIp": "IP орқали",
     "connectionInfo": "Уланиш параметрлари",
-    "connectionInfoPlaceholder": "Масалан, COM3 9600 ёки IP 192.168.1.20",
-    "connectionInfoHint": "Ихтиёрий — порт, IP, модел ва ҳ.к., эслаб қолиш учун",
+    "connectionInfoPlaceholder": "Масалан, COM3 9600",
+    "connectionInfoHint": "Ихтиёрий — порт, модел ва ҳ.к., эслаб қолиш учун. Бундай уланишни текшириб бўлмайди — фақат қўлда белгилаш мумкин.",
+    "ipAddress": "IP-манзил",
+    "ipPort": "Порт",
+    "ipHint": "Порт ихтиёрий: усиз текшириш ping орқали, порт билан — тўғридан-тўғри уланиш орқали боради.",
     "markConnected": "Уланган деб белгилаш",
-    "markDisconnected": "Узилган деб белгилаш"
+    "markDisconnected": "Узилган деб белгилаш",
+    "testConnection": "Уланишни текшириш"
   },
   "settings": {
     "tabs": {

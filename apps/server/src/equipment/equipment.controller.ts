@@ -72,6 +72,15 @@ export class EquipmentController {
   }
 
   @Roles(Role.ADMIN)
+  @Post(':id/test-connection')
+  testConnection(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.equipment.testConnection(user.organizationId, id);
+  }
+
+  @Roles(Role.ADMIN)
   @Post(':id/image')
   @UseInterceptors(
     FileInterceptor('file', {

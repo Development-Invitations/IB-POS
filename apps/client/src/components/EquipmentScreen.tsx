@@ -1,7 +1,14 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { useTranslation } from "react-i18next";
 import { useDeviceAgent } from "../lib/use-device-agent";
-import { API_BASE, ApiError, deactivateEquipment, getEquipment, updateEquipment } from "../lib/api";
+import {
+  API_BASE,
+  ApiError,
+  deactivateEquipment,
+  getEquipment,
+  testEquipmentConnection,
+  updateEquipment,
+} from "../lib/api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { EquipmentFormModal } from "./EquipmentFormModal";
 import { CheckCircleIcon, CloseIcon, MonitorIcon, PlusIcon } from "./icons";
@@ -29,6 +36,10 @@ interface EquipmentScreenProps {
 
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER"];
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
+
+// Только грубая проверка "похоже на IP" для выбора, какую кнопку показать (тест vs ручная
+// отметка) — точную проверку и саму проверку связи делает сервер (см. equipment.service.ts).
+const IP_HINT_PATTERN = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
 
 function equipmentIcon(item: ApiEquipment, className: string) {
   if (item.imageUrl) {
@@ -66,6 +77,8 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { ok: boolean; text: string }>>({});
 
   async function load() {
     setLoading(true);
@@ -115,6 +128,27 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
       setItems((prev) => prev.map((i) => (i.id === saved.id ? saved : i)));
     } catch (err) {
       setRowError(err instanceof ApiError ? err.message : t("equipment.saveError"));
+    }
+  }
+
+  async function handleTestConnection(item: ApiEquipment) {
+    setTestingId(item.id);
+    setTestResults((prev) => {
+      const next = { ...prev };
+      delete next[item.id];
+      return next;
+    });
+    try {
+      const result = await testEquipmentConnection(session.accessToken, item.id);
+      setItems((prev) => prev.map((i) => (i.id === result.equipment.id ? result.equipment : i)));
+      setTestResults((prev) => ({ ...prev, [item.id]: { ok: result.reachable, text: result.message } }));
+    } catch (err) {
+      setTestResults((prev) => ({
+        ...prev,
+        [item.id]: { ok: false, text: err instanceof ApiError ? err.message : t("equipment.saveError") },
+      }));
+    } finally {
+      setTestingId(null);
     }
   }
 
@@ -271,6 +305,13 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
                         </>
                       )}
                     </div>
+                    {testResults[item.id] && (
+                      <div
+                        className={`mt-1 text-xs ${testResults[item.id].ok ? "text-emerald-600" : "text-red-600"}`}
+                      >
+                        {testResults[item.id].text}
+                      </div>
+                    )}
                   </div>
 
                   {canManage && (
@@ -289,14 +330,23 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
                           {item.isActive ? t("products.deactivate") : t("products.activate")}
                         </button>
                       </div>
-                      {item.isActive && (
-                        <button
-                          onClick={() => handleToggleConnected(item)}
-                          className="text-xs font-medium text-slate-400 hover:text-slate-700"
-                        >
-                          {item.isConnected ? t("equipment.markDisconnected") : t("equipment.markConnected")}
-                        </button>
-                      )}
+                      {item.isActive &&
+                        (item.connectionInfo && IP_HINT_PATTERN.test(item.connectionInfo) ? (
+                          <button
+                            onClick={() => handleTestConnection(item)}
+                            disabled={testingId === item.id}
+                            className="text-xs font-medium text-slate-400 hover:text-slate-700 disabled:opacity-40"
+                          >
+                            {testingId === item.id ? t("equipment.testing") : t("equipment.testConnection")}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleToggleConnected(item)}
+                            className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                          >
+                            {item.isConnected ? t("equipment.markDisconnected") : t("equipment.markConnected")}
+                          </button>
+                        ))}
                     </div>
                   )}
                 </div>

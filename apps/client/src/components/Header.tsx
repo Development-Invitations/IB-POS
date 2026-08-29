@@ -24,8 +24,8 @@ const ROLE_KEY: Record<Role, string> = {
 
 interface HeaderProps {
   session: AuthSession;
-  workstationName: string;
-  shiftOpenedAt: string;
+  workstationName: string | null;
+  shiftOpenedAt: string | null;
   products: CartProduct[];
   onSelectProduct: (product: CartProduct) => void;
   onLogout: () => void;
@@ -163,22 +163,34 @@ export function Header({
       </div>
 
       <div className="flex items-center gap-4 text-sm">
-        <div className="text-right">
-          <div className="font-semibold text-slate-800">{workstationName}</div>
-          <div className={`flex items-center justify-end gap-1 text-xs ${online ? "text-emerald-600" : "text-red-600"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-red-500"}`} />
-            {online ? t("header.online") : t("auth.networkError")}
-          </div>
-        </div>
+        {workstationName && (
+          <>
+            <div className="text-right">
+              <div className="font-semibold text-slate-800">{workstationName}</div>
+              <div
+                className={`flex items-center justify-end gap-1 text-xs ${online ? "text-emerald-600" : "text-red-600"}`}
+              >
+                <span className={`h-1.5 w-1.5 rounded-full ${online ? "bg-emerald-500" : "bg-red-500"}`} />
+                {online ? t("header.online") : t("auth.networkError")}
+              </div>
+            </div>
 
-        <div className="h-8 w-px bg-slate-200" />
+            <div className="h-8 w-px bg-slate-200" />
+          </>
+        )}
 
-        <button className="text-right hover:opacity-70" onClick={onCloseShift}>
-          <div className="font-semibold text-slate-800">{t("header.shift")}</div>
-          <div className="text-xs text-slate-400">
-            {new Date(shiftOpenedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        {shiftOpenedAt ? (
+          <button className="text-right hover:opacity-70" onClick={onCloseShift}>
+            <div className="font-semibold text-slate-800">{t("header.shift")}</div>
+            <div className="text-xs text-slate-400">
+              {new Date(shiftOpenedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </div>
+          </button>
+        ) : (
+          <div className="text-right">
+            <div className="font-semibold text-slate-400">{t("header.noShift")}</div>
           </div>
-        </button>
+        )}
 
         <div className="h-8 w-px bg-slate-200" />
 

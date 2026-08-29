@@ -22,15 +22,33 @@ const KINDS: EquipmentKind[] = [
   "OTHER",
 ];
 
+type ConnectionMode = "manual" | "ip";
+
+// Тот же строгий IPv4(:порт) паттерн, что и на сервере (equipment.service.ts) — нужен здесь
+// только чтобы при редактировании понять, в каком режиме показать форму, сама проверка при
+// сохранении не выполняется.
+const IP_PATTERN =
+  /\b((?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})(?::(\d{1,5}))?\b/;
+
+function parseIp(info: string | null | undefined): { ip: string; port: string } | null {
+  const match = info?.match(IP_PATTERN);
+  return match ? { ip: match[1], port: match[2] ?? "" } : null;
+}
+
 export function EquipmentFormModal({ session, equipment, onClose, onSaved }: EquipmentFormModalProps) {
   const { t } = useTranslation();
   const isEdit = equipment !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const initialIp = parseIp(equipment?.connectionInfo);
+
   const [kind, setKind] = useState<EquipmentKind>(equipment?.kind ?? "OTHER");
   const [label, setLabel] = useState(equipment?.label ?? "");
   const [description, setDescription] = useState(equipment?.description ?? "");
-  const [connectionInfo, setConnectionInfo] = useState(equipment?.connectionInfo ?? "");
+  const [connectionMode, setConnectionMode] = useState<ConnectionMode>(initialIp ? "ip" : "manual");
+  const [manualInfo, setManualInfo] = useState(initialIp ? "" : (equipment?.connectionInfo ?? ""));
+  const [ipAddress, setIpAddress] = useState(initialIp?.ip ?? "");
+  const [ipPort, setIpPort] = useState(initialIp?.port ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     equipment?.imageUrl ? `${API_BASE}${equipment.imageUrl}` : null,
@@ -64,11 +82,18 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
     setSubmitting(true);
     setError(null);
     try {
+      const connectionInfo =
+        connectionMode === "ip"
+          ? ipAddress.trim()
+            ? `IP ${ipAddress.trim()}${ipPort.trim() ? `:${ipPort.trim()}` : ""}`
+            : undefined
+          : manualInfo.trim() || undefined;
+
       const payload = {
         kind,
         label: label.trim(),
         description: description.trim() || undefined,
-        connectionInfo: connectionInfo.trim() || undefined,
+        connectionInfo,
       };
       let saved = isEdit
         ? await updateEquipment(session.accessToken, equipment.id, payload)
@@ -178,18 +203,68 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
             />
           </label>
 
-          <label className="block text-xs font-medium text-slate-500">
-            {t("equipment.connectionInfo")}
-            <input
-              value={connectionInfo}
-              onChange={(e) => setConnectionInfo(e.target.value)}
-              placeholder={t("equipment.connectionInfoPlaceholder")}
-              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
-            />
-            <span className="mt-1 block text-[11px] font-normal text-slate-400">
-              {t("equipment.connectionInfoHint")}
-            </span>
-          </label>
+          <div>
+            <span className="block text-xs font-medium text-slate-500">{t("equipment.connectionMode")}</span>
+            <div className="mt-1 flex gap-2 rounded-lg bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setConnectionMode("manual")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  connectionMode === "manual" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("equipment.connectionModeManual")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConnectionMode("ip")}
+                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                  connectionMode === "ip" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("equipment.connectionModeIp")}
+              </button>
+            </div>
+          </div>
+
+          {connectionMode === "manual" ? (
+            <label className="block text-xs font-medium text-slate-500">
+              {t("equipment.connectionInfo")}
+              <input
+                value={manualInfo}
+                onChange={(e) => setManualInfo(e.target.value)}
+                placeholder={t("equipment.connectionInfoPlaceholder")}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+              <span className="mt-1 block text-[11px] font-normal text-slate-400">
+                {t("equipment.connectionInfoHint")}
+              </span>
+            </label>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block text-xs font-medium text-slate-500">
+                {t("equipment.ipAddress")}
+                <input
+                  value={ipAddress}
+                  onChange={(e) => setIpAddress(e.target.value)}
+                  placeholder="192.168.1.20"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </label>
+              <label className="block text-xs font-medium text-slate-500">
+                {t("equipment.ipPort")}
+                <input
+                  value={ipPort}
+                  onChange={(e) => setIpPort(e.target.value)}
+                  placeholder="9100"
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </label>
+              <span className="col-span-2 text-[11px] font-normal text-slate-400">
+                {t("equipment.ipHint")}
+              </span>
+            </div>
+          )}
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         </div>
