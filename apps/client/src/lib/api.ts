@@ -206,8 +206,9 @@ export function getWorkstations(token: string) {
   return request<ApiWorkstation[]>("/workstations", {}, token);
 }
 
-export function getShifts(token: string, storeId: string) {
-  return request<ApiShift[]>(`/shifts?storeId=${encodeURIComponent(storeId)}`, {}, token);
+export function getShifts(token: string, storeId?: string) {
+  const qs = storeId ? `?storeId=${encodeURIComponent(storeId)}` : "";
+  return request<ApiShift[]>(`/shifts${qs}`, {}, token);
 }
 
 export function openShift(

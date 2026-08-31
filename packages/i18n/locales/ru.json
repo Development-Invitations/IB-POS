@@ -41,7 +41,12 @@
   },
   "home": {
     "title": "Главная",
-    "notReady": "Раздел в разработке"
+    "loadError": "Не удалось загрузить кассы",
+    "workstationsTitle": "Кассы",
+    "working": "Работает",
+    "notWorking": "Не работает",
+    "since": "с {{time}}",
+    "noWorkstations": "Кассы не настроены"
   },
   "tabs": {
     "products": "Товары",

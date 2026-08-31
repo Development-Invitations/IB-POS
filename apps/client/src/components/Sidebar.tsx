@@ -50,10 +50,14 @@ const NAV_ITEMS: NavItem[] = [
 // везде "✅ весь бизнес"/"свои точки"). У Кассира и Зав. складом своя "главная" и так есть — их
 // основной рабочий экран ("Продажа"/"Товары", см. ROLE_HOME_SCREEN в App.tsx), отдельная сводная
 // панель им не нужна и не должна маячить в меню лишним пунктом.
-const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
+// Бухгалтер лишён "Продажи" и "Товаров" сверх Раздела 3 (там у него было "👁 просмотр" для
+// обоих) — по прямому запросу клиента: у бухгалтера это вообще не его работа, ни в каком виде.
+// Экспортируется — Header.tsx использует ту же запись для sale, чтобы не показывать поиск
+// товаров (он ведёт именно на экран "Продажа") тем, у кого туда всё равно нет доступа.
+export const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
   home: ["ADMIN", "MANAGER", "ACCOUNTANT"],
-  sale: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
-  products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
+  sale: ["ADMIN", "MANAGER", "CASHIER"],
+  products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER"],
   customers: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   discounts: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   returns: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],

@@ -41,7 +41,12 @@
   },
   "home": {
     "title": "Bosh sahifa",
-    "notReady": "Boʻlim ishlab chiqilmoqda"
+    "loadError": "Kassalarni yuklab boʻlmadi",
+    "workstationsTitle": "Kassalar",
+    "working": "Ishlayapti",
+    "notWorking": "Ishlamayapti",
+    "since": "{{time}} dan",
+    "noWorkstations": "Kassalar sozlanmagan"
   },
   "tabs": {
     "products": "Mahsulotlar",

@@ -41,7 +41,12 @@
   },
   "home": {
     "title": "Бош саҳифа",
-    "notReady": "Бўлим ишлаб чиқилмоқда"
+    "loadError": "Кассаларни юклаб бўлмади",
+    "workstationsTitle": "Кассалар",
+    "working": "Ишлаяпти",
+    "notWorking": "Ишламаяпти",
+    "since": "{{time}} дан",
+    "noWorkstations": "Кассалар созланмаган"
   },
   "tabs": {
     "products": "Маҳсулотлар",
