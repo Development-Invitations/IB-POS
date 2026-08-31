@@ -242,6 +242,7 @@ export interface ApiUser {
   login: string;
   role: Role;
   isActive: boolean;
+  salary: string | null;
   createdAt: string;
 }
 

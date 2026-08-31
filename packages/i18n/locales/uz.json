@@ -39,6 +39,10 @@
     "shift": "Smena",
     "noShift": "Smena ochilmagan"
   },
+  "home": {
+    "title": "Bosh sahifa",
+    "notReady": "Boʻlim ishlab chiqilmoqda"
+  },
   "tabs": {
     "products": "Mahsulotlar",
     "categories": "Kategoriyalar"
@@ -196,7 +200,10 @@
     "actionReceiptPaid": "Sotuv",
     "actionReceiptReturned": "Chekni qaytarish",
     "deactivateTitle": "Xodimni faolsizlantirish",
-    "deactivateConfirm": "«{{name}}» xodimi endi tizimga kira olmaydi."
+    "deactivateConfirm": "«{{name}}» xodimi endi tizimga kira olmaydi.",
+    "tabSalaries": "Ish haqi",
+    "salary": "Ish haqi",
+    "salaryTitle": "Xodim ish haqi"
   },
   "reports": {
     "tabDashboard": "Sotuvlar",

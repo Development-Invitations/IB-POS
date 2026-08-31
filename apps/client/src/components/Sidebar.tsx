@@ -23,16 +23,10 @@ interface NavItem {
   labelKey: string;
   icon: (props: { className?: string }) => ReactElement;
   screen?: ScreenKey;
-  // Для пунктов без экрана (сейчас только "Главная") — доступ не через SCREEN_ACCESS.
-  roles?: Role[];
 }
 
-// У кассира нет своей "Главной": их рабочий экран и так "Продажа" (он же экран по умолчанию
-// после входа, см. App.tsx) — отдельная сводная панель им не нужна и не должна маячить в меню.
-const NON_CASHIER_ROLES: Role[] = ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"];
-
 const NAV_ITEMS: NavItem[] = [
-  { key: "home", labelKey: "nav.home", icon: HomeIcon, roles: NON_CASHIER_ROLES },
+  { key: "home", labelKey: "nav.home", icon: HomeIcon, screen: "home" },
   { key: "sale", labelKey: "nav.sale", icon: CartIcon, screen: "sale" },
   { key: "products", labelKey: "nav.products", icon: BoxIcon, screen: "products" },
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon, screen: "customers" },
@@ -52,17 +46,27 @@ const NAV_ITEMS: NavItem[] = [
 // полностью закрывается экраном "Смены" (там есть отчёт по текущей/прошлой смене) — открывать
 // ему общий экран аналитики бизнеса, где для его роли всё равно всё запрещено (см.
 // CAN_DASHBOARD_ROLES/CAN_STOCK_ROLES в ReportsScreen.tsx), только вводит в заблуждение.
+// "Главная" — только у тех, чья работа не сводится к одному рабочему экрану (Раздел 3: у них
+// везде "✅ весь бизнес"/"свои точки"). У Кассира и Зав. складом своя "главная" и так есть — их
+// основной рабочий экран ("Продажа"/"Товары", см. ROLE_HOME_SCREEN в App.tsx), отдельная сводная
+// панель им не нужна и не должна маячить в меню лишним пунктом.
 const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
+  home: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   sale: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
   customers: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   discounts: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   returns: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   reports: ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"],
-  shifts: ["ADMIN", "MANAGER", "CASHIER"],
+  // Бухгалтер — сверх исходного ТЗ (там у него "Смены" ❌), по прямому запросу клиента: только
+  // просмотр, без открытия/закрытия и внесения/изъятия наличных (см. ShiftsScreen.tsx).
+  shifts: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   integrations: ["ADMIN"],
   equipment: ["ADMIN", "MANAGER", "CASHIER"],
-  employees: ["ADMIN"],
+  // Раздел 3 ТЗ отдаёт "Сотрудники и роли" только Админу — Бухгалтер добавлен сверх ТЗ по
+  // прямому запросу клиента: ему нужно видеть сотрудников, чтобы вести зарплаты (см. поле
+  // User.salary и ограничение по ролям в UsersService.update()).
+  employees: ["ADMIN", "ACCOUNTANT"],
   settings: ["ADMIN"],
 };
 
@@ -77,11 +81,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, role, className }: SidebarProps) {
   const { t } = useTranslation();
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.screen) return SCREEN_ACCESS[item.screen].includes(role);
-    if (item.roles) return item.roles.includes(role);
-    return true;
-  });
+  const visibleItems = NAV_ITEMS.filter((item) => !item.screen || SCREEN_ACCESS[item.screen].includes(role));
 
   return (
     <aside

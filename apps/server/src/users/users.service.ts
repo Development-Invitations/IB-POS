@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { hashSecret } from '../common/crypto';
@@ -63,6 +65,7 @@ export class UsersService {
   async update(
     organizationId: string,
     actingUserId: string,
+    actingRole: Role,
     id: string,
     dto: UpdateUserDto,
   ) {
@@ -71,6 +74,22 @@ export class UsersService {
     });
     if (!existing) {
       throw new NotFoundException('Сотрудник не найден');
+    }
+    // Бухгалтеру этот эндпоинт открыт только ради зарплаты (см. Sidebar.tsx на клиенте —
+    // "Сотрудники" не из исходного ТЗ для этой роли). Если он пришёл сюда напрямую через API
+    // с чем-то ещё, кроме salary, — честно отказываем, а не тихо игнорируем остальные поля.
+    if (actingRole === Role.ACCOUNTANT) {
+      const disallowed =
+        dto.fullName !== undefined ||
+        dto.role !== undefined ||
+        dto.isActive !== undefined ||
+        dto.pin !== undefined ||
+        dto.password !== undefined;
+      if (disallowed) {
+        throw new ForbiddenException(
+          'Бухгалтер может изменять только зарплату сотрудника',
+        );
+      }
     }
     // Иначе админ может случайно деактивировать сам себя и остаться без доступа к панели —
     // единственный способ вернуть доступ тогда — прямое вмешательство в базу.
@@ -86,6 +105,7 @@ export class UsersService {
         fullName: dto.fullName,
         role: dto.role,
         isActive: dto.isActive,
+        salary: dto.salary,
         pinHash: dto.pin ? await hashSecret(dto.pin) : undefined,
         passwordHash: dto.password ? await hashSecret(dto.password) : undefined,
       },
@@ -101,6 +121,7 @@ export class UsersService {
         fullName: dto.fullName,
         role: dto.role,
         isActive: dto.isActive,
+        salaryChanged: dto.salary !== undefined,
         pinChanged: !!dto.pin,
         passwordChanged: !!dto.password,
       },

@@ -1,9 +1,11 @@
 import {
   IsBoolean,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   Length,
+  Min,
   MinLength,
 } from 'class-validator';
 import { Role } from '@prisma/client';
@@ -34,4 +36,11 @@ export class UpdateUserDto {
   @IsString()
   @MinLength(8)
   password?: string;
+
+  // Не из исходного ТЗ — доступно и Бухгалтеру (см. Roles на UsersController.update и
+  // проверку в UsersService.update, которая для Бухгалтера пропускает только это поле).
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  salary?: number;
 }

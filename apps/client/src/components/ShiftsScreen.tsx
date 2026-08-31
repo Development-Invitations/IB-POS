@@ -11,7 +11,9 @@ interface ShiftsScreenProps {
   storeId: string;
 }
 
-const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER"];
+// Бухгалтер — сверх исходного ТЗ (см. ShiftsController.findAll на сервере), только просмотр:
+// открытие/закрытие смены и внесение/изъятие наличных ему недоступны (ShiftDetailModal.tsx).
+const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"];
 
 export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
   const { t } = useTranslation();

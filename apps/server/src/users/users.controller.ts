@@ -17,7 +17,9 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/jwt.strategy';
 
-// Раздел 3 ТЗ: «Сотрудники и роли» — доступ только у Админа.
+// Раздел 3 ТЗ: «Сотрудники и роли» — доступ только у Админа. Бухгалтер добавлен сверх ТЗ по
+// прямому запросу клиента — только чтобы видеть список сотрудников и вести зарплаты; создание,
+// роль/PIN/пароль/деактивация остаются исключительно у Админа (см. UsersService.update).
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('users')
 export class UsersController {
@@ -29,19 +31,25 @@ export class UsersController {
     return this.users.create(user.organizationId, user.userId, dto);
   }
 
-  @Roles(Role.ADMIN, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
   @Get()
   findAll(@CurrentUser() user: AuthenticatedUser) {
     return this.users.findAll(user.organizationId);
   }
 
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN, Role.ACCOUNTANT)
   @Patch(':id')
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
   ) {
-    return this.users.update(user.organizationId, user.userId, id, dto);
+    return this.users.update(
+      user.organizationId,
+      user.userId,
+      user.role,
+      id,
+      dto,
+    );
   }
 }

@@ -38,6 +38,11 @@ export class ShiftsController {
     return this.shifts.close(user.organizationId, user.userId, id, dto);
   }
 
+  // Не из исходного ТЗ (там у Бухгалтера "Смены" ❌) — добавлено по прямому запросу клиента:
+  // Бухгалтеру нужен просмотр смен. Только список и отчёт — открытие/закрытие и внесение/
+  // изъятие наличных остаются на классовом @Roles (Админ/Управляющий/Кассир), Бухгалтеру
+  // эти операции недоступны совсем, даже не задизейблены на клиенте, а закрыты и на сервере.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,

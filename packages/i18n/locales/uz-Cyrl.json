@@ -39,6 +39,10 @@
     "shift": "Смена",
     "noShift": "Смена очилмаган"
   },
+  "home": {
+    "title": "Бош саҳифа",
+    "notReady": "Бўлим ишлаб чиқилмоқда"
+  },
   "tabs": {
     "products": "Маҳсулотлар",
     "categories": "Категориялар"
@@ -196,7 +200,10 @@
     "actionReceiptPaid": "Сотув",
     "actionReceiptReturned": "Чекни қайтариш",
     "deactivateTitle": "Ходимни фаолсизлантириш",
-    "deactivateConfirm": "«{{name}}» ходими энди тизимга кира олмайди."
+    "deactivateConfirm": "«{{name}}» ходими энди тизимга кира олмайди.",
+    "tabSalaries": "Иш ҳақи",
+    "salary": "Иш ҳақи",
+    "salaryTitle": "Ходим иш ҳақи"
   },
   "reports": {
     "tabDashboard": "Сотувлар",

@@ -619,7 +619,7 @@ export function createUser(token: string, payload: UserPayload) {
 export function updateUser(
   token: string,
   id: string,
-  payload: Partial<Omit<UserPayload, "login">> & { isActive?: boolean },
+  payload: Partial<Omit<UserPayload, "login">> & { isActive?: boolean; salary?: number },
 ) {
   return request<ApiUser>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
 }

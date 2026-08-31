@@ -122,6 +122,10 @@ model User {
   passwordHash   String?  @map("password_hash")
   role           Role
   isActive       Boolean  @default(true) @map("is_active")
+  // Не из исходного ТЗ (там "Сотрудники и роли" — модуль только Админа) — добавлено по прямому
+  // запросу клиента: Бухгалтеру нужно вести зарплаты сотрудников. Одно текущее значение, а не
+  // история начислений — список зарплат сейчас это и есть список сотрудников с этой колонкой.
+  salary         Decimal? @db.Decimal(14, 2)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 

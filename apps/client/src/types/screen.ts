@@ -1,4 +1,5 @@
 export type ScreenKey =
+  | "home"
   | "sale"
   | "equipment"
   | "products"

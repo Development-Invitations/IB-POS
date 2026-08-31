@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TitleBar } from "./components/TitleBar";
+import { HomeScreen } from "./components/HomeScreen";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
@@ -51,6 +52,19 @@ import "./App.css";
 // и видеть отчёты/настройки/список сотрудников без выбора кассы.
 const SHIFT_GATED_ROLES: Role[] = ["CASHIER"];
 
+// Куда попадает роль сразу после входа — своя "главная страница" по работе (Раздел 3 ТЗ).
+// Кассиру продавать — сразу на "Продажу", это и есть их главная (отдельная сводная панель им не
+// нужна). Зав. складом закупками/остатками занимается на "Товарах". Админ, Управляющий и
+// Бухгалтер видят весь бизнес — у них общая "Главная" (см. HomeScreen.tsx), пока честная
+// заглушка до отдельной проработки этого экрана по ТЗ и макету.
+const ROLE_HOME_SCREEN: Record<Role, ScreenKey> = {
+  CASHIER: "sale",
+  WAREHOUSE: "products",
+  ADMIN: "home",
+  MANAGER: "home",
+  ACCOUNTANT: "home",
+};
+
 function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): BackendPaymentMethod {
   switch (method) {
     case "cash":
@@ -75,7 +89,7 @@ function App() {
   const [workstation, setWorkstation] = useState<ApiWorkstation | null>(null);
   const [shift, setShift] = useState<ApiShift | null>(null);
 
-  const [activeScreen, setActiveScreen] = useState<ScreenKey>("sale");
+  const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => ROLE_HOME_SCREEN[loadSession()?.role ?? "CASHIER"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [products, setProducts] = useState<CartProduct[]>([]);
@@ -298,6 +312,7 @@ function App() {
               onSuccess={(s) => {
                 saveSession(s);
                 setSession(s);
+                setActiveScreen(ROLE_HOME_SCREEN[s.role]);
               }}
             />
           )}
@@ -349,6 +364,12 @@ function App() {
           role={session.role}
           className="no-print"
         />
+
+        {activeScreen === "home" && (
+          <main className="flex-1 overflow-y-auto p-4">
+            <HomeScreen />
+          </main>
+        )}
 
         {activeScreen === "sale" && (!shift || !workstation) && (
           <main className="flex-1 overflow-y-auto">

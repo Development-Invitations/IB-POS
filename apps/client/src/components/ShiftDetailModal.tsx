@@ -25,6 +25,9 @@ const METHOD_KEY: Record<BackendPaymentMethod, string> = {
 
 export function ShiftDetailModal({ session, shift, workstationName, onClose }: ShiftDetailModalProps) {
   const { t } = useTranslation();
+  // Бухгалтеру смены открыты только на просмотр (см. ShiftsScreen.tsx) — внесение/изъятие
+  // наличных ему недоступно и на сервере (ShiftsController), форму просто не показываем.
+  const canManage = session.role !== "ACCOUNTANT";
   const [report, setReport] = useState<ShiftReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -158,7 +161,7 @@ export function ShiftDetailModal({ session, shift, workstationName, onClose }: S
                 )}
               </div>
 
-              {shift.status === "OPEN" && (
+              {shift.status === "OPEN" && canManage && (
                 <div className="rounded-lg bg-slate-50 p-3">
                   <h3 className="mb-2 text-sm font-semibold text-slate-700">{t("shifts.addMovement")}</h3>
                   <div className="flex gap-2">

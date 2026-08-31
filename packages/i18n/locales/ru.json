@@ -39,6 +39,10 @@
     "shift": "Смена",
     "noShift": "Смена не открыта"
   },
+  "home": {
+    "title": "Главная",
+    "notReady": "Раздел в разработке"
+  },
   "tabs": {
     "products": "Товары",
     "categories": "Категории"
@@ -196,7 +200,10 @@
     "actionReceiptPaid": "Продажа",
     "actionReceiptReturned": "Возврат чека",
     "deactivateTitle": "Деактивировать сотрудника",
-    "deactivateConfirm": "Сотрудник «{{name}}» больше не сможет войти в систему."
+    "deactivateConfirm": "Сотрудник «{{name}}» больше не сможет войти в систему.",
+    "tabSalaries": "Зарплаты",
+    "salary": "Зарплата",
+    "salaryTitle": "Зарплата сотрудника"
   },
   "reports": {
     "tabDashboard": "Продажи",
