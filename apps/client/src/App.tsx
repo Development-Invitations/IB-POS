@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { TitleBar } from "./components/TitleBar";
 import { HomeScreen } from "./components/HomeScreen";
 import { Header } from "./components/Header";
@@ -81,7 +80,6 @@ function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): B
 }
 
 function App() {
-  const { t } = useTranslation();
   const [session, setSession] = useState<AuthSession | null>(() => loadSession());
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [prefillOrgId, setPrefillOrgId] = useState<string | undefined>(undefined);
@@ -445,13 +443,7 @@ function App() {
 
         {activeScreen === "shifts" && (
           <main className="flex-1 overflow-y-auto p-4">
-            {workstation ? (
-              <ShiftsScreen session={session} storeId={workstation.storeId} />
-            ) : (
-              <p className="mx-auto max-w-md pt-16 text-center text-sm text-slate-500">
-                {t("shifts.selectWorkstationFirst")}
-              </p>
-            )}
+            <ShiftsScreen session={session} storeId={workstation?.storeId} />
           </main>
         )}
 

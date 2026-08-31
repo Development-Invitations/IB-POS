@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError, getShifts, getWorkstations } from "../lib/api";
+import { ApiError, getShifts, getStores, getWorkstations } from "../lib/api";
 import { formatSum } from "../lib/format";
 import { ShiftDetailModal } from "./ShiftDetailModal";
-import type { ApiShift, ApiWorkstation } from "../types/api";
+import type { ApiShift, ApiStore, ApiWorkstation } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface ShiftsScreenProps {
   session: AuthSession;
-  storeId: string;
+  // Без storeId — все точки сразу (Раздел 3: у Админа/Управляющего "все кассы", а не только
+  // та, что выбрана на экране "Продажа"; Бухгалтеру эта касса вообще недоступна, см. дополнение
+  // ниже). App.tsx передаёт storeId, только если пользователь уже выбрал кассу на "Продаже".
+  storeId?: string;
 }
 
 // Бухгалтер — сверх исходного ТЗ (см. ShiftsController.findAll на сервере), только просмотр:
@@ -21,6 +24,7 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
 
   const [shifts, setShifts] = useState<ApiShift[]>([]);
   const [workstations, setWorkstations] = useState<ApiWorkstation[]>([]);
+  const [stores, setStores] = useState<ApiStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -35,13 +39,15 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
     let cancelled = false;
     async function load() {
       try {
-        const [shiftList, workstationList] = await Promise.all([
+        const [shiftList, workstationList, storeList] = await Promise.all([
           getShifts(session.accessToken, storeId),
           getWorkstations(session.accessToken),
+          getStores(session.accessToken),
         ]);
         if (!cancelled) {
           setShifts(shiftList);
           setWorkstations(workstationList);
+          setStores(storeList);
         }
       } catch (err) {
         if (!cancelled) {
@@ -67,6 +73,15 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
     return (id: string) => map.get(id) ?? id;
   }, [workstations]);
 
+  const storeName = useMemo(() => {
+    const map = new Map(stores.map((s) => [s.id, s.name]));
+    return (id: string) => map.get(id) ?? id;
+  }, [stores]);
+
+  // Без выбранной кассы (App.tsx) список охватывает все точки — показываем колонку "Точка",
+  // чтобы было понятно, где именно эта смена, а не только на какой кассе внутри точки.
+  const showStoreColumn = !storeId && stores.length > 1;
+
   if (accessDenied) {
     return (
       <div className="mx-auto max-w-md pt-16 text-center">
@@ -87,6 +102,7 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
+                {showStoreColumn && <th className="px-4 py-3 font-medium">{t("workstation.store")}</th>}
                 <th className="px-4 py-3 font-medium">{t("workstation.workstation")}</th>
                 <th className="px-4 py-3 font-medium">{t("shifts.opened")}</th>
                 <th className="px-4 py-3 font-medium">{t("shifts.closed")}</th>
@@ -103,6 +119,9 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
                   onClick={() => setSelectedShift(s)}
                   className="cursor-pointer border-b border-slate-50 last:border-0 hover:bg-slate-50"
                 >
+                  {showStoreColumn && (
+                    <td className="px-4 py-3 text-slate-500">{storeName(s.storeId)}</td>
+                  )}
                   <td className="px-4 py-3 font-medium text-slate-800">{workstationName(s.workstationId)}</td>
                   <td className="px-4 py-3 text-slate-500">{new Date(s.openedAt).toLocaleString("ru-RU")}</td>
                   <td className="px-4 py-3 text-slate-500">
@@ -131,7 +150,7 @@ export function ShiftsScreen({ session, storeId }: ShiftsScreenProps) {
 
               {shifts.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-slate-400">
+                  <td colSpan={showStoreColumn ? 8 : 7} className="px-4 py-8 text-center text-sm text-slate-400">
                     {t("shifts.empty")}
                   </td>
                 </tr>

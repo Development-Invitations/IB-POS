@@ -47,9 +47,13 @@ export function Header({
   const { t, i18n } = useTranslation();
   const now = new Date();
   const online = useOnlineStatus();
-  // Поиск ведёт на экран "Продажа" (выбор товара добавляет его в чек и переключает туда) —
-  // ролям без доступа к этому экрану сама строка поиска ни к чему.
-  const canSearch = SCREEN_ACCESS.sale.includes(session.role);
+  // Поиск ведёт на экран "Продажа" (выбор товара добавляет его в чек и переключает туда), а
+  // статус смены в шапке — это личная смена ТЕКУЩЕГО пользователя (открывается только на этом
+  // экране), не смена вообще на кассе (для этого теперь есть "Кассы" на "Главной",
+  // HomeScreen.tsx). Ролям без доступа к "Продаже" ни то, ни другое не относится — у Бухгалтера
+  // своей смены никогда не будет, и "Смена не открыта" рядом с "Касса 1 · Работает" на Главной
+  // выглядело как противоречие на одном экране, а не просто неприменимая информация.
+  const hasSaleAccess = SCREEN_ACCESS.sale.includes(session.role);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -70,7 +74,7 @@ export function Header({
   }, [query]);
 
   useEffect(() => {
-    if (!canSearch) return;
+    if (!hasSaleAccess) return;
     function handleGlobalKeydown(e: KeyboardEvent) {
       if (e.key === "F2") {
         e.preventDefault();
@@ -80,7 +84,7 @@ export function Header({
     }
     window.addEventListener("keydown", handleGlobalKeydown);
     return () => window.removeEventListener("keydown", handleGlobalKeydown);
-  }, [canSearch]);
+  }, [hasSaleAccess]);
 
   function selectProduct(product: CartProduct) {
     onSelectProduct(product);
@@ -112,7 +116,7 @@ export function Header({
         <span className="text-lg font-bold text-slate-900">IB-POS</span>
       </div>
 
-      {canSearch && (
+      {hasSaleAccess && (
         <div className="relative flex-1 max-w-xl">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
@@ -168,7 +172,7 @@ export function Header({
           )}
         </div>
       )}
-      {!canSearch && <div className="flex-1" />}
+      {!hasSaleAccess && <div className="flex-1" />}
 
       <div className="flex items-center gap-4 text-sm">
         {workstationName && (
@@ -187,18 +191,19 @@ export function Header({
           </>
         )}
 
-        {shiftOpenedAt ? (
-          <button className="text-right hover:opacity-70" onClick={onCloseShift}>
-            <div className="font-semibold text-slate-800">{t("header.shift")}</div>
-            <div className="text-xs text-slate-400">
-              {new Date(shiftOpenedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        {hasSaleAccess &&
+          (shiftOpenedAt ? (
+            <button className="text-right hover:opacity-70" onClick={onCloseShift}>
+              <div className="font-semibold text-slate-800">{t("header.shift")}</div>
+              <div className="text-xs text-slate-400">
+                {new Date(shiftOpenedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </button>
+          ) : (
+            <div className="text-right">
+              <div className="font-semibold text-slate-400">{t("header.noShift")}</div>
             </div>
-          </button>
-        ) : (
-          <div className="text-right">
-            <div className="font-semibold text-slate-400">{t("header.noShift")}</div>
-          </div>
-        )}
+          ))}
 
         <div className="h-8 w-px bg-slate-200" />
 
