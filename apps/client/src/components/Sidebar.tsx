@@ -23,10 +23,16 @@ interface NavItem {
   labelKey: string;
   icon: (props: { className?: string }) => ReactElement;
   screen?: ScreenKey;
+  // Для пунктов без экрана (сейчас только "Главная") — доступ не через SCREEN_ACCESS.
+  roles?: Role[];
 }
 
+// У кассира нет своей "Главной": их рабочий экран и так "Продажа" (он же экран по умолчанию
+// после входа, см. App.tsx) — отдельная сводная панель им не нужна и не должна маячить в меню.
+const NON_CASHIER_ROLES: Role[] = ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"];
+
 const NAV_ITEMS: NavItem[] = [
-  { key: "home", labelKey: "nav.home", icon: HomeIcon },
+  { key: "home", labelKey: "nav.home", icon: HomeIcon, roles: NON_CASHIER_ROLES },
   { key: "sale", labelKey: "nav.sale", icon: CartIcon, screen: "sale" },
   { key: "products", labelKey: "nav.products", icon: BoxIcon, screen: "products" },
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon, screen: "customers" },
@@ -42,15 +48,17 @@ const NAV_ITEMS: NavItem[] = [
 
 // Раздел 3 ТЗ (docs/Roadmap_TZ.md) — кто вообще имеет доступ к модулю (✅ или 👁), не важно,
 // полный или только просмотр: сами экраны внутри уже разводят полный/ограниченный доступ.
-// Пункты без screen ("Главная", "Возвраты" — ещё не отдельные экраны) не фильтруются, они и
-// так никуда не ведут.
+// Кассир исключён из "Отчётов": по ТЗ ему положен только просмотр "своей смены", а это уже
+// полностью закрывается экраном "Смены" (там есть отчёт по текущей/прошлой смене) — открывать
+// ему общий экран аналитики бизнеса, где для его роли всё равно всё запрещено (см.
+// CAN_DASHBOARD_ROLES/CAN_STOCK_ROLES в ReportsScreen.tsx), только вводит в заблуждение.
 const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
   sale: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
   customers: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   discounts: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   returns: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
-  reports: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER", "ACCOUNTANT"],
+  reports: ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"],
   shifts: ["ADMIN", "MANAGER", "CASHIER"],
   integrations: ["ADMIN"],
   equipment: ["ADMIN", "MANAGER", "CASHIER"],
@@ -69,7 +77,11 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, role, className }: SidebarProps) {
   const { t } = useTranslation();
-  const visibleItems = NAV_ITEMS.filter((item) => !item.screen || SCREEN_ACCESS[item.screen].includes(role));
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.screen) return SCREEN_ACCESS[item.screen].includes(role);
+    if (item.roles) return item.roles.includes(role);
+    return true;
+  });
 
   return (
     <aside

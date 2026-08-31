@@ -75,4 +75,34 @@ export class ReportsController {
       storeId,
     });
   }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Get('staff')
+  getStaffReport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.reports.getStaffReport(user.organizationId, {
+      from,
+      to,
+      storeId,
+    });
+  }
+
+  @Roles(Role.ADMIN, Role.MANAGER, Role.ACCOUNTANT)
+  @Get('finance')
+  getFinanceReport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('storeId') storeId?: string,
+  ) {
+    return this.reports.getFinanceReport(user.organizationId, {
+      from,
+      to,
+      storeId,
+    });
+  }
 }

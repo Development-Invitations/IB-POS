@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon } from "./icons";
 import { ApiError, getAuditLog } from "../lib/api";
+import { formatSum } from "../lib/format";
 import type { ApiAuditLog, ApiUser } from "../types/api";
 import type { AuthSession, Role } from "../types/auth";
 
@@ -18,6 +19,38 @@ const ROLE_KEY: Record<Role, string> = {
   ADMIN: "roles.admin",
   ACCOUNTANT: "roles.accountant",
 };
+
+// Технические коды действий из журнала (User.updated, Receipt.paid и т.п.) непонятны
+// не-разработчику — переводим в человеческий текст. Полный список действий, которые реально
+// пишутся в audit_log, см. вызовы AuditService.log() по серверу (сейчас их всего 6).
+const ACTION_KEY: Record<string, string> = {
+  "user.created": "employees.actionUserCreated",
+  "user.updated": "employees.actionUserUpdated",
+  "shift.opened": "employees.actionShiftOpened",
+  "shift.closed": "employees.actionShiftClosed",
+  "receipt.paid": "employees.actionReceiptPaid",
+  "receipt.returned": "employees.actionReceiptReturned",
+};
+
+function describeLog(log: ApiAuditLog, t: (key: string) => string): string {
+  const m = log.metadata ?? {};
+  const money = (value: unknown) =>
+    typeof value === "string" || typeof value === "number"
+      ? `${formatSum(Number(value))} ${t("common.currency")}`
+      : null;
+
+  switch (log.action) {
+    case "receipt.paid":
+    case "receipt.returned":
+      return money(m.total) ?? "";
+    case "shift.opened":
+      return money(m.openingCash) ?? "";
+    case "shift.closed":
+      return money(m.closingCash) ?? "";
+    default:
+      return "";
+  }
+}
 
 export function EmployeeDetailModal({ session, employee, onClose }: EmployeeDetailModalProps) {
   const { t } = useTranslation();
@@ -68,15 +101,20 @@ export function EmployeeDetailModal({ session, employee, onClose }: EmployeeDeta
           )}
           {!loading && logs.length > 0 && (
             <div className="divide-y divide-slate-50 rounded-lg border border-slate-100">
-              {logs.map((log) => (
-                <div key={log.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <div>
-                    <div className="text-slate-700">{log.action}</div>
-                    <div className="text-xs text-slate-400">{log.entity}</div>
+              {logs.map((log) => {
+                const detail = describeLog(log, t);
+                return (
+                  <div key={log.id} className="flex items-center justify-between px-3 py-2 text-sm">
+                    <div>
+                      <div className="text-slate-700">
+                        {ACTION_KEY[log.action] ? t(ACTION_KEY[log.action]) : log.action}
+                      </div>
+                      {detail && <div className="text-xs text-slate-400">{detail}</div>}
+                    </div>
+                    <div className="text-xs text-slate-400">{new Date(log.createdAt).toLocaleString("ru-RU")}</div>
                   </div>
-                  <div className="text-xs text-slate-400">{new Date(log.createdAt).toLocaleString("ru-RU")}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

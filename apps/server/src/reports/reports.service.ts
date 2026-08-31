@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ReceiptStatus } from '@prisma/client';
+import { PaymentMethod, ReceiptStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { toCsv } from '../common/csv';
 
@@ -211,5 +211,110 @@ export class ReportsService {
       }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 20);
+  }
+
+  // Продажи по кассиру (Дополнение — вкладка "Сотрудники" в аналитике, Панель 7 макета).
+  // Кассир смены — это Shift.userId, а не текущий залогиненный пользователь: чек привязан
+  // к смене, а не напрямую к кассиру, поэтому группируем через shift.userId.
+  async getStaffReport(organizationId: string, filter: PeriodFilter) {
+    const { from, to } = resolvePeriod(filter);
+
+    const receipts = await this.prisma.receipt.findMany({
+      where: {
+        status: ReceiptStatus.PAID,
+        createdAt: { gte: from, lte: to },
+        store: {
+          organizationId,
+          ...(filter.storeId ? { id: filter.storeId } : {}),
+        },
+      },
+      select: { total: true, shift: { select: { userId: true } } },
+    });
+
+    const byUser = new Map<
+      string,
+      { receiptsCount: number; salesTotal: number }
+    >();
+    for (const r of receipts) {
+      const userId = r.shift.userId;
+      const entry = byUser.get(userId) ?? { receiptsCount: 0, salesTotal: 0 };
+      entry.receiptsCount += 1;
+      entry.salesTotal += Number(r.total);
+      byUser.set(userId, entry);
+    }
+
+    const userIds = [...byUser.keys()];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, fullName: true, login: true },
+    });
+    const userById = new Map(users.map((u) => [u.id, u]));
+
+    return [...byUser.entries()]
+      .map(([userId, stats]) => ({
+        userId,
+        fullName: userById.get(userId)?.fullName ?? userId,
+        login: userById.get(userId)?.login ?? '',
+        receiptsCount: stats.receiptsCount,
+        salesTotal: stats.salesTotal,
+        averageCheck:
+          stats.receiptsCount > 0 ? stats.salesTotal / stats.receiptsCount : 0,
+      }))
+      .sort((a, b) => b.salesTotal - a.salesTotal);
+  }
+
+  // Движение денег (Дополнение — вкладка "Финансы" в аналитике, Панель 7 макета): продажи по
+  // способам оплаты и внесения/изъятия наличных за период по всем сменам — то же самое, что
+  // ShiftsService.getReport() уже считает для одной смены, только агрегировано по периоду.
+  async getFinanceReport(organizationId: string, filter: PeriodFilter) {
+    const { from, to } = resolvePeriod(filter);
+
+    const [payments, cashMovements] = await Promise.all([
+      this.prisma.payment.groupBy({
+        by: ['method'],
+        where: {
+          receipt: {
+            createdAt: { gte: from, lte: to },
+            store: {
+              organizationId,
+              ...(filter.storeId ? { id: filter.storeId } : {}),
+            },
+          },
+        },
+        _sum: { amount: true },
+      }),
+      this.prisma.cashMovement.findMany({
+        where: {
+          createdAt: { gte: from, lte: to },
+          shift: {
+            store: {
+              organizationId,
+              ...(filter.storeId ? { id: filter.storeId } : {}),
+            },
+          },
+        },
+        include: { user: { select: { fullName: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    const paymentsByMethod = Object.fromEntries(
+      payments.map((p) => [p.method, Number(p._sum.amount ?? 0)]),
+    ) as Partial<Record<PaymentMethod, number>>;
+
+    const deposits = cashMovements
+      .filter((m) => m.type === 'DEPOSIT')
+      .reduce((sum, m) => sum + Number(m.amount), 0);
+    const withdrawals = cashMovements
+      .filter((m) => m.type === 'WITHDRAWAL')
+      .reduce((sum, m) => sum + Number(m.amount), 0);
+
+    return {
+      paymentsByMethod,
+      deposits,
+      withdrawals,
+      cashMovements,
+    };
   }
 }

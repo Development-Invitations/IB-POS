@@ -21,9 +21,11 @@ import type {
   DashboardReport,
   DiscountType,
   EquipmentKind,
+  FinanceReport,
   OneCCredentials,
   OneCStatus,
   ReceiptStatus,
+  StaffReportRow,
   TopProduct,
 } from "../types/api";
 import type { Role } from "../types/auth";
@@ -524,6 +526,14 @@ export function getStockReport(token: string, storeId?: string) {
 
 export function getTopProducts(token: string, filter: PeriodFilter) {
   return request<TopProduct[]>(`/reports/top-products${periodQuery(filter)}`, {}, token);
+}
+
+export function getStaffReport(token: string, filter: PeriodFilter) {
+  return request<StaffReportRow[]>(`/reports/staff${periodQuery(filter)}`, {}, token);
+}
+
+export function getFinanceReport(token: string, filter: PeriodFilter) {
+  return request<FinanceReport>(`/reports/finance${periodQuery(filter)}`, {}, token);
 }
 
 export function getIntegrations(token: string) {

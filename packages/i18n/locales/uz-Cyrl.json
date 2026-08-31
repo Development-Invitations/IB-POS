@@ -189,6 +189,12 @@
     "actionHistory": "Ҳаракатлар тарихи",
     "historyError": "Ҳаракатлар тарихини юклаб бўлмади",
     "noActions": "Ҳозирча ҳаракатлар йўқ",
+    "actionUserCreated": "Ҳисоб яратилди",
+    "actionUserUpdated": "Ходим маълумотлари ўзгартирилди",
+    "actionShiftOpened": "Смени очди",
+    "actionShiftClosed": "Смени ёпди",
+    "actionReceiptPaid": "Сотув",
+    "actionReceiptReturned": "Чекни қайтариш",
     "deactivateTitle": "Ходимни фаолсизлантириш",
     "deactivateConfirm": "«{{name}}» ходими энди тизимга кира олмайди."
   },
@@ -217,7 +223,13 @@
     "noComparison": "ўтган давр учун маълумот йўқ",
     "vsPrevious": "ўтган даврга нисбатан",
     "soldQuantity": "Сотилди",
-    "revenue": "Тушум"
+    "revenue": "Тушум",
+    "tabStaff": "Ходимлар",
+    "tabFinance": "Молия",
+    "staffEmpty": "Давр учун сотувлар бўлмади",
+    "date": "Сана",
+    "type": "Амалиёт",
+    "amount": "Сумма"
   },
   "shifts": {
     "accessDenied": "Сизнинг ролингизда сменаларга кириш ҳуқуқи йўқ",

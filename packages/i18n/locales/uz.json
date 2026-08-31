@@ -189,6 +189,12 @@
     "actionHistory": "Harakatlar tarixi",
     "historyError": "Harakatlar tarixini yuklab boʻlmadi",
     "noActions": "Hozircha harakatlar yoʻq",
+    "actionUserCreated": "Hisob yaratildi",
+    "actionUserUpdated": "Xodim maʼlumotlari oʻzgartirildi",
+    "actionShiftOpened": "Smenani ochdi",
+    "actionShiftClosed": "Smenani yopdi",
+    "actionReceiptPaid": "Sotuv",
+    "actionReceiptReturned": "Chekni qaytarish",
     "deactivateTitle": "Xodimni faolsizlantirish",
     "deactivateConfirm": "«{{name}}» xodimi endi tizimga kira olmaydi."
   },
@@ -217,7 +223,13 @@
     "noComparison": "oʻtgan davr uchun maʻlumot yoʻq",
     "vsPrevious": "oʻtgan davrga nisbatan",
     "soldQuantity": "Sotildi",
-    "revenue": "Tushum"
+    "revenue": "Tushum",
+    "tabStaff": "Xodimlar",
+    "tabFinance": "Moliya",
+    "staffEmpty": "Davr uchun sotuvlar boʻlmadi",
+    "date": "Sana",
+    "type": "Amaliyot",
+    "amount": "Summa"
   },
   "shifts": {
     "accessDenied": "Sizning rolingizda smenalarga kirish huquqi yoʻq",

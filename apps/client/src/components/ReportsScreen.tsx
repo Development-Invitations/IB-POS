@@ -1,8 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError, getDashboard, getReportsCsv, getStockReport, getStores, getTopProducts } from "../lib/api";
+import {
+  ApiError,
+  getDashboard,
+  getFinanceReport,
+  getReportsCsv,
+  getStaffReport,
+  getStockReport,
+  getStores,
+  getTopProducts,
+} from "../lib/api";
 import { formatSum } from "../lib/format";
-import type { ApiStockEntry, ApiStore, DashboardReport, TopProduct } from "../types/api";
+import type {
+  ApiStockEntry,
+  ApiStore,
+  BackendPaymentMethod,
+  DashboardReport,
+  FinanceReport,
+  StaffReportRow,
+  TopProduct,
+} from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface ReportsScreenProps {
@@ -11,6 +28,15 @@ interface ReportsScreenProps {
 
 const CAN_DASHBOARD_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "ACCOUNTANT"];
 const CAN_STOCK_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "WAREHOUSE"];
+
+const METHOD_KEY: Record<BackendPaymentMethod, string> = {
+  CASH: "payment.cash",
+  CARD: "payment.card",
+  CLICK: "payment.click",
+  PAYME: "payment.payme",
+  QR: "payment.qr",
+  MIXED: "payment.mixed",
+};
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -22,7 +48,7 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-type Tab = "dashboard" | "products" | "stock";
+type Tab = "dashboard" | "products" | "staff" | "finance" | "stock";
 
 function ChangeBadge({ value }: { value: number | null }) {
   const { t } = useTranslation();
@@ -39,10 +65,15 @@ function ChangeBadge({ value }: { value: number | null }) {
 }
 
 // Лёгкий линейный график без внешней библиотеки — 24 почасовые точки, заливка под линией.
+// Точки увеличены и кликабельны широкой прозрачной областью (проще навести мышью), подсказка —
+// свой стилизованный тултип поверх графика, а не нативный браузерный (тот появляется с задержкой
+// и выглядит неаккуратно).
 function SalesLineChart({ points }: { points: { hour: number; total: number }[] }) {
+  const { t } = useTranslation();
   const width = 600;
   const height = 140;
   const max = Math.max(1, ...points.map((p) => p.total));
+  const [hovered, setHovered] = useState<number | null>(null);
 
   const coords = points.map((p, i) => {
     const x = (i / (points.length - 1)) * width;
@@ -52,25 +83,70 @@ function SalesLineChart({ points }: { points: { hour: number; total: number }[] 
 
   const linePath = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(" ");
   const areaPath = `${linePath} L${width},${height} L0,${height} Z`;
+  const active = hovered !== null ? coords[hovered] : null;
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full" preserveAspectRatio="none">
-      <defs>
-        <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaPath} fill="url(#salesFill)" />
-      <path d={linePath} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-      {coords.map((c) => (
-        <circle key={c.hour} cx={c.x} cy={c.y} r={c.total > 0 ? 2.5 : 0} fill="#ef4444">
-          <title>
-            {c.hour}:00 — {formatSum(c.total)}
-          </title>
-        </circle>
-      ))}
-    </svg>
+    <div className="relative">
+      {active && (
+        <div
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-slate-800 px-2.5 py-1.5 text-xs text-white shadow-lg"
+          style={{
+            left: `${(active.x / width) * 100}%`,
+            top: `${(active.y / height) * 100}%`,
+            marginTop: "-10px",
+          }}
+        >
+          <div className="font-semibold">
+            {formatSum(active.total)} {t("common.currency")}
+          </div>
+          <div className="text-slate-300">{active.hour}:00</div>
+        </div>
+      )}
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full overflow-visible" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="salesFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#salesFill)" />
+        <path d={linePath} fill="none" stroke="#ef4444" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        {hovered !== null && (
+          <line
+            x1={coords[hovered].x}
+            y1={0}
+            x2={coords[hovered].x}
+            y2={height}
+            stroke="#ef4444"
+            strokeOpacity={0.25}
+            strokeWidth={1}
+            strokeDasharray="3 3"
+          />
+        )}
+        {coords.map((c, i) => (
+          <g key={c.hour}>
+            <circle
+              cx={c.x}
+              cy={c.y}
+              r={hovered === i ? 5 : c.total > 0 ? 3.5 : 2}
+              fill={c.total > 0 ? "#ef4444" : "#f8b4b4"}
+              stroke="#fff"
+              strokeWidth={hovered === i ? 2 : 0}
+              className="transition-[r]"
+            />
+            <circle
+              cx={c.x}
+              cy={c.y}
+              r={12}
+              fill="transparent"
+              className="cursor-pointer"
+              onMouseEnter={() => setHovered(i)}
+              onMouseLeave={() => setHovered((h) => (h === i ? null : h))}
+            />
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -87,6 +163,8 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
 
   const [dashboard, setDashboard] = useState<DashboardReport | null>(null);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [staff, setStaff] = useState<StaffReportRow[]>([]);
+  const [finance, setFinance] = useState<FinanceReport | null>(null);
   const [stock, setStock] = useState<ApiStockEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -110,6 +188,12 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
         } else if (tab === "products" && canDashboard) {
           const list = await getTopProducts(session.accessToken, { from, to, storeId: storeId || undefined });
           if (!cancelled) setTopProducts(list);
+        } else if (tab === "staff" && canDashboard) {
+          const list = await getStaffReport(session.accessToken, { from, to, storeId: storeId || undefined });
+          if (!cancelled) setStaff(list);
+        } else if (tab === "finance" && canDashboard) {
+          const report = await getFinanceReport(session.accessToken, { from, to, storeId: storeId || undefined });
+          if (!cancelled) setFinance(report);
         } else if (tab === "stock" && canStock) {
           const entries = await getStockReport(session.accessToken, storeId || undefined);
           if (!cancelled) setStock(entries);
@@ -197,6 +281,26 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
             }`}
           >
             {t("reports.tabProducts")}
+          </button>
+        )}
+        {canDashboard && (
+          <button
+            onClick={() => setTab("staff")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+              tab === "staff" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {t("reports.tabStaff")}
+          </button>
+        )}
+        {canDashboard && (
+          <button
+            onClick={() => setTab("finance")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+              tab === "finance" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {t("reports.tabFinance")}
           </button>
         )}
         {canStock && (
@@ -373,6 +477,112 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {!loading && !loadError && tab === "staff" && (
+        <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 text-xs text-slate-400">
+                <th className="px-4 py-3 font-medium">{t("employees.fullName")}</th>
+                <th className="px-4 py-3 font-medium">{t("employees.login")}</th>
+                <th className="px-4 py-3 font-medium text-right">{t("reports.receiptsCount")}</th>
+                <th className="px-4 py-3 font-medium text-right">{t("reports.totalSales")}</th>
+                <th className="px-4 py-3 font-medium text-right">{t("reports.averageCheck")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staff.map((s) => (
+                <tr key={s.userId} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{s.fullName}</td>
+                  <td className="px-4 py-3 text-slate-500">{s.login}</td>
+                  <td className="px-4 py-3 text-right text-slate-500">{s.receiptsCount}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800">
+                    {formatSum(s.salesTotal)} {t("common.currency")}
+                  </td>
+                  <td className="px-4 py-3 text-right text-slate-500">
+                    {formatSum(s.averageCheck)} {t("common.currency")}
+                  </td>
+                </tr>
+              ))}
+              {staff.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">
+                    {t("reports.staffEmpty")}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && !loadError && tab === "finance" && finance && (
+        <>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {(Object.keys(METHOD_KEY) as BackendPaymentMethod[])
+              .filter((m) => finance.paymentsByMethod[m])
+              .map((m) => (
+                <div key={m} className="rounded-xl bg-white p-4 shadow-sm">
+                  <div className="text-xs text-slate-400">{t(METHOD_KEY[m])}</div>
+                  <div className="mt-1 text-xl font-bold text-slate-800">
+                    {formatSum(finance.paymentsByMethod[m] ?? 0)} {t("common.currency")}
+                  </div>
+                </div>
+              ))}
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="text-xs text-slate-400">{t("shifts.deposit")}</div>
+              <div className="mt-1 text-xl font-bold text-emerald-600">
+                +{formatSum(finance.deposits)} {t("common.currency")}
+              </div>
+            </div>
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="text-xs text-slate-400">{t("shifts.withdrawal")}</div>
+              <div className="mt-1 text-xl font-bold text-red-600">
+                −{formatSum(finance.withdrawals)} {t("common.currency")}
+              </div>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 text-xs text-slate-400">
+                  <th className="px-4 py-3 font-medium">{t("reports.date")}</th>
+                  <th className="px-4 py-3 font-medium">{t("reports.type")}</th>
+                  <th className="px-4 py-3 font-medium">{t("employees.fullName")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t("reports.amount")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {finance.cashMovements.map((m) => (
+                  <tr key={m.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                    <td className="px-4 py-3 text-slate-500">{new Date(m.createdAt).toLocaleString("ru-RU")}</td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {m.type === "DEPOSIT" ? t("shifts.deposit") : t("shifts.withdrawal")}
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{m.user.fullName}</td>
+                    <td
+                      className={`px-4 py-3 text-right font-semibold ${
+                        m.type === "DEPOSIT" ? "text-emerald-600" : "text-red-600"
+                      }`}
+                    >
+                      {m.type === "DEPOSIT" ? "+" : "−"}
+                      {formatSum(Number(m.amount))} {t("common.currency")}
+                    </td>
+                  </tr>
+                ))}
+                {finance.cashMovements.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-400">
+                      {t("shifts.noMovements")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {!loading && !loadError && tab === "stock" && (

@@ -162,6 +162,26 @@ export interface TopProduct {
   revenue: number;
 }
 
+export interface StaffReportRow {
+  userId: string;
+  fullName: string;
+  login: string;
+  receiptsCount: number;
+  salesTotal: number;
+  averageCheck: number;
+}
+
+export interface ApiCashMovementWithUser extends ApiCashMovement {
+  user: { fullName: string };
+}
+
+export interface FinanceReport {
+  paymentsByMethod: Partial<Record<BackendPaymentMethod, number>>;
+  deposits: number;
+  withdrawals: number;
+  cashMovements: ApiCashMovementWithUser[];
+}
+
 export interface ApiStockEntry {
   id: string;
   storeId: string;

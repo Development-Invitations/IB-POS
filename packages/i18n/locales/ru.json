@@ -189,6 +189,12 @@
     "actionHistory": "История действий",
     "historyError": "Не удалось загрузить историю действий",
     "noActions": "Действий пока нет",
+    "actionUserCreated": "Учётная запись создана",
+    "actionUserUpdated": "Данные сотрудника изменены",
+    "actionShiftOpened": "Открыл смену",
+    "actionShiftClosed": "Закрыл смену",
+    "actionReceiptPaid": "Продажа",
+    "actionReceiptReturned": "Возврат чека",
     "deactivateTitle": "Деактивировать сотрудника",
     "deactivateConfirm": "Сотрудник «{{name}}» больше не сможет войти в систему."
   },
@@ -217,7 +223,13 @@
     "noComparison": "нет данных за прошлый период",
     "vsPrevious": "к прошлому периоду",
     "soldQuantity": "Продано",
-    "revenue": "Выручка"
+    "revenue": "Выручка",
+    "tabStaff": "Сотрудники",
+    "tabFinance": "Финансы",
+    "staffEmpty": "За период не было продаж",
+    "date": "Дата",
+    "type": "Операция",
+    "amount": "Сумма"
   },
   "shifts": {
     "accessDenied": "У вашей роли нет доступа к сменам",
