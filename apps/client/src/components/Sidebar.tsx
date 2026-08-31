@@ -11,6 +11,7 @@ import {
   ClockIcon,
   PlugIcon,
   MonitorIcon,
+  IdBadgeIcon,
   SettingsIcon,
   ChevronLeftIcon,
 } from "./icons";
@@ -35,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "shifts", labelKey: "nav.shifts", icon: ClockIcon, screen: "shifts" },
   { key: "integrations", labelKey: "nav.integrations", icon: PlugIcon, screen: "integrations" },
   { key: "equipment", labelKey: "nav.equipment", icon: MonitorIcon, screen: "equipment" },
+  { key: "employees", labelKey: "nav.employees", icon: IdBadgeIcon, screen: "employees" },
   { key: "settings", labelKey: "nav.settings", icon: SettingsIcon, screen: "settings" },
 ];
 
@@ -51,6 +53,7 @@ const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
   shifts: ["ADMIN", "MANAGER", "CASHIER"],
   integrations: ["ADMIN"],
   equipment: ["ADMIN", "MANAGER", "CASHIER"],
+  employees: ["ADMIN"],
   settings: ["ADMIN"],
 };
 

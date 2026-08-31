@@ -1,9 +1,14 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { hashSecret } from '../common/crypto';
 import { sanitizeUser } from '../common/sanitize-user';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -50,7 +55,57 @@ export class UsersService {
   async findAll(organizationId: string) {
     const users = await this.prisma.user.findMany({
       where: { organizationId },
+      orderBy: { createdAt: 'asc' },
     });
     return users.map(sanitizeUser);
+  }
+
+  async update(
+    organizationId: string,
+    actingUserId: string,
+    id: string,
+    dto: UpdateUserDto,
+  ) {
+    const existing = await this.prisma.user.findFirst({
+      where: { id, organizationId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Сотрудник не найден');
+    }
+    // Иначе админ может случайно деактивировать сам себя и остаться без доступа к панели —
+    // единственный способ вернуть доступ тогда — прямое вмешательство в базу.
+    if (id === actingUserId && dto.isActive === false) {
+      throw new BadRequestException(
+        'Нельзя деактивировать свою же учётную запись',
+      );
+    }
+
+    const user = await this.prisma.user.update({
+      where: { id },
+      data: {
+        fullName: dto.fullName,
+        role: dto.role,
+        isActive: dto.isActive,
+        pinHash: dto.pin ? await hashSecret(dto.pin) : undefined,
+        passwordHash: dto.password ? await hashSecret(dto.password) : undefined,
+      },
+    });
+
+    await this.audit.log(
+      organizationId,
+      actingUserId,
+      'user.updated',
+      'User',
+      user.id,
+      {
+        fullName: dto.fullName,
+        role: dto.role,
+        isActive: dto.isActive,
+        pinChanged: !!dto.pin,
+        passwordChanged: !!dto.password,
+      },
+    );
+
+    return sanitizeUser(user);
   }
 }

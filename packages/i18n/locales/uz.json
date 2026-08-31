@@ -29,6 +29,7 @@
     "shifts": "Smenalar",
     "integrations": "Integratsiya",
     "equipment": "Uskunalar",
+    "employees": "Xodimlar",
     "settings": "Sozlamalar",
     "collapse": "Yigʻish"
   },
@@ -167,6 +168,29 @@
     "readOnlyHint": "Sizning rolingiz faqat chegirmalarni koʻrishga ruxsat beradi",
     "deactivateTitle": "Chegirmani faolsizlantirish",
     "deactivateConfirm": "«{{name}}» chegirmasi endi qoʻllash uchun mavjud boʻlmaydi."
+  },
+  "employees": {
+    "addTitle": "Yangi xodim",
+    "editTitle": "Xodimni tahrirlash",
+    "fullName": "F.I.Sh.",
+    "login": "Login",
+    "loginLocked": "Yaratilgandan keyin loginni oʻzgartirib boʻlmaydi",
+    "role": "Rol",
+    "pin": "Kirish uchun PIN",
+    "password": "Kirish uchun parol",
+    "leaveBlank": "oʻzgartirmasangiz boʻsh qoldiring",
+    "credentialsHintCreate": "PIN va/yoki parolni kiriting — kamida bitta kirish usuli majburiy",
+    "credentialsHintEdit": "Faqat PIN yoki parolni almashtirmoqchi boʻlsangiz toʻldiring",
+    "saveError": "Xodimni saqlab boʻlmadi",
+    "loadError": "Xodimlar roʻyxatini yuklab boʻlmadi",
+    "empty": "Xodimlar topilmadi",
+    "you": "siz",
+    "history": "Tarix",
+    "actionHistory": "Harakatlar tarixi",
+    "historyError": "Harakatlar tarixini yuklab boʻlmadi",
+    "noActions": "Hozircha harakatlar yoʻq",
+    "deactivateTitle": "Xodimni faolsizlantirish",
+    "deactivateConfirm": "«{{name}}» xodimi endi tizimga kira olmaydi."
   },
   "reports": {
     "tabDashboard": "Sotuvlar",

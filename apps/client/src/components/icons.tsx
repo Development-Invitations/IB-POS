@@ -214,6 +214,15 @@ export const CustomerDisplayIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const IdBadgeIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="4" y="3" width="16" height="18" rx="2" />
+    <circle cx="12" cy="10" r="2.6" />
+    <path d="M8 16.5c.7-1.8 2.1-2.7 4-2.7s3.3.9 4 2.7" />
+    <path d="M9.5 3h5" strokeWidth={2.4} />
+  </svg>
+);
+
 export const PaymentTerminalIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <rect x="5" y="2.5" width="14" height="19" rx="2" />

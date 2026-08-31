@@ -214,3 +214,23 @@ export interface ApiBackup {
   sizeBytes: number;
   createdAt: string;
 }
+
+export interface ApiUser {
+  id: string;
+  fullName: string;
+  login: string;
+  role: Role;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface ApiAuditLog {
+  id: string;
+  userId: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  user: { id: string; fullName: string; login: string } | null;
+}

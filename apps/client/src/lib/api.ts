@@ -1,5 +1,6 @@
 import type {
   AdapterActionResult,
+  ApiAuditLog,
   ApiBackup,
   ApiCashMovement,
   ApiCategory,
@@ -13,6 +14,7 @@ import type {
   ApiShift,
   ApiStockEntry,
   ApiStore,
+  ApiUser,
   ApiWorkstation,
   BackendPaymentMethod,
   CashMovementType,
@@ -566,4 +568,33 @@ export async function downloadBackup(token: string, id: string): Promise<string>
     throw new ApiError(res.statusText, res.status);
   }
   return res.text();
+}
+
+export function getUsers(token: string) {
+  return request<ApiUser[]>("/users", {}, token);
+}
+
+export interface UserPayload {
+  fullName: string;
+  login: string;
+  role: Role;
+  pin?: string;
+  password?: string;
+}
+
+export function createUser(token: string, payload: UserPayload) {
+  return request<ApiUser>("/users", { method: "POST", body: JSON.stringify(payload) }, token);
+}
+
+export function updateUser(
+  token: string,
+  id: string,
+  payload: Partial<Omit<UserPayload, "login">> & { isActive?: boolean },
+) {
+  return request<ApiUser>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+export function getAuditLog(token: string, userId?: string) {
+  const qs = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+  return request<ApiAuditLog[]>(`/audit-log${qs}`, {}, token);
 }

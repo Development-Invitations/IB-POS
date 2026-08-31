@@ -7,4 +7,5 @@ export type ScreenKey =
   | "reports"
   | "shifts"
   | "integrations"
+  | "employees"
   | "settings";
