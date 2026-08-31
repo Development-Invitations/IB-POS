@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
@@ -38,6 +46,26 @@ export class ReceiptsController {
       dto.items,
       dto.discountPercent,
     );
+  }
+
+  // Список чеков для поиска перед возвратом (экран «Возвраты») и для истории покупок клиента.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)
+  @Get()
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('storeId') storeId?: string,
+    @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.receipts.findAll(user.organizationId, {
+      storeId,
+      status,
+      from,
+      to,
+      search,
+    });
   }
 
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER, Role.ACCOUNTANT)

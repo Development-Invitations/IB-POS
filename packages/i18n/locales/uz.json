@@ -309,7 +309,18 @@
     "cancel": "Bekor qilish",
     "wrongPin": "Login yoki PIN notoʻgʻri",
     "notAuthorized": "Bu foydalanuvchida qaytarishni tasdiqlash huquqi yoʻq",
-    "done": "Chek qaytarildi"
+    "done": "Qaytarildi",
+    "accessDenied": "Sizning rolingiz qaytarishlarga kirish huquqiga ega emas",
+    "viewOnlyHint": "Sizning rolingiz faqat qaytarishlarni koʻrishga ruxsat beradi",
+    "loadError": "Cheklar roʻyxatini yuklab boʻlmadi",
+    "empty": "Cheklar topilmadi",
+    "search": "Qidiruv",
+    "searchPlaceholder": "Mijoz, telefon yoki chek kodi...",
+    "receiptCode": "Chek",
+    "date": "Sana",
+    "customer": "Mijoz",
+    "total": "Summa",
+    "status": "Holat"
   },
   "scanner": {
     "notFoundTitle": "Mahsulot topilmadi",

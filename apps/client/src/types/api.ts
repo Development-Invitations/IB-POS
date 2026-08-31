@@ -91,6 +91,7 @@ export interface ApiReceipt {
   createdAt: string;
   items: ApiReceiptItem[];
   payments?: ApiPayment[];
+  customer?: { id: string; fullName: string; phone: string | null } | null;
 }
 
 export interface ApiCustomer {

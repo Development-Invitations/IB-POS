@@ -13,6 +13,7 @@ import { EquipmentScreen } from "./components/EquipmentScreen";
 import { ProductsScreen } from "./components/ProductsScreen";
 import { CustomersScreen } from "./components/CustomersScreen";
 import { DiscountsScreen } from "./components/DiscountsScreen";
+import { ReturnsScreen } from "./components/ReturnsScreen";
 import { ReportsScreen } from "./components/ReportsScreen";
 import { ShiftsScreen } from "./components/ShiftsScreen";
 import { IntegrationsScreen } from "./components/IntegrationsScreen";
@@ -406,6 +407,12 @@ function App() {
         {activeScreen === "discounts" && (
           <main className="flex-1 overflow-y-auto p-4">
             <DiscountsScreen session={session} />
+          </main>
+        )}
+
+        {activeScreen === "returns" && (
+          <main className="flex-1 overflow-y-auto p-4">
+            <ReturnsScreen session={session} />
           </main>
         )}
 

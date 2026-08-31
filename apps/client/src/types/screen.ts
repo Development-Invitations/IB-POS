@@ -4,6 +4,7 @@ export type ScreenKey =
   | "products"
   | "customers"
   | "discounts"
+  | "returns"
   | "reports"
   | "shifts"
   | "integrations"

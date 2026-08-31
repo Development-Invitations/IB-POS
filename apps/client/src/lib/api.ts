@@ -23,6 +23,7 @@ import type {
   EquipmentKind,
   OneCCredentials,
   OneCStatus,
+  ReceiptStatus,
   TopProduct,
 } from "../types/api";
 import type { Role } from "../types/auth";
@@ -306,6 +307,25 @@ export function payReceipt(
 
 export function returnReceipt(token: string, receiptId: string) {
   return request<ApiReceipt>(`/receipts/${receiptId}/return`, { method: "POST" }, token);
+}
+
+export interface ReceiptsFilter {
+  storeId?: string;
+  status?: ReceiptStatus;
+  from?: string;
+  to?: string;
+  search?: string;
+}
+
+export function getReceipts(token: string, filter: ReceiptsFilter) {
+  const params = new URLSearchParams();
+  if (filter.storeId) params.set("storeId", filter.storeId);
+  if (filter.status) params.set("status", filter.status);
+  if (filter.from) params.set("from", filter.from);
+  if (filter.to) params.set("to", filter.to);
+  if (filter.search) params.set("search", filter.search);
+  const qs = params.toString();
+  return request<ApiReceipt[]>(`/receipts${qs ? `?${qs}` : ""}`, {}, token);
 }
 
 export function getCustomers(token: string, search?: string) {

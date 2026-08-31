@@ -218,6 +218,55 @@ export class ReceiptsService {
     });
   }
 
+  async findAll(
+    organizationId: string,
+    filter: {
+      storeId?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+      search?: string;
+    },
+  ) {
+    const validStatuses = Object.values(ReceiptStatus) as string[];
+    const status = validStatuses.includes(filter.status ?? '')
+      ? (filter.status as ReceiptStatus)
+      : undefined;
+
+    const to = filter.to ? new Date(filter.to) : new Date();
+    const from = filter.from
+      ? new Date(filter.from)
+      : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    to.setHours(23, 59, 59, 999);
+
+    return this.prisma.receipt.findMany({
+      where: {
+        store: {
+          organizationId,
+          ...(filter.storeId ? { id: filter.storeId } : {}),
+        },
+        createdAt: { gte: from, lte: to },
+        ...(status ? { status } : {}),
+        ...(filter.search
+          ? {
+              OR: [
+                { id: { startsWith: filter.search, mode: 'insensitive' } },
+                {
+                  customer: {
+                    fullName: { contains: filter.search, mode: 'insensitive' },
+                  },
+                },
+                { customer: { phone: { contains: filter.search } } },
+              ],
+            }
+          : {}),
+      },
+      include: { items: true, payments: true, customer: true },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+  }
+
   findOne(organizationId: string, id: string) {
     return this.prisma.receipt.findFirstOrThrow({
       where: { id, store: { organizationId } },
