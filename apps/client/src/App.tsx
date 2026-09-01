@@ -27,9 +27,11 @@ import {
   ApiError,
   closeShift,
   createReceipt,
+  getBusinessType,
   getCategories,
   getProducts,
   getShiftReport,
+  getStockReport,
   payReceipt,
   previewReceipt,
   returnReceipt,
@@ -42,7 +44,7 @@ import type { CartProduct } from "./types/catalog";
 import type { PaymentMethod } from "./types/payment";
 import type { ScreenKey } from "./types/screen";
 import type { AuthSession, Role } from "./types/auth";
-import type { ApiShift, ApiWorkstation, BackendPaymentMethod } from "./types/api";
+import type { ApiShift, ApiWorkstation, BackendPaymentMethod, BusinessType } from "./types/api";
 import "./App.css";
 
 // Только у кассира вся работа в системе сводится к кассе — открыть смену для него обязательно
@@ -86,6 +88,10 @@ function App() {
   const [prefillLogin, setPrefillLogin] = useState<string | undefined>(undefined);
   const [workstation, setWorkstation] = useState<ApiWorkstation | null>(null);
   const [shift, setShift] = useState<ApiShift | null>(null);
+  // Профиль бизнеса (Раздел настроек, не из исходного ТЗ) — меняет поведение экрана "Продажа":
+  // остатки/срок годности на плитках товара показываются только для Магазина/Аптеки, см.
+  // ProductGrid.tsx. Ресторан — прежнее поведение, без изменений.
+  const [businessType, setBusinessType] = useState<BusinessType>("RESTAURANT");
 
   const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => ROLE_HOME_SCREEN[loadSession()?.role ?? "CASHIER"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -149,6 +155,38 @@ function App() {
     loadCatalog();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    getBusinessType(session.accessToken)
+      .then((r) => setBusinessType(r.businessType))
+      .catch(() => undefined);
+  }, [session]);
+
+  // Остатки на плитках товара — только для Магазина/Аптеки (см. businessType выше) и только
+  // когда известна касса (без неё непонятно, остаток по какой точке показывать). Ресторан не
+  // тратит лишний запрос — товары там не привязаны к конечным остаткам так строго.
+  useEffect(() => {
+    if (!session || !workstation || businessType === "RESTAURANT") return;
+    let cancelled = false;
+    getStockReport(session.accessToken, workstation.storeId)
+      .then((entries) => {
+        if (cancelled) return;
+        const byProductId = new Map(entries.map((e) => [e.productId, e]));
+        setProducts((prev) =>
+          prev.map((p) => {
+            const entry = byProductId.get(p.id);
+            return entry
+              ? { ...p, stockQty: Number(entry.quantity), expiryDate: entry.product.expiryDate }
+              : p;
+          }),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session, workstation, businessType, products.length]);
 
   const visibleProducts = useMemo(
     () =>
@@ -386,7 +424,7 @@ function App() {
           <>
             <main className="flex-1 space-y-4 overflow-y-auto p-4">
               <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
-              <ProductGrid products={visibleProducts} onAdd={addToCart} />
+              <ProductGrid products={visibleProducts} onAdd={addToCart} businessType={businessType} />
             </main>
 
             <ReceiptPanel
@@ -413,7 +451,7 @@ function App() {
 
         {activeScreen === "products" && (
           <main className="flex-1 overflow-y-auto p-4">
-            <ProductsScreen session={session} onCatalogChanged={loadCatalog} />
+            <ProductsScreen session={session} onCatalogChanged={loadCatalog} businessType={businessType} />
           </main>
         )}
 

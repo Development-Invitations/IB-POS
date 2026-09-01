@@ -132,7 +132,12 @@
     "photo": "Foto",
     "addPhoto": "Foto qoʻshish",
     "changePhoto": "Fotoni almashtirish",
-    "removePhoto": "Fotoni olib tashlash"
+    "removePhoto": "Fotoni olib tashlash",
+    "expiryDate": "Yaroqlilik muddati",
+    "stockQty": "{{qty}} {{unit}}",
+    "outOfStock": "Mavjud emas",
+    "expired": "Muddati oʻtgan",
+    "expiresSoon": "{{date}} gacha yaroqli"
   },
   "customers": {
     "addTitle": "Yangi mijoz",
@@ -437,6 +442,18 @@
     "backupAuto": "avtomatik",
     "exportTitle": "Maʻlumotlarni eksport qilish",
     "exportCsv": "Mahsulotlarni CSV formatida eksport qilish",
-    "tabNotReady": "Boʻlim ishlab chiqilmoqda"
+    "tabNotReady": "Boʻlim ishlab chiqilmoqda",
+    "businessType": "Biznes turi",
+    "businessTypeHint": "\"Sotuv\" ekranining ishlashini sohangizga moslaydi",
+    "businessTypes": {
+      "RESTAURANT": "Restoran",
+      "STORE": "Doʻkon",
+      "PHARMACY": "Dorixona"
+    },
+    "businessTypeHints": {
+      "RESTAURANT": "Qoldiqsiz mahsulot plitkalari — taomlar joyida tayyorlanadi",
+      "STORE": "Plitkalarda ombordagi qoldiq koʻrinadi",
+      "PHARMACY": "Plitkalarda qoldiq va partiya yaroqlilik muddati"
+    }
   }
 }

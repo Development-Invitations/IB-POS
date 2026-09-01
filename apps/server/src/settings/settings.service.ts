@@ -32,11 +32,23 @@ export class SettingsService {
       defaultLanguage: settings.defaultLanguage,
       taxRatePercent: settings.taxRatePercent,
       autoBackupEnabled: settings.autoBackupEnabled,
+      businessType: settings.businessType,
       warnings: this.buildTaxWarnings(
         settings.taxRatePercent,
         Boolean(hasFiscalIntegration),
       ),
     };
+  }
+
+  // Отдельный узкий эндпоинт (см. SettingsController) — экран "Продажа" должен знать профиль
+  // бизнеса для ЛЮБОЙ роли, а не только для Админа, которому доступны полные настройки.
+  async getBusinessType(organizationId: string) {
+    const settings = await this.prisma.organizationSettings.upsert({
+      where: { organizationId },
+      create: { organizationId },
+      update: {},
+    });
+    return { businessType: settings.businessType };
   }
 
   // Налоги и фискализация: предупреждения при несовместимых параметрах (Этап 9).
@@ -80,12 +92,14 @@ export class SettingsService {
         defaultLanguage: dto.defaultLanguage,
         taxRatePercent: dto.taxRatePercent,
         autoBackupEnabled: dto.autoBackupEnabled,
+        businessType: dto.businessType,
       },
       update: {
         currency: dto.currency,
         defaultLanguage: dto.defaultLanguage,
         taxRatePercent: dto.taxRatePercent,
         autoBackupEnabled: dto.autoBackupEnabled,
+        businessType: dto.businessType,
       },
     });
 

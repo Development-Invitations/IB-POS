@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import { ApiError, downloadBackup, getBackups, getProductsCsv, getSettings, runBackup, updateSettings } from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
-import type { ApiBackup, ApiSettings } from "../types/api";
+import type { ApiBackup, ApiSettings, BusinessType } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface SettingsScreenProps {
@@ -15,6 +15,7 @@ type Tab = "general" | "sale" | "discounts" | "receipts" | "notifications";
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
 const TABS: Tab[] = ["general", "sale", "discounts", "receipts", "notifications"];
 const CURRENCIES = ["UZS", "USD"];
+const BUSINESS_TYPES: BusinessType[] = ["RESTAURANT", "STORE", "PHARMACY"];
 
 export function SettingsScreen({ session }: SettingsScreenProps) {
   const { t, i18n } = useTranslation();
@@ -31,6 +32,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [currency, setCurrency] = useState("UZS");
   const [defaultLanguage, setDefaultLanguage] = useState("ru");
   const [taxRatePercent, setTaxRatePercent] = useState("");
+  const [businessType, setBusinessType] = useState<BusinessType>("RESTAURANT");
   const [showProductImages, setShowProductImages] = useState(loadShowProductImages());
 
   const [saving, setSaving] = useState(false);
@@ -59,6 +61,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         setCurrency(settingsResult.currency);
         setDefaultLanguage(settingsResult.defaultLanguage);
         setTaxRatePercent(settingsResult.taxRatePercent ?? "");
+        setBusinessType(settingsResult.businessType);
       } catch (err) {
         if (!cancelled) {
           if (err instanceof ApiError && err.status === 403) {
@@ -87,6 +90,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         currency,
         defaultLanguage,
         taxRatePercent: taxRatePercent === "" ? undefined : Number(taxRatePercent),
+        businessType,
       });
       setSettings(updated);
       setSaveMessage(t("settings.saved"));
@@ -180,7 +184,33 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       {loadError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>}
 
       {!loading && !loadError && tab === "general" && settings && (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <h3 className="mb-1 text-sm font-semibold text-slate-700">{t("settings.businessType")}</h3>
+            <p className="mb-3 text-xs text-slate-400">{t("settings.businessTypeHint")}</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {BUSINESS_TYPES.map((bt) => (
+                <button
+                  key={bt}
+                  onClick={() => setBusinessType(bt)}
+                  className={`rounded-lg border p-3 text-left transition ${
+                    businessType === bt
+                      ? "border-accent bg-accent/5"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  <div className="text-sm font-semibold text-slate-800">
+                    {t(`settings.businessTypes.${bt}`)}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-400">
+                    {t(`settings.businessTypeHints.${bt}`)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
             <label className="block text-xs font-medium text-slate-500">
               {t("settings.companyName")}
@@ -332,6 +362,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
                 </button>
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}

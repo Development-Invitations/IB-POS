@@ -1,4 +1,10 @@
-import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateProductDto {
   @IsString()
@@ -28,4 +34,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   unit?: string;
+
+  // Не из исходного ТЗ — актуально для профиля "Аптека" (см. BusinessType), но поле не
+  // привязано к нему жёстко: у любого товара может быть срок годности.
+  @IsOptional()
+  @IsDateString()
+  expiryDate?: string;
 }

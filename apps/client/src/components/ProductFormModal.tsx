@@ -11,13 +11,21 @@ interface ProductFormModalProps {
   session: AuthSession;
   categories: ApiCategory[];
   product: ApiProduct | null;
+  isPharmacy?: boolean;
   onClose: () => void;
   onSaved: (product: ApiProduct, newCategory?: ApiCategory) => void;
 }
 
 const NEW_CATEGORY_VALUE = "__new__";
 
-export function ProductFormModal({ session, categories, product, onClose, onSaved }: ProductFormModalProps) {
+export function ProductFormModal({
+  session,
+  categories,
+  product,
+  isPharmacy,
+  onClose,
+  onSaved,
+}: ProductFormModalProps) {
   const { t } = useTranslation();
   const isEdit = product !== null;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +38,7 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
   const [price, setPrice] = useState(product ? Number(product.price) : 0);
   const [cost, setCost] = useState(product?.cost ? Number(product.cost) : 0);
   const [unit, setUnit] = useState(product?.unit ?? "pcs");
+  const [expiryDate, setExpiryDate] = useState(product?.expiryDate?.slice(0, 10) ?? "");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     product?.imageUrl ? `${API_BASE}${product.imageUrl}` : null,
@@ -84,6 +93,7 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
         price,
         cost: cost > 0 ? cost : undefined,
         unit: unit.trim() || "pcs",
+        expiryDate: isPharmacy && expiryDate ? expiryDate : undefined,
       };
 
       let saved = isEdit
@@ -236,6 +246,18 @@ export function ProductFormModal({ session, categories, product, onClose, onSave
               />
             </label>
           </div>
+
+          {isPharmacy && (
+            <label className="block text-xs font-medium text-slate-500">
+              {t("products.expiryDate")}
+              <input
+                type="date"
+                value={expiryDate}
+                onChange={(e) => setExpiryDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
+          )}
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         </div>

@@ -132,7 +132,12 @@
     "photo": "Фото",
     "addPhoto": "Добавить фото",
     "changePhoto": "Заменить фото",
-    "removePhoto": "Убрать фото"
+    "removePhoto": "Убрать фото",
+    "expiryDate": "Срок годности",
+    "stockQty": "{{qty}} {{unit}}",
+    "outOfStock": "Нет в наличии",
+    "expired": "Просрочен",
+    "expiresSoon": "Годен до {{date}}"
   },
   "customers": {
     "addTitle": "Новый клиент",
@@ -437,6 +442,18 @@
     "backupAuto": "автоматически",
     "exportTitle": "Экспорт данных",
     "exportCsv": "Экспорт товаров в CSV",
-    "tabNotReady": "Раздел в разработке"
+    "tabNotReady": "Раздел в разработке",
+    "businessType": "Тип бизнеса",
+    "businessTypeHint": "Меняет поведение экрана «Продажа» под вашу отрасль",
+    "businessTypes": {
+      "RESTAURANT": "Ресторан",
+      "STORE": "Магазин",
+      "PHARMACY": "Аптека"
+    },
+    "businessTypeHints": {
+      "RESTAURANT": "Плитки товаров без остатков — позиции готовятся на месте",
+      "STORE": "На плитках видны остатки на складе",
+      "PHARMACY": "Остатки и срок годности партии на плитках товара"
+    }
   }
 }

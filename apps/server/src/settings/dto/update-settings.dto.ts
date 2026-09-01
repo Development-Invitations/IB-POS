@@ -1,11 +1,13 @@
 import {
   IsBoolean,
+  IsEnum,
   IsNumber,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import { BusinessType } from '@prisma/client';
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -29,4 +31,11 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   autoBackupEnabled?: boolean;
+
+  // Не из исходного ТЗ — по прямому запросу клиента: профиль бизнеса меняет поведение экрана
+  // "Продажа" (см. ProductGrid.tsx на клиенте) и в будущем — других разделов под конкретную
+  // отрасль (общепит/розница/аптека).
+  @IsOptional()
+  @IsEnum(BusinessType)
+  businessType?: BusinessType;
 }

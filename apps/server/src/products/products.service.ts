@@ -26,7 +26,16 @@ export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(organizationId: string, dto: CreateProductDto) {
-    return this.prisma.product.create({ data: { ...dto, organizationId } });
+    const { expiryDate, ...rest } = dto;
+    return this.prisma.product.create({
+      data: {
+        ...rest,
+        organizationId,
+        // Prisma ждёт полноценный Date, а не "YYYY-MM-DD" — @IsDateString на DTO пропускает
+        // и то, и другое, но с голой строкой Prisma падает "premature end of input".
+        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+      },
+    });
   }
 
   findAll(organizationId: string) {
@@ -45,7 +54,14 @@ export class ProductsService {
 
   async update(organizationId: string, id: string, dto: UpdateProductDto) {
     await this.findOne(organizationId, id);
-    return this.prisma.product.update({ where: { id }, data: dto });
+    const { expiryDate, ...rest } = dto;
+    return this.prisma.product.update({
+      where: { id },
+      data: {
+        ...rest,
+        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+      },
+    });
   }
 
   async remove(organizationId: string, id: string) {

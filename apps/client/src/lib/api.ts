@@ -17,6 +17,7 @@ import type {
   ApiUser,
   ApiWorkstation,
   BackendPaymentMethod,
+  BusinessType,
   CashMovementType,
   DashboardReport,
   DiscountType,
@@ -152,6 +153,7 @@ export interface ProductPayload {
   price: number;
   cost?: number;
   unit?: string;
+  expiryDate?: string;
 }
 
 export function createProduct(token: string, payload: ProductPayload) {
@@ -575,10 +577,17 @@ export interface UpdateSettingsPayload {
   defaultLanguage?: string;
   taxRatePercent?: number;
   autoBackupEnabled?: boolean;
+  businessType?: BusinessType;
 }
 
 export function updateSettings(token: string, payload: UpdateSettingsPayload) {
   return request<ApiSettings>("/settings", { method: "PATCH", body: JSON.stringify(payload) }, token);
+}
+
+// Доступно всем ролям (не только Админу, как остальные /settings) — экран "Продажа" должен
+// знать профиль бизнеса независимо от того, кто за кассой.
+export function getBusinessType(token: string) {
+  return request<{ businessType: BusinessType }>("/settings/business-type", {}, token);
 }
 
 export function getBackups(token: string) {

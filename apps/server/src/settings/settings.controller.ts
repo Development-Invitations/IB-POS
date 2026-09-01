@@ -14,6 +14,20 @@ import type { AuthenticatedUser } from '../auth/jwt.strategy';
 export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
 
+  // Доступно всем ролям (в отличие от остального контроллера) — экран "Продажа" должен знать
+  // профиль бизнеса независимо от того, кто за кассой.
+  @Roles(
+    Role.ADMIN,
+    Role.MANAGER,
+    Role.CASHIER,
+    Role.WAREHOUSE,
+    Role.ACCOUNTANT,
+  )
+  @Get('business-type')
+  getBusinessType(@CurrentUser() user: AuthenticatedUser) {
+    return this.settings.getBusinessType(user.organizationId);
+  }
+
   @Get()
   get(@CurrentUser() user: AuthenticatedUser) {
     return this.settings.get(user.organizationId);

@@ -20,6 +20,7 @@ export interface ApiProduct {
   unit: string;
   imageUrl: string | null;
   isActive: boolean;
+  expiryDate: string | null;
 }
 
 export interface ApiStore {
@@ -218,12 +219,15 @@ export interface OneCCredentials {
   exchangePath: string;
 }
 
+export type BusinessType = "RESTAURANT" | "STORE" | "PHARMACY";
+
 export interface ApiSettings {
   name: string;
   currency: string;
   defaultLanguage: string;
   taxRatePercent: string | null;
   autoBackupEnabled: boolean;
+  businessType: BusinessType;
   warnings: string[];
 }
 

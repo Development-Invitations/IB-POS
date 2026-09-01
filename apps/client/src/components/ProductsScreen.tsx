@@ -5,19 +5,21 @@ import { formatSum } from "../lib/format";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ProductFormModal } from "./ProductFormModal";
 import { PlusIcon, SearchIcon } from "./icons";
-import type { ApiCategory, ApiProduct } from "../types/api";
+import type { ApiCategory, ApiProduct, BusinessType } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface ProductsScreenProps {
   session: AuthSession;
   onCatalogChanged: () => void;
+  businessType?: BusinessType;
 }
 
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "WAREHOUSE"];
 
-export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProps) {
+export function ProductsScreen({ session, onCatalogChanged, businessType }: ProductsScreenProps) {
   const { t } = useTranslation();
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
+  const isPharmacy = businessType === "PHARMACY";
 
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
@@ -168,6 +170,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
                 <th className="px-4 py-3 font-medium text-right">{t("products.price")}</th>
                 <th className="px-4 py-3 font-medium text-right">{t("products.cost")}</th>
                 <th className="px-4 py-3 font-medium">{t("products.unit")}</th>
+                {isPharmacy && <th className="px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
                 <th className="px-4 py-3 font-medium">{t("products.status")}</th>
                 {canManage && <th className="px-4 py-3 font-medium" />}
               </tr>
@@ -194,6 +197,11 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
                     {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{p.unit}</td>
+                  {isPharmacy && (
+                    <td className="px-4 py-3 text-slate-500">
+                      {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     {p.isActive ? (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
@@ -228,7 +236,10 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
 
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={canManage ? 9 : 8} className="px-4 py-8 text-center text-sm text-slate-400">
+                  <td
+                    colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0)}
+                    className="px-4 py-8 text-center text-sm text-slate-400"
+                  >
                     {t("products.empty")}
                   </td>
                 </tr>
@@ -243,6 +254,7 @@ export function ProductsScreen({ session, onCatalogChanged }: ProductsScreenProp
           session={session}
           categories={categories}
           product={editingProduct}
+          isPharmacy={isPharmacy}
           onClose={() => setFormOpen(false)}
           onSaved={handleSaved}
         />
