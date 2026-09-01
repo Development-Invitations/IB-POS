@@ -16,6 +16,9 @@ apps/client/src-tauri/target/
 .env.local
 .env.*.local
 
+# Tauri updater signing key (private half) — goes into GitHub Actions secrets, never into git
+.tauri-updater-key
+
 # Logs
 *.log
 npm-debug.log*

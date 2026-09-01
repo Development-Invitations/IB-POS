@@ -8,6 +8,13 @@
     "maximize": "Yoyish",
     "close": "Yopish"
   },
+  "updater": {
+    "available": "{{version}} yangilanishi mavjud",
+    "update": "Yangilash",
+    "downloading": "Yangilanish yuklanmoqda… {{percent}}%",
+    "installing": "Yangilanish o'rnatilmoqda, ilova qayta ishga tushadi…",
+    "error": "Yangilanishni yuklab bo'lmadi"
+  },
   "common": {
     "language": "Til",
     "search": "Mahsulotlarni qidirish...",

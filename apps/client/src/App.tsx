@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { TitleBar } from "./components/TitleBar";
+import { UpdateNotifier } from "./components/UpdateNotifier";
 import { HomeScreen } from "./components/HomeScreen";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
@@ -377,6 +378,7 @@ function App() {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <TitleBar />
+      <UpdateNotifier />
         <div className="flex-1 overflow-hidden">
           {authMode === "register" ? (
             <RegisterScreen
@@ -408,6 +410,7 @@ function App() {
     return (
       <div className="flex h-screen flex-col overflow-hidden">
         <TitleBar />
+      <UpdateNotifier />
         <div className="flex-1 overflow-hidden">
           <ShiftSetupScreen
             session={session}
@@ -425,6 +428,7 @@ function App() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <TitleBar />
+      <UpdateNotifier />
       <Header
         session={session}
         workstationName={workstation?.name ?? null}

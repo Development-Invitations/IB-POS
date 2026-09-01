@@ -65,6 +65,8 @@ fn watch_minimize_restore(window: &tauri::WebviewWindow) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 #[cfg(target_os = "windows")]

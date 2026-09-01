@@ -1,0 +1,52 @@
+name: Release
+
+# Ручной пуш git-тега вида v1.2.3 запускает сборку релиза: собирает Windows-инсталлятор,
+# подписывает его приватным ключом апдейтера (см. apps/client/src-tauri/tauri.conf.json —
+# plugins.updater.pubkey) и публикует latest.json + инсталлятор в GitHub Release. Именно
+# latest.json на releases/latest/download/... опрашивает приложение при проверке обновлений.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/client/src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/client
+          tagName: ${{ github.ref_name }}
+          releaseName: "IB-POS ${{ github.ref_name }}"
+          releaseBody: "Изменения см. в docs/Roadmap_TZ.md."
+          # Черновик — публикуется вручную на GitHub после проверки, чтобы не раскатывать
+          # автообновление на все кассы раньше времени. GitHub "latest release" (и, значит,
+          # апдейтер) игнорирует черновики и pre-release до явной публикации.
+          releaseDraft: true
+          prerelease: false
