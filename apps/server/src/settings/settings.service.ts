@@ -33,6 +33,8 @@ export class SettingsService {
       taxRatePercent: settings.taxRatePercent,
       autoBackupEnabled: settings.autoBackupEnabled,
       businessType: settings.businessType,
+      maxCashierDiscountPercent: settings.maxCashierDiscountPercent,
+      lowStockThreshold: settings.lowStockThreshold,
       warnings: this.buildTaxWarnings(
         settings.taxRatePercent,
         Boolean(hasFiscalIntegration),
@@ -41,14 +43,29 @@ export class SettingsService {
   }
 
   // Отдельный узкий эндпоинт (см. SettingsController) — экран "Продажа" должен знать профиль
-  // бизнеса для ЛЮБОЙ роли, а не только для Админа, которому доступны полные настройки.
-  async getBusinessType(organizationId: string) {
+  // бизнеса и лимит скидки кассира для ЛЮБОЙ роли, а не только для Админа, которому доступны
+  // полные настройки.
+  async getSaleConfig(organizationId: string) {
     const settings = await this.prisma.organizationSettings.upsert({
       where: { organizationId },
       create: { organizationId },
       update: {},
     });
-    return { businessType: settings.businessType };
+    return {
+      businessType: settings.businessType,
+      maxCashierDiscountPercent: settings.maxCashierDiscountPercent,
+    };
+  }
+
+  // Отдельный узкий эндпоинт — порог "заканчивается" нужен всем ролям с доступом к остаткам
+  // (см. SettingsController), не только Админу.
+  async getNotificationsConfig(organizationId: string) {
+    const settings = await this.prisma.organizationSettings.upsert({
+      where: { organizationId },
+      create: { organizationId },
+      update: {},
+    });
+    return { lowStockThreshold: settings.lowStockThreshold };
   }
 
   // Налоги и фискализация: предупреждения при несовместимых параметрах (Этап 9).
@@ -93,6 +110,8 @@ export class SettingsService {
         taxRatePercent: dto.taxRatePercent,
         autoBackupEnabled: dto.autoBackupEnabled,
         businessType: dto.businessType,
+        maxCashierDiscountPercent: dto.maxCashierDiscountPercent,
+        lowStockThreshold: dto.lowStockThreshold,
       },
       update: {
         currency: dto.currency,
@@ -100,6 +119,8 @@ export class SettingsService {
         taxRatePercent: dto.taxRatePercent,
         autoBackupEnabled: dto.autoBackupEnabled,
         businessType: dto.businessType,
+        maxCashierDiscountPercent: dto.maxCashierDiscountPercent,
+        lowStockThreshold: dto.lowStockThreshold,
       },
     });
 

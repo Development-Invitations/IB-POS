@@ -38,4 +38,17 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsEnum(BusinessType)
   businessType?: BusinessType;
+
+  // Раздел 3 ТЗ: Кассир применяет ручную скидку "в рамках лимита" — null снимает
+  // ограничение явно (не то же самое, что "не передано").
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  maxCashierDiscountPercent?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  lowStockThreshold?: number | null;
 }

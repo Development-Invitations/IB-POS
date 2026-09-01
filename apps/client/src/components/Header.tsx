@@ -28,6 +28,9 @@ interface HeaderProps {
   workstationName: string | null;
   shiftOpenedAt: string | null;
   products: CartProduct[];
+  // Не из исходного ТЗ — по прямому запросу клиента (порог в Настройках → Уведомления).
+  // Пустой массив = либо порог не настроен, либо у роли нет доступа к остаткам.
+  lowStockProducts: { name: string; quantity: number }[];
   onSelectProduct: (product: CartProduct) => void;
   onLogout: () => void;
   onCloseShift: () => void;
@@ -39,6 +42,7 @@ export function Header({
   workstationName,
   shiftOpenedAt,
   products,
+  lowStockProducts,
   onSelectProduct,
   onLogout,
   onCloseShift,
@@ -47,6 +51,7 @@ export function Header({
   const { t, i18n } = useTranslation();
   const now = new Date();
   const online = useOnlineStatus();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   // Поиск ведёт на экран "Продажа" (выбор товара добавляет его в чек и переключает туда), а
   // статус смены в шапке — это личная смена ТЕКУЩЕГО пользователя (открывается только на этом
   // экране), не смена вообще на кассе (для этого теперь есть "Кассы" на "Главной",
@@ -212,13 +217,39 @@ export function Header({
           <div>{now.toLocaleDateString("ru-RU")}</div>
         </div>
 
-        <button
-          className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100"
-          aria-label={t("common.notifications")}
-        >
-          <BellIcon />
-          <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setNotificationsOpen((v) => !v)}
+            onBlur={() => setTimeout(() => setNotificationsOpen(false), 150)}
+            className="relative rounded-full p-2 text-slate-500 hover:bg-slate-100"
+            aria-label={t("common.notifications")}
+          >
+            <BellIcon />
+            {lowStockProducts.length > 0 && (
+              <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-accent" />
+            )}
+          </button>
+
+          {notificationsOpen && (
+            <div className="absolute right-0 top-full z-40 mt-1 w-72 max-h-80 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+              {lowStockProducts.length === 0 ? (
+                <p className="px-4 py-3 text-sm text-slate-400">{t("common.notificationsEmpty")}</p>
+              ) : (
+                <>
+                  <p className="border-b border-slate-100 px-4 py-2 text-xs font-semibold text-slate-500">
+                    {t("common.lowStockTitle")}
+                  </p>
+                  {lowStockProducts.map((p) => (
+                    <div key={p.name} className="flex items-center justify-between px-4 py-2 text-sm">
+                      <span className="truncate text-slate-700">{p.name}</span>
+                      <span className="shrink-0 font-semibold text-amber-600">{p.quantity}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
           {SUPPORTED_LOCALES.map((locale: Locale) => (

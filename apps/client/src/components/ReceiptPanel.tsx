@@ -26,6 +26,9 @@ interface ReceiptPanelProps {
   lines: CartLine[];
   discountPercent: number;
   preview: ReceiptPreview | null;
+  // Раздел 3 ТЗ: Кассир применяет скидку "в рамках лимита" (Настройки → Скидки, не из
+  // исходного ТЗ). undefined — роль не ограничена этим лимитом, используется прежний потолок.
+  maxDiscountPercent?: number;
   onDiscountChange: (percent: number) => void;
   onIncrement: (productId: string) => void;
   onDecrement: (productId: string) => void;
@@ -37,12 +40,13 @@ interface ReceiptPanelProps {
 }
 
 const DISCOUNT_STEP = 5;
-const MAX_DISCOUNT_PERCENT = 50;
+const DEFAULT_MAX_DISCOUNT_PERCENT = 50;
 
 export function ReceiptPanel({
   lines,
   discountPercent,
   preview,
+  maxDiscountPercent,
   onDiscountChange,
   onIncrement,
   onDecrement,
@@ -54,6 +58,7 @@ export function ReceiptPanel({
 }: ReceiptPanelProps) {
   const { t } = useTranslation();
   const showImages = loadShowProductImages();
+  const effectiveMaxDiscount = maxDiscountPercent ?? DEFAULT_MAX_DISCOUNT_PERCENT;
 
   // preview — авторитетный итог с сервера (учитывает авто-скидки из «Скидки и акции»,
   // см. ReceiptsService.calculateTotals); пока не пришёл или сети нет — локальный расчёт
@@ -153,8 +158,8 @@ export function ReceiptPanel({
                   {discountPercent}%
                 </span>
                 <button
-                  onClick={() => onDiscountChange(Math.min(MAX_DISCOUNT_PERCENT, discountPercent + DISCOUNT_STEP))}
-                  disabled={discountPercent >= MAX_DISCOUNT_PERCENT}
+                  onClick={() => onDiscountChange(Math.min(effectiveMaxDiscount, discountPercent + DISCOUNT_STEP))}
+                  disabled={discountPercent >= effectiveMaxDiscount}
                   className="flex h-6 w-6 items-center justify-center rounded border border-slate-200 text-slate-500 hover:bg-slate-100 disabled:opacity-40"
                 >
                   <PlusIcon width={14} height={14} />

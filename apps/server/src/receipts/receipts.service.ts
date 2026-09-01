@@ -126,8 +126,24 @@ export class ReceiptsService {
     const autoDiscountTotal = Math.round(
       lineDiscountTotal + receiptWideDiscount,
     );
+
+    // Раздел 3 ТЗ: Кассир применяет ручную скидку "в рамках лимита" — не доверяем клиенту,
+    // тот же принцип, что и для авто-скидок выше. Управляющий/Админ лимитом не ограничены.
+    let effectiveDiscountPercent = discountPercent ?? 0;
+    if (requestingRole === Role.CASHIER) {
+      const settings = await this.prisma.organizationSettings.findUnique({
+        where: { organizationId },
+      });
+      if (settings?.maxCashierDiscountPercent != null) {
+        effectiveDiscountPercent = Math.min(
+          effectiveDiscountPercent,
+          settings.maxCashierDiscountPercent,
+        );
+      }
+    }
+
     const manualDiscountAmount = Math.round(
-      (afterAutoDiscounts * (discountPercent ?? 0)) / 100,
+      (afterAutoDiscounts * effectiveDiscountPercent) / 100,
     );
     const discountTotal = autoDiscountTotal + manualDiscountAmount;
     const total = subtotal - discountTotal;

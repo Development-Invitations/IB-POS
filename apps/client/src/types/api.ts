@@ -228,6 +228,8 @@ export interface ApiSettings {
   taxRatePercent: string | null;
   autoBackupEnabled: boolean;
   businessType: BusinessType;
+  maxCashierDiscountPercent: number | null;
+  lowStockThreshold: number | null;
   warnings: string[];
 }
 

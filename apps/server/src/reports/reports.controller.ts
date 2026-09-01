@@ -51,8 +51,9 @@ export class ReportsController {
       .send(csv);
   }
 
-  // "Только по товарам/остаткам" — доступ Зав. складом (см. Раздел 3 ТЗ).
-  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
+  // "Только по товарам/остаткам" — доступ Зав. складом (см. Раздел 3 ТЗ). Бухгалтер тоже
+  // "👁 просмотр" по той же таблице — этот маршрут его не включал, хотя должен был.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE, Role.ACCOUNTANT)
   @Get('stock')
   getStockReport(
     @CurrentUser() user: AuthenticatedUser,

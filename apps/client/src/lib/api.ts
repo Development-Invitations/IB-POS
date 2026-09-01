@@ -578,6 +578,8 @@ export interface UpdateSettingsPayload {
   taxRatePercent?: number;
   autoBackupEnabled?: boolean;
   businessType?: BusinessType;
+  maxCashierDiscountPercent?: number | null;
+  lowStockThreshold?: number | null;
 }
 
 export function updateSettings(token: string, payload: UpdateSettingsPayload) {
@@ -585,9 +587,19 @@ export function updateSettings(token: string, payload: UpdateSettingsPayload) {
 }
 
 // Доступно всем ролям (не только Админу, как остальные /settings) — экран "Продажа" должен
-// знать профиль бизнеса независимо от того, кто за кассой.
-export function getBusinessType(token: string) {
-  return request<{ businessType: BusinessType }>("/settings/business-type", {}, token);
+// знать профиль бизнеса и лимит скидки кассира независимо от того, кто за кассой.
+export function getSaleConfig(token: string) {
+  return request<{ businessType: BusinessType; maxCashierDiscountPercent: number | null }>(
+    "/settings/sale-config",
+    {},
+    token,
+  );
+}
+
+// Доступно ролям с доступом к остаткам (Раздел 3: Админ/Управляющий/Зав.складом/Бухгалтер) —
+// порог "заканчивается" для уведомлений в шапке (Header.tsx).
+export function getNotificationsConfig(token: string) {
+  return request<{ lowStockThreshold: number | null }>("/settings/notifications-config", {}, token);
 }
 
 export function getBackups(token: string) {

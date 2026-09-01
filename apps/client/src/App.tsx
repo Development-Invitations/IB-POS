@@ -27,9 +27,10 @@ import {
   ApiError,
   closeShift,
   createReceipt,
-  getBusinessType,
   getCategories,
+  getNotificationsConfig,
   getProducts,
+  getSaleConfig,
   getShiftReport,
   getStockReport,
   payReceipt,
@@ -92,6 +93,12 @@ function App() {
   // остатки/срок годности на плитках товара показываются только для Магазина/Аптеки, см.
   // ProductGrid.tsx. Ресторан — прежнее поведение, без изменений.
   const [businessType, setBusinessType] = useState<BusinessType>("RESTAURANT");
+  // Лимит ручной скидки кассира (Раздел 3 ТЗ: "применяет в рамках лимита") — null значит
+  // использовать прежний потолок по умолчанию в ReceiptPanel.tsx, не "без ограничений".
+  const [maxCashierDiscountPercent, setMaxCashierDiscountPercent] = useState<number | null>(null);
+  // Порог "заканчивается" для уведомлений в шапке — не из исходного ТЗ, по прямому запросу
+  // клиента. null = уведомления выключены (порог не настроен).
+  const [lowStockProducts, setLowStockProducts] = useState<{ name: string; quantity: number }[]>([]);
 
   const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => ROLE_HOME_SCREEN[loadSession()?.role ?? "CASHIER"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -158,10 +165,46 @@ function App() {
 
   useEffect(() => {
     if (!session) return;
-    getBusinessType(session.accessToken)
-      .then((r) => setBusinessType(r.businessType))
+    getSaleConfig(session.accessToken)
+      .then((r) => {
+        setBusinessType(r.businessType);
+        setMaxCashierDiscountPercent(r.maxCashierDiscountPercent);
+      })
       .catch(() => undefined);
   }, [session]);
+
+  const canSeeStockNotifications =
+    !!session && (["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"] as Role[]).includes(session.role);
+
+  // Уведомления об остатках (Header.tsx, колокольчик) — не из исходного ТЗ, по прямому запросу
+  // клиента. Не завязано на businessType/выбранную кассу: считаем по всем точкам сразу, как и
+  // "Кассы" на "Главной" (см. HomeScreen.tsx) — организации обычно с одной точкой, но не жёстко.
+  useEffect(() => {
+    if (!session || !canSeeStockNotifications) {
+      setLowStockProducts([]);
+      return;
+    }
+    let cancelled = false;
+    getNotificationsConfig(session.accessToken)
+      .then(async (config) => {
+        if (cancelled || config.lowStockThreshold == null) {
+          if (!cancelled) setLowStockProducts([]);
+          return;
+        }
+        const entries = await getStockReport(session.accessToken);
+        if (cancelled) return;
+        setLowStockProducts(
+          entries
+            .filter((e) => Number(e.quantity) <= config.lowStockThreshold!)
+            .map((e) => ({ name: e.product.name, quantity: Number(e.quantity) })),
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, canSeeStockNotifications]);
 
   // Остатки на плитках товара — только для Магазина/Аптеки (см. businessType выше) и только
   // когда известна касса (без неё непонятно, остаток по какой точке показывать). Ресторан не
@@ -383,6 +426,7 @@ function App() {
         workstationName={workstation?.name ?? null}
         shiftOpenedAt={shift?.openedAt ?? null}
         products={products}
+        lowStockProducts={lowStockProducts}
         onSelectProduct={(product) => {
           addToCart(product);
           setActiveScreen("sale");
@@ -431,6 +475,11 @@ function App() {
               lines={lines}
               discountPercent={discountPercent}
               preview={receiptPreview}
+              maxDiscountPercent={
+                session.role === "CASHIER" && maxCashierDiscountPercent != null
+                  ? maxCashierDiscountPercent
+                  : undefined
+              }
               onDiscountChange={setDiscountPercent}
               onIncrement={increment}
               onDecrement={decrement}

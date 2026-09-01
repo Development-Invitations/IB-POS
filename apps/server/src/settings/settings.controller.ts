@@ -15,7 +15,7 @@ export class SettingsController {
   constructor(private readonly settings: SettingsService) {}
 
   // Доступно всем ролям (в отличие от остального контроллера) — экран "Продажа" должен знать
-  // профиль бизнеса независимо от того, кто за кассой.
+  // профиль бизнеса и лимит скидки кассира независимо от того, кто за кассой.
   @Roles(
     Role.ADMIN,
     Role.MANAGER,
@@ -23,9 +23,17 @@ export class SettingsController {
     Role.WAREHOUSE,
     Role.ACCOUNTANT,
   )
-  @Get('business-type')
-  getBusinessType(@CurrentUser() user: AuthenticatedUser) {
-    return this.settings.getBusinessType(user.organizationId);
+  @Get('sale-config')
+  getSaleConfig(@CurrentUser() user: AuthenticatedUser) {
+    return this.settings.getSaleConfig(user.organizationId);
+  }
+
+  // Раздел 3 ТЗ: "Остатки/склад" — 👁/✅ у Админа/Управляющего/Зав.складом/Бухгалтера, Кассиру
+  // закрыто целиком, поэтому уведомления об остатках ему тоже не положены.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE, Role.ACCOUNTANT)
+  @Get('notifications-config')
+  getNotificationsConfig(@CurrentUser() user: AuthenticatedUser) {
+    return this.settings.getNotificationsConfig(user.organizationId);
   }
 
   @Get()

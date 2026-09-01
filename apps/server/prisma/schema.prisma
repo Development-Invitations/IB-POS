@@ -34,17 +34,25 @@ model Organization {
 
 // Общие настройки (Этап 9): название берётся из Organization.name, здесь — остальное.
 model OrganizationSettings {
-  id                String       @id @default(uuid())
-  organizationId    String       @unique @map("organization_id")
-  currency          String       @default("UZS")
-  defaultLanguage   String       @default("ru") @map("default_language")
-  taxRatePercent    Decimal?     @map("tax_rate_percent") @db.Decimal(5, 2)
-  autoBackupEnabled Boolean      @default(false) @map("auto_backup_enabled")
+  id                        String       @id @default(uuid())
+  organizationId            String       @unique @map("organization_id")
+  currency                  String       @default("UZS")
+  defaultLanguage           String       @default("ru") @map("default_language")
+  taxRatePercent            Decimal?     @map("tax_rate_percent") @db.Decimal(5, 2)
+  autoBackupEnabled         Boolean      @default(false) @map("auto_backup_enabled")
   // Не из исходного ТЗ — по прямому запросу клиента: экран "Продажа" ведёт себя по-разному
   // в зависимости от профиля (см. ProductGrid.tsx на клиенте — остатки/срок годности на
   // плитках товара показываются только для Магазина/Аптеки, Ресторан остаётся как был).
-  businessType      BusinessType @default(RESTAURANT) @map("business_type")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
+  businessType              BusinessType @default(RESTAURANT) @map("business_type")
+  // Раздел 3 ТЗ: "Скидки и акции" — Кассир "применяет [ручную скидку на Продаже] в рамках
+  // лимита". Лимит нигде не был настраиваемым — на клиенте был захардкожен потолок 50% для
+  // всех ролей без разбора. null = использовать прежний потолок по умолчанию (см.
+  // ReceiptPanel.tsx MAX_DISCOUNT_PERCENT), не значит "без ограничений".
+  maxCashierDiscountPercent Int?         @map("max_cashier_discount_percent")
+  // Не из исходного ТЗ — по прямому запросу клиента: порог остатка, при котором товар
+  // считается "заканчивается" и попадает в уведомления (Header.tsx, колокольчик).
+  lowStockThreshold         Int?         @map("low_stock_threshold")
+  updatedAt                 DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -171,28 +179,28 @@ model Category {
 }
 
 model Product {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  categoryId     String?  @map("category_id")
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  categoryId     String?   @map("category_id")
   name           String
   sku            String?
   barcode        String?
-  price          Decimal  @db.Decimal(14, 2)
+  price          Decimal   @db.Decimal(14, 2)
   // Себестоимость (не обязательна) — нужна только для расчёта прибыли в отчётах (Этап 8).
-  cost           Decimal? @db.Decimal(14, 2)
-  unit           String   @default("pcs")
+  cost           Decimal?  @db.Decimal(14, 2)
+  unit           String    @default("pcs")
   // Относительный путь на статику (/uploads/products/<file>) — файл лежит на диске сервера,
   // не в базе, чтобы GET /products не таскал бинарные данные на каждый запрос каталога.
-  imageUrl       String?  @map("image_url")
-  isActive       Boolean  @default(true) @map("is_active")
+  imageUrl       String?   @map("image_url")
+  isActive       Boolean   @default(true) @map("is_active")
   // Не из исходного ТЗ — по прямому запросу клиента, для профиля "Аптека": срок годности
   // партии. Поле не привязано к businessType на уровне схемы (у любого товара может быть
   // срок годности), но в UI показывается/используется только когда организация — Аптека.
   expiryDate     DateTime? @map("expiry_date")
   // Ид товара из 1С (CommerceML) — ключ сопоставления номенклатуры при синке (Этап 6).
-  externalId     String?  @map("external_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  externalId     String?   @map("external_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category     Category?     @relation(fields: [categoryId], references: [id])
