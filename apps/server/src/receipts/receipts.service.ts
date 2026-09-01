@@ -10,6 +10,7 @@ import { AuditService } from '../audit/audit.service';
 import { StockService } from '../stock/stock.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
+import { ReturnReceiptDto } from './dto/return-receipt.dto';
 
 // Скидки из модуля «Скидки и акции» применяются автоматически при создании чека — сервер
 // сам решает, что применимо (не доверяя клиенту), в отличие от ручного discountPercent
@@ -286,7 +287,8 @@ export class ReceiptsService {
   findOne(organizationId: string, id: string) {
     return this.prisma.receipt.findFirstOrThrow({
       where: { id, store: { organizationId } },
-      include: { items: true, payments: true },
+      // Название/единица товара нужны клиенту для выбора позиций на возврат (ReturnItemsModal.tsx).
+      include: { items: { include: { product: true } }, payments: true },
     });
   }
 
@@ -366,9 +368,20 @@ export class ReceiptsService {
     });
   }
 
-  async returnReceipt(organizationId: string, userId: string, id: string) {
+  // Не из исходного ТЗ — по прямому запросу клиента: возврат отдельных позиций чека (например
+  // 1 из 6 купленных товаров), а не только целиком. dto.items не передан — возвращаем весь
+  // остаток по каждой позиции (обратная совместимость с быстрым возвратом последнего чека на
+  // экране «Продажа», см. ReturnConfirmModal.tsx/App.tsx на клиенте — тот вызов и раньше не
+  // передавал items).
+  async returnReceipt(
+    organizationId: string,
+    userId: string,
+    id: string,
+    dto: ReturnReceiptDto = {},
+  ) {
     const receipt = await this.prisma.receipt.findFirst({
       where: { id, store: { organizationId } },
+      include: { items: true },
     });
     if (!receipt) {
       throw new NotFoundException('Чек не найден');
@@ -377,28 +390,98 @@ export class ReceiptsService {
       throw new BadRequestException('Вернуть можно только оплаченный чек');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.receipt.update({
-        where: { id },
-        data: { status: ReceiptStatus.RETURNED },
-        include: { items: true, payments: true },
-      });
+    // Сколько вернуть по каждой позиции — из запроса, либо (если items не передан) весь ещё
+    // не возвращённый остаток по каждой позиции целиком.
+    const returnQtyByItemId = new Map<string, number>();
+    if (dto.items && dto.items.length > 0) {
+      for (const line of dto.items) {
+        const item = receipt.items.find((i) => i.id === line.receiptItemId);
+        if (!item) {
+          throw new BadRequestException('Позиция не найдена в этом чеке');
+        }
+        const remaining = Number(item.quantity) - Number(item.returnedQuantity);
+        if (line.quantity > remaining + 1e-6) {
+          throw new BadRequestException(
+            `По позиции «${item.id}» нельзя вернуть больше остатка (${remaining})`,
+          );
+        }
+        returnQtyByItemId.set(
+          item.id,
+          (returnQtyByItemId.get(item.id) ?? 0) + line.quantity,
+        );
+      }
+    } else {
+      for (const item of receipt.items) {
+        const remaining = Number(item.quantity) - Number(item.returnedQuantity);
+        if (remaining > 1e-6) {
+          returnQtyByItemId.set(item.id, remaining);
+        }
+      }
+    }
 
-      // Возвращаем товар на остаток по каждой позиции в той же транзакции.
-      for (const item of updated.items) {
+    if (returnQtyByItemId.size === 0) {
+      throw new BadRequestException(
+        'По этому чеку уже нечего возвращать — все позиции уже возвращены',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      let refundAmount = 0;
+      const returnedLines: {
+        receiptItemId: string;
+        productId: string;
+        quantity: number;
+      }[] = [];
+
+      for (const item of receipt.items) {
+        const qty = returnQtyByItemId.get(item.id);
+        if (!qty) continue;
+
+        await tx.receiptItem.update({
+          where: { id: item.id },
+          data: { returnedQuantity: { increment: qty } },
+        });
+
+        // Возвращаем товар на остаток в той же транзакции.
         await this.stock.applyMovement(
           tx,
-          updated.storeId,
+          receipt.storeId,
           item.productId,
-          Number(item.quantity),
+          qty,
           StockMovementType.RETURN,
           userId,
         );
+
+        refundAmount += Number(item.price) * qty;
+        returnedLines.push({
+          receiptItemId: item.id,
+          productId: item.productId,
+          quantity: qty,
+        });
       }
+
+      // Статус RETURNED — только когда КАЖДАЯ позиция возвращена целиком. Частичный возврат
+      // статус чека не меняет (остаётся PAID); возвращённость видна по returnedQuantity у
+      // каждой позиции — см. также ReportsService, который из-за этого вычитает сумму
+      // частичного возврата из выручки/прибыли отдельно, не полагаясь на статус чека.
+      const freshItems = await tx.receiptItem.findMany({
+        where: { receiptId: id },
+      });
+      const fullyReturned = freshItems.every(
+        (i) => Number(i.returnedQuantity) >= Number(i.quantity) - 1e-6,
+      );
+
+      const updated = await tx.receipt.update({
+        where: { id },
+        data: fullyReturned ? { status: ReceiptStatus.RETURNED } : {},
+        include: { items: { include: { product: true } }, payments: true },
+      });
 
       await this.outbox.enqueue(tx, organizationId, 'receipt.returned', {
         receiptId: updated.id,
-        total: updated.total,
+        refundAmount,
+        items: returnedLines,
+        fullyReturned,
       });
 
       await this.audit.log(
@@ -408,11 +491,13 @@ export class ReceiptsService {
         'Receipt',
         id,
         {
-          total: updated.total,
+          refundAmount,
+          items: returnedLines,
+          fullyReturned,
         },
       );
 
-      return updated;
+      return { ...updated, refundAmount };
     });
   }
 }

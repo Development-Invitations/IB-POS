@@ -52,6 +52,10 @@ model OrganizationSettings {
   // Не из исходного ТЗ — по прямому запросу клиента: порог остатка, при котором товар
   // считается "заканчивается" и попадает в уведомления (Header.tsx, колокольчик).
   lowStockThreshold         Int?         @map("low_stock_threshold")
+  // Не из исходного ТЗ — заполняет вкладку "Продажа" в Настройках реальным поведением:
+  // кнопки быстрых сумм наличными в PaymentModal.tsx (вместо ручного ввода каждый раз).
+  // Пустой массив = кнопки не показываются, только ручной ввод, как было раньше.
+  quickCashAmounts          Int[]        @default([]) @map("quick_cash_amounts")
   updatedAt                 DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -424,15 +428,20 @@ model Receipt {
 }
 
 model ReceiptItem {
-  id        String   @id @default(uuid())
-  receiptId String   @map("receipt_id")
-  productId String   @map("product_id")
-  quantity  Decimal  @db.Decimal(14, 3)
-  price     Decimal  @db.Decimal(14, 2)
+  id               String   @id @default(uuid())
+  receiptId        String   @map("receipt_id")
+  productId        String   @map("product_id")
+  quantity         Decimal  @db.Decimal(14, 3)
+  price            Decimal  @db.Decimal(14, 2)
   // Себестоимость товара на момент продажи (снимок, как и price) — расчёт прибыли (Этап 8)
   // не должен искажаться, если себестоимость товара изменится позже.
-  cost      Decimal? @db.Decimal(14, 2)
-  discount  Decimal  @default(0) @db.Decimal(14, 2)
+  cost             Decimal? @db.Decimal(14, 2)
+  discount         Decimal  @default(0) @db.Decimal(14, 2)
+  // Не из исходного ТЗ — по прямому запросу клиента: возврат отдельных позиций чека, а не
+  // только целиком. Накопительно — если по одной позиции возвращали несколько раз (например
+  // сначала 1 шт, потом ещё 1 из оставшихся), сумма обеих операций. quantity - returnedQuantity
+  // = сколько по этой позиции ещё можно вернуть.
+  returnedQuantity Decimal  @default(0) @map("returned_quantity") @db.Decimal(14, 3)
 
   receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

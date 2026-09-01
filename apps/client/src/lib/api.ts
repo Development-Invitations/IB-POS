@@ -310,8 +310,27 @@ export function payReceipt(
   );
 }
 
-export function returnReceipt(token: string, receiptId: string) {
-  return request<ApiReceipt>(`/receipts/${receiptId}/return`, { method: "POST" }, token);
+export function getReceipt(token: string, receiptId: string) {
+  return request<ApiReceipt>(`/receipts/${receiptId}`, {}, token);
+}
+
+export interface ReturnReceiptResult extends ApiReceipt {
+  refundAmount: number;
+}
+
+// items не передан — возвращает весь ещё не возвращённый остаток по каждой позиции (весь чек
+// целиком, если он ещё не был возвращён частично) — прежнее поведение для быстрого возврата
+// последнего чека на экране «Продажа» (см. ReturnConfirmModal.tsx/App.tsx).
+export function returnReceipt(
+  token: string,
+  receiptId: string,
+  items?: { receiptItemId: string; quantity: number }[],
+) {
+  return request<ReturnReceiptResult>(
+    `/receipts/${receiptId}/return`,
+    { method: "POST", body: JSON.stringify(items ? { items } : {}) },
+    token,
+  );
 }
 
 export interface ReceiptsFilter {
@@ -580,6 +599,7 @@ export interface UpdateSettingsPayload {
   businessType?: BusinessType;
   maxCashierDiscountPercent?: number | null;
   lowStockThreshold?: number | null;
+  quickCashAmounts?: number[];
 }
 
 export function updateSettings(token: string, payload: UpdateSettingsPayload) {
@@ -587,13 +607,14 @@ export function updateSettings(token: string, payload: UpdateSettingsPayload) {
 }
 
 // Доступно всем ролям (не только Админу, как остальные /settings) — экран "Продажа" должен
-// знать профиль бизнеса и лимит скидки кассира независимо от того, кто за кассой.
+// знать профиль бизнеса, лимит скидки кассира и быстрые суммы наличными независимо от того,
+// кто за кассой.
 export function getSaleConfig(token: string) {
-  return request<{ businessType: BusinessType; maxCashierDiscountPercent: number | null }>(
-    "/settings/sale-config",
-    {},
-    token,
-  );
+  return request<{
+    businessType: BusinessType;
+    maxCashierDiscountPercent: number | null;
+    quickCashAmounts: number[];
+  }>("/settings/sale-config", {}, token);
 }
 
 // Доступно ролям с доступом к остаткам (Раздел 3: Админ/Управляющий/Зав.складом/Бухгалтер) —

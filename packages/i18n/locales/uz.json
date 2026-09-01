@@ -324,6 +324,7 @@
     "toPay": "Toʻlanadi",
     "received": "Qabul qilindi",
     "change": "Qaytim",
+    "exactAmount": "Qaytimsiz",
     "confirm": "Toʻlovni qabul qilish",
     "cancel": "Bekor qilish",
     "error": "Toʻlov xatosi. Chek saqlandi, qayta urinib koʻring",
@@ -351,7 +352,15 @@
     "date": "Sana",
     "customer": "Mijoz",
     "total": "Summa",
-    "status": "Holat"
+    "status": "Holat",
+    "partiallyReturned": "Qisman qaytarilgan",
+    "itemsTitle": "Chek pozitsiyalarini qaytarish",
+    "nothingToReturn": "Bu chek boʻyicha qaytarishga hech narsa qolmagan — barcha pozitsiyalar qaytarilgan",
+    "selectAll": "Barchasini tanlash",
+    "selectNone": "Barchasini bekor qilish",
+    "itemAvailable": "qaytarishga mavjud: {{qty}} {{unit}}",
+    "itemAlreadyReturned": "allaqachon qaytarilgan: {{qty}}",
+    "refundEstimate": "Qaytarish summasi"
   },
   "scanner": {
     "notFoundTitle": "Mahsulot topilmadi",
@@ -462,6 +471,9 @@
     "maxCashierDiscountHint": "\"Sotuv\" ekranidagi qoʻlda chegirmani faqat Kassir roli uchun cheklaydi — Boshqaruvchi va Admin cheklanmagan.",
     "lowStockThreshold": "Bildirishnoma uchun qoldiq chegarasi",
     "lowStockThresholdPlaceholder": "bildirishnomalar oʻchirilgan",
-    "lowStockThresholdHint": "Mahsulot qoldigʻi shu sondan past tushsa, u bildirishnomalarda koʻrinadi (shapkadagi qoʻngʻiroqcha)."
+    "lowStockThresholdHint": "Mahsulot qoldigʻi shu sondan past tushsa, u bildirishnomalarda koʻrinadi (shapkadagi qoʻngʻiroqcha).",
+    "quickCashAmounts": "Naqd tezkor summalar",
+    "quickCashAmountsPlaceholder": "5000, 10000, 20000, 50000, 100000",
+    "quickCashAmountsHint": "Vergul bilan. Naqd toʻlov oynasida summani qoʻlda kiritish oʻrniga tugmalar sifatida koʻrinadi."
   }
 }

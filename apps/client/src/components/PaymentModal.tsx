@@ -19,11 +19,14 @@ export type ClickProvider = "click" | "payme";
 interface PaymentModalProps {
   total: number;
   status: PaymentStatus;
+  // Не из исходного ТЗ — настраивается в Настройках → Продажа. Пустой массив — кнопок нет,
+  // только ручной ввод, как было раньше.
+  quickCashAmounts: number[];
   onClose: () => void;
   onConfirm: (method: PaymentMethod, receivedAmount: number | null, clickProvider: ClickProvider) => void;
 }
 
-export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModalProps) {
+export function PaymentModal({ total, status, quickCashAmounts, onClose, onConfirm }: PaymentModalProps) {
   const { t } = useTranslation();
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [received, setReceived] = useState(total);
@@ -31,6 +34,12 @@ export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModal
 
   const receivedAmount = method === "cash" ? received : null;
   const change = receivedAmount !== null ? receivedAmount - total : 0;
+
+  // Точная сумма всегда первой (без сдачи), дальше настроенные суммы, которых хватает на
+  // оплату — банкнота меньше суммы чека кассиру бесполезна.
+  const quickCashOptions = [total, ...quickCashAmounts.filter((a) => a > total)]
+    .filter((a, i, arr) => arr.indexOf(a) === i)
+    .sort((a, b) => a - b);
   const canConfirm = status !== "processing" && (method !== "cash" || receivedAmount! >= total);
 
   return (
@@ -82,20 +91,40 @@ export function PaymentModal({ total, status, onClose, onConfirm }: PaymentModal
           )}
 
           {method === "cash" && (
-            <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3">
-              <label className="text-xs text-slate-500">
-                {t("payment.received")}
-                <AmountInput
-                  value={received}
-                  onChange={setReceived}
-                  autoFocus
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-accent"
-                />
-              </label>
-              <div className="text-xs text-slate-500">
-                {t("payment.change")}
-                <div className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800">
-                  {formatSum(Math.max(0, change))} {t("common.currency")}
+            <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+              {quickCashOptions.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {quickCashOptions.map((amount) => (
+                    <button
+                      key={amount}
+                      onClick={() => setReceived(amount)}
+                      className={`rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
+                        received === amount
+                          ? "border-accent bg-accent/10 text-accent"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      }`}
+                    >
+                      {amount === total ? t("payment.exactAmount") : formatSum(amount)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs text-slate-500">
+                  {t("payment.received")}
+                  <AmountInput
+                    value={received}
+                    onChange={setReceived}
+                    autoFocus
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-accent"
+                  />
+                </label>
+                <div className="text-xs text-slate-500">
+                  {t("payment.change")}
+                  <div className="mt-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800">
+                    {formatSum(Math.max(0, change))} {t("common.currency")}
+                  </div>
                 </div>
               </div>
             </div>

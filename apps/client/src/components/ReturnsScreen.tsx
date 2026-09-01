@@ -1,10 +1,16 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError, getReceipts, getStores, returnReceipt } from "../lib/api";
+import { ApiError, getReceipts, getStores } from "../lib/api";
 import { formatSum } from "../lib/format";
-import { ReturnConfirmModal } from "./ReturnConfirmModal";
+import { ReturnItemsModal } from "./ReturnItemsModal";
 import type { ApiReceipt, ApiStore, ReceiptStatus } from "../types/api";
 import type { AuthSession } from "../types/auth";
+
+// Частично возвращённый чек (см. ReceiptsService.returnReceipt на сервере) остаётся в статусе
+// PAID — статус меняется на RETURNED только когда КАЖДАЯ позиция возвращена целиком.
+function isPartiallyReturned(r: ApiReceipt): boolean {
+  return r.status === "PAID" && r.items.some((i) => Number(i.returnedQuantity) > 0);
+}
 
 interface ReturnsScreenProps {
   session: AuthSession;
@@ -45,7 +51,7 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [returnTarget, setReturnTarget] = useState<ApiReceipt | null>(null);
+  const [returnTargetId, setReturnTargetId] = useState<string | null>(null);
   const [doneId, setDoneId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -82,16 +88,6 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.accessToken, storeId, from, to, search, canView]);
-
-  async function confirmReturn(approver: AuthSession) {
-    if (!returnTarget) return;
-    await returnReceipt(approver.accessToken, returnTarget.id);
-    setReceipts((prev) =>
-      prev.map((r) => (r.id === returnTarget.id ? { ...r, status: "RETURNED" } : r)),
-    );
-    setDoneId(returnTarget.id);
-    setReturnTarget(null);
-  }
 
   if (!canView) {
     return (
@@ -215,17 +211,23 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
                     {formatSum(Number(r.total))} {t("common.currency")}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                        r.status === "PAID"
-                          ? "bg-emerald-50 text-emerald-600"
-                          : r.status === "RETURNED"
-                            ? "bg-amber-50 text-amber-600"
-                            : "bg-slate-100 text-slate-500"
-                      }`}
-                    >
-                      {t(STATUS_KEY[r.status])}
-                    </span>
+                    {isPartiallyReturned(r) ? (
+                      <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                        {t("returns.partiallyReturned")}
+                      </span>
+                    ) : (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          r.status === "PAID"
+                            ? "bg-emerald-50 text-emerald-600"
+                            : r.status === "RETURNED"
+                              ? "bg-amber-50 text-amber-600"
+                              : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        {t(STATUS_KEY[r.status])}
+                      </span>
+                    )}
                     {doneId === r.id && (
                       <span className="ml-2 text-xs text-emerald-600">{t("returns.done")}</span>
                     )}
@@ -234,7 +236,7 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
                     <td className="px-4 py-3 text-right">
                       {r.status === "PAID" && (
                         <button
-                          onClick={() => setReturnTarget(r)}
+                          onClick={() => setReturnTargetId(r.id)}
                           className="text-xs font-medium text-accent hover:underline"
                         >
                           {t("returns.action")}
@@ -257,11 +259,16 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
         </div>
       )}
 
-      {returnTarget && (
-        <ReturnConfirmModal
-          organizationId={session.organizationId}
-          onClose={() => setReturnTarget(null)}
-          onConfirm={confirmReturn}
+      {returnTargetId && (
+        <ReturnItemsModal
+          session={session}
+          receiptId={returnTargetId}
+          onClose={() => setReturnTargetId(null)}
+          onReturned={(result) => {
+            setReceipts((prev) => prev.map((r) => (r.id === result.id ? result : r)));
+            setDoneId(result.id);
+            setReturnTargetId(null);
+          }}
         />
       )}
     </div>

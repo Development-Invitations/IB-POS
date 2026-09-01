@@ -50,7 +50,20 @@ export class ReportsService {
       include: { items: true },
     });
 
-    const totalSales = receipts.reduce((sum, r) => sum + Number(r.total), 0);
+    // Чек с частичным возвратом позиций (см. ReceiptsService.returnReceipt) остаётся в статусе
+    // PAID — полностью возвращённые (RETURNED) чеки уже отфильтрованы условием выше, а
+    // частично возвращённые здесь честно уменьшают выручку/прибыль на сумму возврата, а не
+    // считаются по полной изначальной сумме чека.
+    const refundedAmount = (receipt: (typeof receipts)[number]) =>
+      receipt.items.reduce(
+        (sum, item) => sum + Number(item.price) * Number(item.returnedQuantity),
+        0,
+      );
+
+    const totalSales = receipts.reduce(
+      (sum, r) => sum + Number(r.total) - refundedAmount(r),
+      0,
+    );
     const receiptsCount = receipts.length;
     const averageCheck = receiptsCount > 0 ? totalSales / receiptsCount : 0;
 
@@ -62,8 +75,9 @@ export class ReportsService {
           hasIncompleteCostData = true;
           continue;
         }
-        profit +=
-          (Number(item.price) - Number(item.cost)) * Number(item.quantity);
+        const soldQuantity =
+          Number(item.quantity) - Number(item.returnedQuantity);
+        profit += (Number(item.price) - Number(item.cost)) * soldQuantity;
       }
     }
 
@@ -73,7 +87,8 @@ export class ReportsService {
     }));
     for (const receipt of receipts) {
       const hour = receipt.createdAt.getHours();
-      salesByHour[hour].total += Number(receipt.total);
+      salesByHour[hour].total +=
+        Number(receipt.total) - refundedAmount(receipt);
     }
 
     return {
@@ -180,7 +195,12 @@ export class ReportsService {
           },
         },
       },
-      select: { productId: true, quantity: true, price: true },
+      select: {
+        productId: true,
+        quantity: true,
+        returnedQuantity: true,
+        price: true,
+      },
     });
 
     const byProduct = new Map<string, { quantity: number; revenue: number }>();
@@ -189,8 +209,12 @@ export class ReportsService {
         quantity: 0,
         revenue: 0,
       };
-      entry.quantity += Number(item.quantity);
-      entry.revenue += Number(item.quantity) * Number(item.price);
+      // Частично возвращённая позиция (см. ReceiptsService.returnReceipt) — топ товаров
+      // считается по фактически проданному, а не по изначально пробитому количеству.
+      const soldQuantity =
+        Number(item.quantity) - Number(item.returnedQuantity);
+      entry.quantity += soldQuantity;
+      entry.revenue += soldQuantity * Number(item.price);
       byProduct.set(item.productId, entry);
     }
 

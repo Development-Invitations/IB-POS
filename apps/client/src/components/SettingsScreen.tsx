@@ -35,6 +35,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [businessType, setBusinessType] = useState<BusinessType>("RESTAURANT");
   const [maxCashierDiscountPercent, setMaxCashierDiscountPercent] = useState("");
   const [lowStockThreshold, setLowStockThreshold] = useState("");
+  const [quickCashAmounts, setQuickCashAmounts] = useState("");
   const [showProductImages, setShowProductImages] = useState(loadShowProductImages());
 
   const [saving, setSaving] = useState(false);
@@ -70,6 +71,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         setLowStockThreshold(
           settingsResult.lowStockThreshold != null ? String(settingsResult.lowStockThreshold) : "",
         );
+        setQuickCashAmounts(settingsResult.quickCashAmounts.join(", "));
       } catch (err) {
         if (!cancelled) {
           if (err instanceof ApiError && err.status === 403) {
@@ -101,6 +103,10 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         businessType,
         maxCashierDiscountPercent: maxCashierDiscountPercent === "" ? null : Number(maxCashierDiscountPercent),
         lowStockThreshold: lowStockThreshold === "" ? null : Number(lowStockThreshold),
+        quickCashAmounts: quickCashAmounts
+          .split(",")
+          .map((s) => Number(s.trim()))
+          .filter((n) => Number.isFinite(n) && n > 0),
       });
       setSettings(updated);
       setSaveMessage(t("settings.saved"));
@@ -377,6 +383,30 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         </div>
       )}
 
+      {!loading && !loadError && tab === "sale" && (
+        <div className="max-w-md space-y-3 rounded-xl bg-white p-4 shadow-sm">
+          <label className="block text-xs font-medium text-slate-500">
+            {t("settings.quickCashAmounts")}
+            <input
+              value={quickCashAmounts}
+              onChange={(e) => setQuickCashAmounts(e.target.value)}
+              placeholder={t("settings.quickCashAmountsPlaceholder")}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+          </label>
+          <p className="text-xs text-slate-400">{t("settings.quickCashAmountsHint")}</p>
+
+          {saveMessage && <p className="text-xs text-slate-500">{saveMessage}</p>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+          >
+            {saving ? t("common.loading") : t("settings.save")}
+          </button>
+        </div>
+      )}
+
       {!loading && !loadError && tab === "discounts" && (
         <div className="max-w-md space-y-3 rounded-xl bg-white p-4 shadow-sm">
           <label className="block text-xs font-medium text-slate-500">
@@ -430,7 +460,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         </div>
       )}
 
-      {!loading && !loadError && ["sale", "receipts"].includes(tab) && (
+      {!loading && !loadError && tab === "receipts" && (
         <div className="rounded-xl bg-white p-6 text-center shadow-sm">
           <p className="text-sm text-slate-400">{t("settings.tabNotReady")}</p>
         </div>

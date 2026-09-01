@@ -12,6 +12,7 @@ import { ReceiptsService } from './receipts.service';
 import { CreateReceiptDto } from './dto/create-receipt.dto';
 import { PayReceiptDto } from './dto/pay-receipt.dto';
 import { PreviewReceiptDto } from './dto/preview-receipt.dto';
+import { ReturnReceiptDto } from './dto/return-receipt.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -91,7 +92,13 @@ export class ReceiptsController {
   returnReceipt(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
+    @Body() dto: ReturnReceiptDto,
   ) {
-    return this.receipts.returnReceipt(user.organizationId, user.userId, id);
+    return this.receipts.returnReceipt(
+      user.organizationId,
+      user.userId,
+      id,
+      dto,
+    );
   }
 }

@@ -96,6 +96,9 @@ function App() {
   // Лимит ручной скидки кассира (Раздел 3 ТЗ: "применяет в рамках лимита") — null значит
   // использовать прежний потолок по умолчанию в ReceiptPanel.tsx, не "без ограничений".
   const [maxCashierDiscountPercent, setMaxCashierDiscountPercent] = useState<number | null>(null);
+  // Кнопки быстрых сумм наличными в PaymentModal.tsx — не из исходного ТЗ, заполняет вкладку
+  // "Продажа" в Настройках. Пустой массив = кнопки выключены.
+  const [quickCashAmounts, setQuickCashAmounts] = useState<number[]>([]);
   // Порог "заканчивается" для уведомлений в шапке — не из исходного ТЗ, по прямому запросу
   // клиента. null = уведомления выключены (порог не настроен).
   const [lowStockProducts, setLowStockProducts] = useState<{ name: string; quantity: number }[]>([]);
@@ -169,6 +172,7 @@ function App() {
       .then((r) => {
         setBusinessType(r.businessType);
         setMaxCashierDiscountPercent(r.maxCashierDiscountPercent);
+        setQuickCashAmounts(r.quickCashAmounts);
       })
       .catch(() => undefined);
   }, [session]);
@@ -557,6 +561,7 @@ function App() {
         <PaymentModal
           total={receiptPreview?.total ?? computeTotals(lines, discountPercent).total}
           status={paymentStatus}
+          quickCashAmounts={quickCashAmounts}
           onClose={() => setPaymentModalOpen(false)}
           onConfirm={confirmPayment}
         />

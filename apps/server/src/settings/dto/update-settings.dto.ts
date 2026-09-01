@@ -1,4 +1,5 @@
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
   IsNumber,
@@ -51,4 +52,12 @@ export class UpdateSettingsDto {
   @IsNumber()
   @Min(0)
   lowStockThreshold?: number | null;
+
+  // Не из исходного ТЗ — заполняет вкладку "Продажа": кнопки быстрых сумм наличными в
+  // PaymentModal.tsx. Пустой массив — кнопки выключены, только ручной ввод, как было раньше.
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  @Min(1, { each: true })
+  quickCashAmounts?: number[];
 }

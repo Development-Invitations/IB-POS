@@ -70,6 +70,11 @@ export interface ApiReceiptItem {
   productId: string;
   quantity: string;
   price: string;
+  // Не из исходного ТЗ — накопительно, сколько по этой позиции уже возвращено (возврат
+  // отдельных позиций чека, см. ReceiptsService.returnReceipt на сервере).
+  returnedQuantity: string;
+  // Заполняется только у GET /receipts/:id (findOne) — список/поиск чеков это не подтягивает.
+  product?: { name: string; unit: string };
 }
 
 export type BackendPaymentMethod = "CASH" | "CARD" | "CLICK" | "PAYME" | "QR" | "MIXED";
@@ -230,6 +235,7 @@ export interface ApiSettings {
   businessType: BusinessType;
   maxCashierDiscountPercent: number | null;
   lowStockThreshold: number | null;
+  quickCashAmounts: number[];
   warnings: string[];
 }
 
