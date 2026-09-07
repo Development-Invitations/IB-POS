@@ -91,6 +91,24 @@ export class ReportsService {
         Number(receipt.total) - refundedAmount(receipt);
     }
 
+    // По дням — не из исходного ТЗ, по прямому запросу клиента: "по часам" за период длиннее
+    // одного дня складывает одинаковые часы разных дат в одну точку графика ("14:00" за весь
+    // месяц сразу), и непонятно, к какому дню это относится. По дате все точки графика уникальны
+    // и однозначно растут слева направо по календарю, а не только по времени суток.
+    const salesByDayMap = new Map<string, number>();
+    for (const receipt of receipts) {
+      const date = receipt.createdAt.toISOString().slice(0, 10);
+      salesByDayMap.set(
+        date,
+        (salesByDayMap.get(date) ?? 0) +
+          Number(receipt.total) -
+          refundedAmount(receipt),
+      );
+    }
+    const salesByDay = [...salesByDayMap.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, total]) => ({ date, total }));
+
     return {
       totalSales,
       receiptsCount,
@@ -98,6 +116,7 @@ export class ReportsService {
       profit,
       profitDataIncomplete: hasIncompleteCostData,
       salesByHour,
+      salesByDay,
     };
   }
 

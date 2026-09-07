@@ -157,6 +157,7 @@ export interface DashboardReport {
   profit: number;
   profitDataIncomplete: boolean;
   salesByHour: { hour: number; total: number }[];
+  salesByDay: { date: string; total: number }[];
   changeVsPrevious: DashboardChange;
 }
 

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
@@ -70,6 +71,31 @@ export class ProductsService {
       where: { id },
       data: { isActive: false },
     });
+  }
+
+  // Настоящее удаление — не то же самое, что деактивация выше: деактивация прячет товар с
+  // "Продажи", но сохраняет историю (чек, где он покупался, должен остаться читаемым); удаление
+  // стирает саму запись товара безвозвратно и по прямому запросу клиента нужно для мусора вроде
+  // тестовых/ошибочно созданных карточек, а не как замена деактивации в обычной работе.
+  // ReceiptItem.product ссылается на Product без onDelete (RESTRICT по умолчанию) — товар,
+  // который хоть раз был в чеке, Postgres не даст удалить, и это правильно: историю продаж
+  // терять нельзя. Остатки/движения/скидки на товар (Stock/StockMovement/Discount) в схеме
+  // настроены на onDelete: Cascade и корректно удалятся вместе с товаром.
+  async purge(organizationId: string, id: string) {
+    await this.findOne(organizationId, id);
+    try {
+      await this.prisma.product.delete({ where: { id } });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2003'
+      ) {
+        throw new BadRequestException(
+          'Нельзя удалить товар — по нему есть история продаж. Используйте деактивацию.',
+        );
+      }
+      throw err;
+    }
   }
 
   async setImage(organizationId: string, id: string, imageUrl: string) {

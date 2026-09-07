@@ -7,6 +7,7 @@ import {
   getCategories,
   getProducts,
   getStockReport,
+  purgeProduct,
   updateProduct,
 } from "../lib/api";
 import { formatSum } from "../lib/format";
@@ -23,16 +24,24 @@ interface ProductsScreenProps {
 }
 
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "WAREHOUSE"];
+// Настоящее удаление строже деактивации — необратимо, поэтому только Админ (см. ProductsController.purge).
+const CAN_DELETE_ROLES: AuthSession["role"][] = ["ADMIN"];
+// Раздел 3 ТЗ: "Остатки/склад" Кассиру закрыто целиком (в отличие от Управляющего/Зав.складом/
+// Бухгалтера — им хотя бы просмотр). GET /reports/stock отвечает 403 для Кассира — раньше это
+// валило Promise.all в load() целиком и ломало весь экран "Товары" даже там, где у Кассира есть
+// доступ (баг, не только про остатки): см. CAN_STOCK_ROLES в ReportsController.
+const CAN_STOCK_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"];
 
 export function ProductsScreen({ session, onCatalogChanged, businessType }: ProductsScreenProps) {
   const { t } = useTranslation();
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
+  const canDelete = CAN_DELETE_ROLES.includes(session.role);
   const isPharmacy = businessType === "PHARMACY";
   // Ресторан не ведёт остатки поштучно (готовится на месте) — колонка там только сбивала бы с
   // толку нулями. Магазин/Аптека торгуют со склада (см. WarehouseScreen.tsx), поэтому здесь
   // видно, сколько реально есть — без этого связь "Товары" (каталог) ↔ "Склад" (остатки) была
   // не очевидна: можно было решить, что это два независимых, не связанных друг с другом списка.
-  const showStock = businessType && businessType !== "RESTAURANT";
+  const showStock = !!businessType && businessType !== "RESTAURANT" && CAN_STOCK_ROLES.includes(session.role);
 
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
@@ -47,6 +56,10 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
+
+  const [purgeTarget, setPurgeTarget] = useState<ApiProduct | null>(null);
+  const [purgeSubmitting, setPurgeSubmitting] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -154,6 +167,24 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
       setConfirmError(err instanceof ApiError ? err.message : t("products.saveError"));
     } finally {
       setConfirmSubmitting(false);
+    }
+  }
+
+  async function confirmPurge() {
+    if (!purgeTarget) return;
+    setPurgeSubmitting(true);
+    setPurgeError(null);
+    try {
+      await purgeProduct(session.accessToken, purgeTarget.id);
+      setProducts((prev) => prev.filter((p) => p.id !== purgeTarget.id));
+      onCatalogChanged();
+      setPurgeTarget(null);
+    } catch (err) {
+      // Сервер сам отказывает 400-й, если по товару есть история продаж — показываем как есть,
+      // это не баг, а осознанная защита (см. ProductsService.purge()).
+      setPurgeError(err instanceof ApiError ? err.message : t("products.purgeError"));
+    } finally {
+      setPurgeSubmitting(false);
     }
   }
 
@@ -266,6 +297,17 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                         >
                           {p.isActive ? t("products.deactivate") : t("products.activate")}
                         </button>
+                        {canDelete && (
+                          <button
+                            onClick={() => {
+                              setPurgeError(null);
+                              setPurgeTarget(p);
+                            }}
+                            className="text-xs font-medium text-red-400 hover:text-red-600"
+                          >
+                            {t("products.delete")}
+                          </button>
+                        )}
                       </div>
                     </td>
                   )}
@@ -308,6 +350,19 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
           error={confirmError}
           onClose={() => setConfirmTarget(null)}
           onConfirm={confirmDeactivate}
+        />
+      )}
+
+      {purgeTarget && (
+        <ConfirmDialog
+          title={t("products.deleteTitle")}
+          message={t("products.deleteConfirm", { name: purgeTarget.name })}
+          confirmLabel={t("products.delete")}
+          danger
+          submitting={purgeSubmitting}
+          error={purgeError}
+          onClose={() => setPurgeTarget(null)}
+          onConfirm={confirmPurge}
         />
       )}
     </div>

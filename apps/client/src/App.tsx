@@ -230,9 +230,16 @@ function App() {
         setProducts((prev) =>
           prev.map((p) => {
             const entry = byProductId.get(p.id);
-            return entry
-              ? { ...p, stockQty: Number(entry.quantity), expiryDate: entry.product.expiryDate }
-              : p;
+            // Товар без записи на складе (ни разу не оприходован через "Склад") — это тот же
+            // случай, что и явный ноль, а не "неизвестно": раньше stockQty оставался undefined,
+            // и такой товар проходил проверку "нет в наличии" мимо и был доступен для продажи
+            // (жалоба клиента "добавили товар, но не отсканировали в склад — не должен быть
+            // в продаже, пока не вывели количество").
+            return {
+              ...p,
+              stockQty: entry ? Number(entry.quantity) : 0,
+              expiryDate: entry ? entry.product.expiryDate : p.expiryDate,
+            };
           }),
         );
       })

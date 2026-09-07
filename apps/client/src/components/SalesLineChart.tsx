@@ -2,12 +2,10 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSum } from "../lib/format";
 
-// Лёгкий линейный график без внешней библиотеки — 24 почасовые точки, заливка под линией.
-// Используется и на "Главной", и в "Отчётах" — вынесен в отдельный файл, чтобы не дублировать.
-// Точки увеличены и кликабельны широкой прозрачной областью (проще навести мышью), подсказка —
-// свой стилизованный тултип поверх графика, а не нативный браузерный (тот появляется с задержкой
-// и выглядит неаккуратно).
-export function SalesLineChart({ points }: { points: { hour: number; total: number }[] }) {
+// Лёгкий линейный график без внешней библиотеки — заливка под линией. Используется и на
+// "Главной" (всегда по часам одного дня), и в "Отчётах" (по часам ИЛИ по дням, см.
+// ReportsScreen.tsx — точки универсальные: "label" сам решает, что показать в подсказке/оси).
+export function SalesLineChart({ points }: { points: { label: string; total: number }[] }) {
   const { t } = useTranslation();
   const width = 600;
   const height = 140;
@@ -15,7 +13,7 @@ export function SalesLineChart({ points }: { points: { hour: number; total: numb
   const [hovered, setHovered] = useState<number | null>(null);
 
   const coords = points.map((p, i) => {
-    const x = (i / (points.length - 1)) * width;
+    const x = points.length > 1 ? (i / (points.length - 1)) * width : width / 2;
     const y = height - (p.total / max) * (height - 8) - 4;
     return { x, y, ...p };
   });
@@ -38,7 +36,7 @@ export function SalesLineChart({ points }: { points: { hour: number; total: numb
           <div className="font-semibold">
             {formatSum(active.total)} {t("common.currency")}
           </div>
-          <div className="text-slate-300">{active.hour}:00</div>
+          <div className="text-slate-300">{active.label}</div>
         </div>
       )}
       <svg viewBox={`0 0 ${width} ${height}`} className="h-36 w-full overflow-visible" preserveAspectRatio="none">
@@ -63,7 +61,7 @@ export function SalesLineChart({ points }: { points: { hour: number; total: numb
           />
         )}
         {coords.map((c, i) => (
-          <g key={c.hour}>
+          <g key={c.label}>
             <circle
               cx={c.x}
               cy={c.y}

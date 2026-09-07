@@ -141,4 +141,11 @@ export class ProductsController {
   remove(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     return this.products.remove(user.organizationId, id);
   }
+
+  // Отдельно от remove() (деактивация) и строже по ролям — необратимое действие, только Админ.
+  @Roles(Role.ADMIN)
+  @Delete(':id/purge')
+  purge(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.products.purge(user.organizationId, id);
+  }
 }

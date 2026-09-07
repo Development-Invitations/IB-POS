@@ -128,6 +128,28 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
 
   const maxTopRevenue = useMemo(() => Math.max(1, ...topProducts.map((p) => p.revenue)), [topProducts]);
 
+  // Один день выбран (С == По) -> по часам этого дня; несколько дней -> по датам, иначе "по
+  // часам" за месяц складывал бы одинаковые часы разных дат в одну точку без указания, к какому
+  // дню она относится (жалоба клиента "не понятно за какой день" / "куда движется график").
+  const isSingleDay = from === to;
+  const chartPoints = useMemo(() => {
+    if (!dashboard) return [];
+    if (isSingleDay) {
+      return dashboard.salesByHour.map((p) => ({ label: `${p.hour}:00`, total: p.total }));
+    }
+    return dashboard.salesByDay.map((p) => ({
+      label: new Date(p.date).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }),
+      total: p.total,
+    }));
+  }, [dashboard, isSingleDay]);
+  const axisLabels = useMemo(() => {
+    if (isSingleDay) return ["0:00", "12:00", "23:00"];
+    if (chartPoints.length === 0) return [];
+    if (chartPoints.length === 1) return [chartPoints[0].label];
+    const mid = chartPoints[Math.floor((chartPoints.length - 1) / 2)];
+    return [chartPoints[0].label, mid.label, chartPoints[chartPoints.length - 1].label];
+  }, [isSingleDay, chartPoints]);
+
   async function handleExport() {
     setExporting(true);
     try {
@@ -340,12 +362,17 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
-            <h3 className="mb-3 text-sm font-semibold text-slate-700">{t("reports.salesByHour")}</h3>
-            <SalesLineChart points={dashboard.salesByHour} />
+            <h3 className="text-sm font-semibold text-slate-700">
+              {t(isSingleDay ? "reports.salesByHour" : "reports.salesByDay")}
+            </h3>
+            <p className="mb-3 text-xs text-slate-400">
+              {t(isSingleDay ? "reports.salesByHourHint" : "reports.salesByDayHint")}
+            </p>
+            <SalesLineChart points={chartPoints} />
             <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-              <span>0:00</span>
-              <span>12:00</span>
-              <span>23:00</span>
+              {axisLabels.map((label, i) => (
+                <span key={i}>{label}</span>
+              ))}
             </div>
           </div>
         </>

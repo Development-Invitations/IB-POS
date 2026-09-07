@@ -122,6 +122,30 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     saveShowProductImages(value);
   }
 
+  // Тип бизнеса — не поле формы вперемешку с валютой/налогом, а отдельный самодостаточный
+  // выбор (как переключатель "Показывать фото товаров" выше) — жалоба клиента "выбрал Магазин,
+  // при следующем входе снова Ресторан" оказалась тем, что выбор карточки визуально выглядит
+  // завершённым действием, а реально требовал ещё отдельного нажатия общей кнопки "Сохранить"
+  // ниже по странице, вне поля зрения. Сохраняем сразу по клику, не дожидаясь общего "Сохранить".
+  const [businessTypeSaving, setBusinessTypeSaving] = useState(false);
+  const [businessTypeError, setBusinessTypeError] = useState<string | null>(null);
+
+  async function handleSelectBusinessType(bt: BusinessType) {
+    const previous = businessType;
+    setBusinessType(bt);
+    setBusinessTypeSaving(true);
+    setBusinessTypeError(null);
+    try {
+      const updated = await updateSettings(session.accessToken, { businessType: bt });
+      setSettings(updated);
+    } catch (err) {
+      setBusinessType(previous);
+      setBusinessTypeError(err instanceof ApiError ? err.message : t("settings.saveError"));
+    } finally {
+      setBusinessTypeSaving(false);
+    }
+  }
+
   async function handleCreateBackup() {
     setBackupBusy(true);
     try {
@@ -208,8 +232,9 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
               {BUSINESS_TYPES.map((bt) => (
                 <button
                   key={bt}
-                  onClick={() => setBusinessType(bt)}
-                  className={`rounded-lg border p-3 text-left transition ${
+                  onClick={() => handleSelectBusinessType(bt)}
+                  disabled={businessTypeSaving}
+                  className={`rounded-lg border p-3 text-left transition disabled:opacity-60 ${
                     businessType === bt
                       ? "border-accent bg-accent/5"
                       : "border-slate-200 hover:border-slate-300"
@@ -224,6 +249,8 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
                 </button>
               ))}
             </div>
+            {businessTypeSaving && <p className="mt-2 text-xs text-slate-400">{t("common.loading")}</p>}
+            {businessTypeError && <p className="mt-2 text-xs text-red-600">{businessTypeError}</p>}
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

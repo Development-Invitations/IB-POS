@@ -176,6 +176,12 @@ export function deactivateProduct(token: string, id: string) {
   return request<void>(`/products/${id}`, { method: "DELETE" }, token);
 }
 
+// Настоящее удаление (не деактивация) — необратимо, сервер сам откажет, если по товару есть
+// история продаж (ReceiptItem), см. ProductsService.purge().
+export function purgeProduct(token: string, id: string) {
+  return request<void>(`/products/${id}/purge`, { method: "DELETE" }, token);
+}
+
 // Multipart — не через общий request(), у него JSON Content-Type всегда выставлен явно,
 // а тут его должен проставить сам браузер вместе с boundary.
 export async function uploadProductImage(token: string, id: string, file: Blob, filename: string) {
