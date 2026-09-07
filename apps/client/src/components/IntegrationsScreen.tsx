@@ -53,6 +53,15 @@ const PROVIDER_FIELDS: Partial<Record<FiscalProviderName, ProviderField[]>> = {
     { key: "companyAddress", labelKey: "integrations.companyAddress" },
     { key: "companyInn", labelKey: "integrations.companyInn" },
   ],
+  // RahmatPOS — платёжный терминал с подписью запроса (HMAC SHA256), см. rahmatpos-adapter.ts.
+  RAHMATPOS: [
+    {
+      key: "baseUrl",
+      labelKey: "integrations.rahmatBaseUrl",
+      placeholderKey: "integrations.rahmatBaseUrlPlaceholder",
+    },
+    { key: "secretKey", labelKey: "integrations.secretKey", type: "password" },
+  ],
 };
 
 // Лого касс, для которых оно предоставлено (см. apps/client/src/assets/integrations/) —

@@ -3,16 +3,17 @@ import type { IntegrationAdapter } from './adapter.interface';
 import { createMockAdapter } from './mock-adapter';
 import { createRegosAdapter } from './regos-adapter';
 import { createEposAdapter } from './epos-adapter';
+import { createRahmatPosAdapter } from './rahmatpos-adapter';
 import { FISCAL_PROVIDERS, type FiscalProvider } from './adapter.interface';
 
-// Regos и Epos — единственные из четырёх касс (см. FISCAL_PROVIDERS — SMARTPOS убран
-// 2026-09-07) с подтверждённой документацией на сегодня (docs.regos.uz, Postman-коллекция
-// клиента на Epos "Universal Communicator"), поэтому у них реальные адаптеры; ArcaGroup/
-// RahmatPos остаются на честной симуляции до получения их реальных протоколов.
+// Regos, Epos и RahmatPos — три из четырёх касс (см. FISCAL_PROVIDERS — SMARTPOS убран
+// 2026-09-07) с подтверждённой документацией на сегодня, поэтому у них реальные адаптеры;
+// ArcaGroup остаётся на честной симуляции до получения его реального протокола.
 const REAL_ADAPTERS: Partial<Record<FiscalProvider, () => IntegrationAdapter>> =
   {
     [IntegrationProvider.REGOS]: createRegosAdapter,
     [IntegrationProvider.EPOS]: createEposAdapter,
+    [IntegrationProvider.RAHMATPOS]: createRahmatPosAdapter,
   };
 
 const adapters = new Map<FiscalProvider, IntegrationAdapter>(
