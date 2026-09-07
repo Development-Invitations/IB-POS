@@ -30,6 +30,13 @@ const CSV_HEADER = [
 // { found: false }, а не бросает исключение.
 const TASNIF_SEARCH_URL =
   'https://tasnif.soliq.uz/api/cls-api/mxik/search/by-params';
+// Второй, более широкий индекс каталога (elasticsearch, тот же, что использует страница
+// "search-deep" на самом сайте) — подключён отдельным резервным запросом, ТОЛЬКО когда точный
+// поиск по gtin выше ничего не нашёл. Он делает нечёткий полнотекстовый поиск (совпадение по
+// похожим цифрам, а не только по точному штрихкоду), поэтому результаты обязательно
+// фильтруются ниже до строгого совпадения internationalCode === штрихкод — иначе можно
+// показать приёмщику совсем другой товар с просто похожим на вид кодом.
+const TASNIF_ELASTIC_URL = 'https://tasnif.soliq.uz/api/cls-api/elasticsearch/search';
 
 interface TasnifItem {
   mxikCode?: string;
@@ -38,6 +45,13 @@ interface TasnifItem {
   attributeName?: string;
   unitName?: string;
   commonUnitName?: string;
+}
+
+interface TasnifElasticItem {
+  mxikCode?: string;
+  name?: string;
+  internationalCode?: string;
+  unitsName?: string;
 }
 
 export interface BarcodeLookupItem {
@@ -89,13 +103,41 @@ export class ProductsService {
         });
       }
 
-      return { found: items.length > 0, items };
+      if (items.length > 0) return { found: true, items };
+      return await this.lookupBarcodeViaElastic(gtin, controller.signal);
     } catch {
       // Нет сети, таймаут, госсайт лёг или сменил формат ответа — не критично, приёмщик
       // просто вводит название вручную, как и раньше.
       return { found: false, items: [] };
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  private async lookupBarcodeViaElastic(
+    gtin: string,
+    signal: AbortSignal,
+  ): Promise<BarcodeLookupResult> {
+    try {
+      const url = `${TASNIF_ELASTIC_URL}?lang=ru&search=${encodeURIComponent(gtin)}&page=0&size=20`;
+      const response = await fetch(url, { signal });
+      if (!response.ok) return { found: false, items: [] };
+
+      const json = (await response.json()) as { data?: TasnifElasticItem[] };
+      const items: BarcodeLookupItem[] = [];
+      for (const item of json.data ?? []) {
+        // Строгая фильтрация — elasticsearch ищет нечётко (по похожим цифрам), а не по
+        // точному штрихкоду, см. комментарий у TASNIF_ELASTIC_URL выше.
+        if (!item.mxikCode || !item.name || item.internationalCode !== gtin) continue;
+        items.push({
+          mxikCode: item.mxikCode,
+          name: item.name,
+          unit: item.unitsName?.trim() || undefined,
+        });
+      }
+      return { found: items.length > 0, items };
+    } catch {
+      return { found: false, items: [] };
     }
   }
 
