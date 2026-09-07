@@ -34,6 +34,8 @@ export function ProductGrid({ products, onAdd, businessType }: ProductGridProps)
 
         const outOfStock = showStockInfo && product.stockQty !== undefined && product.stockQty <= 0;
 
+        const hasStockInfo = showStockInfo && product.stockQty !== undefined;
+
         return (
           <button
             key={product.id}
@@ -45,20 +47,6 @@ export function ProductGrid({ products, onAdd, businessType }: ProductGridProps)
                 : "hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md active:translate-y-0"
             }`}
           >
-            {showStockInfo && product.stockQty !== undefined && (
-              <span
-                className={`absolute right-2 top-2 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  product.stockQty > 0
-                    ? "bg-slate-100 text-slate-500"
-                    : "bg-red-50 text-red-600"
-                }`}
-              >
-                {product.stockQty > 0
-                  ? t("products.stockQty", { qty: product.stockQty, unit: product.unit })
-                  : t("products.outOfStock")}
-              </span>
-            )}
-
             <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-sm font-bold text-slate-500">
               {showImages && product.imageUrl ? (
                 <img src={`${API_BASE}${product.imageUrl}`} alt="" className="h-full w-full object-cover" />
@@ -67,7 +55,21 @@ export function ProductGrid({ products, onAdd, businessType }: ProductGridProps)
               )}
             </span>
             <span className="text-sm font-semibold text-slate-800">{product.name}</span>
-            <span className="text-xs text-slate-400">{product.unit}</span>
+
+            {/* Магазин/Аптека: крупный, чёткий остаток вместо мелкого значка в углу — по прямому
+                запросу клиента остаток должен читаться с монитора кассы издалека, не искаться
+                глазами. Ресторан остатки не ведёт (готовится на месте) — там просто ед. изм. */}
+            {hasStockInfo ? (
+              <span
+                className={`w-full rounded-lg py-1.5 text-center text-base font-extrabold ${
+                  product.stockQty! > 0 ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
+                }`}
+              >
+                {product.stockQty! > 0 ? `${product.stockQty} ${product.unit}` : t("products.outOfStock")}
+              </span>
+            ) : (
+              <span className="text-xs text-slate-400">{product.unit}</span>
+            )}
 
             {expiryDays !== null && expiryDays <= EXPIRY_WARNING_DAYS && (
               <span
