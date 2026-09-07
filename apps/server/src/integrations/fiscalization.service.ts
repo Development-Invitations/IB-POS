@@ -59,7 +59,20 @@ export class FiscalizationService {
         }
 
         const adapter = getAdapter(integration.provider);
-        const payload = event.payload as unknown as FiscalReceiptPayload;
+        // Разные типы события хранят разные поля (см. ReceiptsService.pay/returnReceipt):
+        // 'receipt.paid' -> { receiptId, total }, 'receipt.returned' -> { receiptId,
+        // refundAmount, items, fullyReturned }. Раньше оба варианта передавались адаптеру как
+        // есть под одним типом FiscalReceiptPayload — для возврата total был бы undefined, а
+        // адаптер не мог отличить продажу от возврата и всегда звал бы "продажу" на кассе.
+        const rawPayload = event.payload as Record<string, unknown>;
+        const payload: FiscalReceiptPayload = {
+          receiptId: rawPayload.receiptId as string,
+          total:
+            event.eventType === 'receipt.returned'
+              ? (rawPayload.refundAmount as number)
+              : (rawPayload.total as number),
+          kind: event.eventType === 'receipt.returned' ? 'return' : 'sale',
+        };
         const config = (integration.config as Record<string, unknown>) ?? {};
 
         const result = await adapter.sendReceipt(config, payload);

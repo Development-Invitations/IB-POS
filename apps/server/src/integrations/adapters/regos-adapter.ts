@@ -135,7 +135,9 @@ export function createRegosAdapter(): IntegrationAdapter {
       if (!cfg) {
         return { success: false, message: 'REGOS: нет учётных данных' };
       }
-      const result = await call(cfg, 'Receipt.Sale', {
+      const method =
+        payload.kind === 'return' ? 'Receipt.Refund' : 'Receipt.Sale';
+      const result = await call(cfg, method, {
         extId: payload.receiptId,
         sum: payload.total,
       });
@@ -154,7 +156,10 @@ export function createRegosAdapter(): IntegrationAdapter {
       return {
         success: true,
         fiscalId,
-        message: 'REGOS: чек передан на фискализацию',
+        message:
+          payload.kind === 'return'
+            ? 'REGOS: возврат передан на фискализацию'
+            : 'REGOS: чек передан на фискализацию',
       };
     },
 

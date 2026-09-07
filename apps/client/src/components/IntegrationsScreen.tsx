@@ -45,6 +45,15 @@ const PROVIDER_FIELDS: Partial<Record<FiscalProviderName, ProviderField[]>> = {
     { key: "login", labelKey: "auth.login" },
     { key: "password", labelKey: "auth.password", type: "password" },
   ],
+  // Epos "Universal Communicator" — локальное ПО на кассе, слушает /uzpos на порту 8347;
+  // companyName/companyAddress/companyInn нужны коммуникатору в каждом чеке (см. epos-adapter.ts).
+  EPOS: [
+    { key: "baseUrl", labelKey: "integrations.eposBaseUrl", placeholderKey: "integrations.eposBaseUrlPlaceholder" },
+    { key: "token", labelKey: "integrations.token" },
+    { key: "companyName", labelKey: "integrations.companyName" },
+    { key: "companyAddress", labelKey: "integrations.companyAddress" },
+    { key: "companyInn", labelKey: "integrations.companyInn" },
+  ],
 };
 
 // Лого касс, для которых оно предоставлено (см. apps/client/src/assets/integrations/) —

@@ -12,9 +12,12 @@ export const FISCAL_PROVIDERS = [
 
 export type FiscalProvider = (typeof FISCAL_PROVIDERS)[number];
 
+// kind различает продажу и возврат — реальным кассам (Regos: Receipt.Sale/Receipt.Refund,
+// Epos: sale/refund) нужен разный метод API, это не просто разный текст в сообщении.
 export interface FiscalReceiptPayload {
   receiptId: string;
   total: number;
+  kind: 'sale' | 'return';
 }
 
 export interface AdapterResult {
