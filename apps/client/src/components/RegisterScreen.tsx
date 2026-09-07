@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import logo from "../assets/logo-mark.png";
 import { ApiError, registerOrganization } from "../lib/api";
+import { saveLastOrgId, saveLastLogin } from "../lib/session";
 
 interface RegisterScreenProps {
   onDone: (organizationId: string, login: string) => void;
@@ -41,6 +42,12 @@ export function RegisterScreen({ onDone, onBackToLogin }: RegisterScreenProps) {
         admin: { fullName: fullName.trim(), login: loginValue.trim(), password },
       });
       setCreatedOrgId(organization.id);
+      // Раньше ID организации попадал в localStorage только при УСПЕШНОМ входе (LoginScreen)
+      // — если после регистрации выйти или закрыть приложение раньше первого входа, ID
+      // нигде не сохранялся и его приходилось вводить заново (жалоба клиента). Сохраняем
+      // сразу по факту создания, не дожидаясь первого логина.
+      saveLastOrgId(organization.id);
+      saveLastLogin(loginValue.trim());
       setPhase("done");
     } catch (err) {
       if (err instanceof ApiError && err.status === 0) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getVersion } from "@tauri-apps/api/app";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
@@ -10,6 +11,13 @@ type Phase = "idle" | "available" | "downloading" | "installing" | "error";
 // "дошло" до кассы (не из исходного ТЗ — по прямому запросу клиента).
 const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
+// После relaunch() (см. handleUpdate ниже) кассир видел просто чистый экран логина без
+// какого-либо подтверждения, что обновление реально прошло (жалоба клиента: "при входе не
+// пришло то что приложение обновилось") — версия пишется сюда ПЕРЕД перезапуском и проверяется
+// при следующей загрузке; если совпадает с текущей версией приложения, показываем баннер один
+// раз и сразу стираем ключ, чтобы не показывать его снова при обычных перезапусках.
+const PENDING_UPDATE_KEY = "ibpos.pendingUpdateVersion";
+
 // Проверяем обновления при старте приложения и затем периодически, вне зависимости от того,
 // залогинен ли пользователь — это киоск-устройство, апдейт должен долетать даже до экрана
 // логина. Вне Tauri (dev-режим в обычном браузере) check() бросит исключение — тихо игнорируем.
@@ -18,6 +26,23 @@ export function UpdateNotifier() {
   const [update, setUpdate] = useState<Update | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [percent, setPercent] = useState(0);
+  const [justUpdatedVersion, setJustUpdatedVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    const pendingVersion = localStorage.getItem(PENDING_UPDATE_KEY);
+    if (!pendingVersion) return;
+    localStorage.removeItem(PENDING_UPDATE_KEY);
+    getVersion()
+      .then((currentVersion) => {
+        if (currentVersion === pendingVersion) {
+          setJustUpdatedVersion(pendingVersion);
+          window.setTimeout(() => setJustUpdatedVersion(null), 8000);
+        }
+      })
+      .catch(() => {
+        // Вне Tauri (dev-браузер) — тихо игнорируем, как и check() ниже.
+      });
+  }, []);
 
   useEffect(() => {
     function runCheck() {
@@ -44,6 +69,38 @@ export function UpdateNotifier() {
     return () => window.clearInterval(id);
   }, []);
 
+  const handleUpdate = async (activeUpdate: Update) => {
+    setPhase("downloading");
+    let total = 0;
+    let downloaded = 0;
+    try {
+      await activeUpdate.downloadAndInstall((event) => {
+        if (event.event === "Started") {
+          total = event.data.contentLength ?? 0;
+        } else if (event.event === "Progress") {
+          downloaded += event.data.chunkLength;
+          setPercent(total > 0 ? Math.round((downloaded / total) * 100) : 0);
+        } else if (event.event === "Finished") {
+          setPhase("installing");
+        }
+      });
+      localStorage.setItem(PENDING_UPDATE_KEY, activeUpdate.version);
+      await relaunch();
+    } catch {
+      setPhase("error");
+    }
+  };
+
+  if (justUpdatedVersion) {
+    return (
+      <div className="no-print fixed bottom-4 right-4 z-50 w-72 rounded-xl bg-white px-4 py-3 shadow-xl ring-1 ring-emerald-200">
+        <p className="text-sm font-semibold text-emerald-700">
+          {t("updater.updated", { version: justUpdatedVersion })}
+        </p>
+      </div>
+    );
+  }
+
   if (phase === "idle" || !update) return null;
 
   // Тело релиза (см. .github/workflows/release.yml — Generate changelog) — список коммитов
@@ -54,27 +111,6 @@ export function UpdateNotifier() {
     .split("\n")
     .map((line) => line.replace(/^[-*]\s*/, "").trim())
     .filter(Boolean);
-
-  const handleUpdate = async () => {
-    setPhase("downloading");
-    let total = 0;
-    let downloaded = 0;
-    try {
-      await update.downloadAndInstall((event) => {
-        if (event.event === "Started") {
-          total = event.data.contentLength ?? 0;
-        } else if (event.event === "Progress") {
-          downloaded += event.data.chunkLength;
-          setPercent(total > 0 ? Math.round((downloaded / total) * 100) : 0);
-        } else if (event.event === "Finished") {
-          setPhase("installing");
-        }
-      });
-      await relaunch();
-    } catch {
-      setPhase("error");
-    }
-  };
 
   return (
     <div className="no-print fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200">
@@ -96,7 +132,7 @@ export function UpdateNotifier() {
 
           <div className="px-4 py-3">
             <button
-              onClick={handleUpdate}
+              onClick={() => handleUpdate(update)}
               className="w-full rounded-lg bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover"
             >
               {t("updater.update")}

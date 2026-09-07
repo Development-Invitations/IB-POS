@@ -23,6 +23,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # apps/server/package.json теперь запускает это само через "postinstall" — явный шаг
+      # здесь на случай, если postinstall когда-нибудь перестанет срабатывать (например,
+      # сменится менеджер пакетов), и чтобы ошибка генерации была видна отдельным шагом в
+      # логе, а не терялась внутри "Install dependencies". Раньше этого шага не было вообще —
+      # тайпчек падал на "Module '@prisma/client' has no exported member ...", потому что
+      # @prisma/client без сгенерированных типов — это пустая заглушка, а не настоящий клиент.
+      - name: Generate Prisma client
+        run: pnpm --filter @ib-pos/server run prisma:generate
+
       - name: i18n lint (no hardcoded UI strings)
         run: pnpm i18n:lint
 

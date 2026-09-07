@@ -13,7 +13,8 @@
     "update": "Yangilash",
     "downloading": "Yangilanish yuklanmoqda… {{percent}}%",
     "installing": "Yangilanish o'rnatilmoqda, ilova qayta ishga tushadi…",
-    "error": "Yangilanishni yuklab bo'lmadi"
+    "error": "Yangilanishni yuklab bo'lmadi",
+    "updated": "{{version}} versiyasiga yangilandi"
   },
   "common": {
     "language": "Til",
