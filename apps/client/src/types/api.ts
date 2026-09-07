@@ -21,6 +21,7 @@ export interface ApiProduct {
   imageUrl: string | null;
   isActive: boolean;
   expiryDate: string | null;
+  isConsumable: boolean;
 }
 
 export interface ApiStore {
@@ -159,6 +160,7 @@ export interface DashboardReport {
   salesByHour: { hour: number; total: number }[];
   salesByDay: { date: string; total: number }[];
   changeVsPrevious: DashboardChange;
+  consumables: { revenue: number; cost: number; profit: number; quantity: number };
 }
 
 export interface TopProduct {
@@ -238,6 +240,7 @@ export interface ApiSettings {
   maxCashierDiscountPercent: number | null;
   lowStockThreshold: number | null;
   quickCashAmounts: number[];
+  showConsumablesPanel: boolean;
   warnings: string[];
 }
 

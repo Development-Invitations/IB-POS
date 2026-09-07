@@ -45,6 +45,15 @@
   background-color: rgba(255, 255, 255, 0.4);
 }
 
+/* Полоса вкладок чеков (ReceiptPanel) — узкая, полоса прокрутки только мешает при 4-5 вкладках. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media print {
   .no-print {
     display: none !important;

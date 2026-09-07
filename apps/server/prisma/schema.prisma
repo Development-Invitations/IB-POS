@@ -56,6 +56,10 @@ model OrganizationSettings {
   // кнопки быстрых сумм наличными в PaymentModal.tsx (вместо ручного ввода каждый раз).
   // Пустой массив = кнопки не показываются, только ручной ввод, как было раньше.
   quickCashAmounts          Int[]        @default([]) @map("quick_cash_amounts")
+  // Не из исходного ТЗ — по прямому запросу клиента: показывать ли на кассе (ReceiptPanel.tsx)
+  // отдельную панель быстрого добавления расходников (Product.isConsumable) поверх Итого.
+  // По умолчанию выключена — организации без размеченных расходников её не увидят.
+  showConsumablesPanel      Boolean      @default(false) @map("show_consumables_panel")
   updatedAt                 DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -203,6 +207,11 @@ model Product {
   expiryDate     DateTime? @map("expiry_date")
   // Ид товара из 1С (CommerceML) — ключ сопоставления номенклатуры при синке (Этап 6).
   externalId     String?   @map("external_id")
+  // Не из исходного ТЗ — по прямому запросу клиента: расходный материал (одноразовая посуда
+  // для Ресторана, пакет для Магазина/Аптеки) — обычный товар, но с отдельной панелью
+  // быстрого добавления на кассе (см. ReceiptPanel.tsx) и отдельной строкой в Отчётах
+  // (себестоимость/выручка по расходникам), а не только в общей выручке.
+  isConsumable   Boolean   @default(false) @map("is_consumable")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 

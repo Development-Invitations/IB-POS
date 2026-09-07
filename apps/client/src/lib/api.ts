@@ -154,6 +154,7 @@ export interface ProductPayload {
   cost?: number;
   unit?: string;
   expiryDate?: string;
+  isConsumable?: boolean;
 }
 
 export function createProduct(token: string, payload: ProductPayload) {
@@ -645,6 +646,7 @@ export interface UpdateSettingsPayload {
   maxCashierDiscountPercent?: number | null;
   lowStockThreshold?: number | null;
   quickCashAmounts?: number[];
+  showConsumablesPanel?: boolean;
 }
 
 export function updateSettings(token: string, payload: UpdateSettingsPayload) {
@@ -659,6 +661,7 @@ export function getSaleConfig(token: string) {
     businessType: BusinessType;
     maxCashierDiscountPercent: number | null;
     quickCashAmounts: number[];
+    showConsumablesPanel: boolean;
   }>("/settings/sale-config", {}, token);
 }
 

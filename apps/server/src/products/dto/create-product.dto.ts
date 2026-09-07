@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsNumber,
   IsOptional,
@@ -40,4 +41,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsDateString()
   expiryDate?: string;
+
+  // Не из исходного ТЗ — по прямому запросу клиента: расходный материал (посуда/пакет),
+  // см. schema.prisma Product.isConsumable.
+  @IsOptional()
+  @IsBoolean()
+  isConsumable?: boolean;
 }

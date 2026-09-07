@@ -12,4 +12,7 @@ export interface CartProduct {
   // Ресторану остатки/срок годности на плитке товара не нужны, там позиции готовятся на месте.
   stockQty?: number;
   expiryDate?: string | null;
+  // Расходный материал (посуда/пакет, не из исходного ТЗ) — быстрая панель добавления в
+  // ReceiptPanel.tsx, отдельная строка в Отчётах.
+  isConsumable?: boolean;
 }

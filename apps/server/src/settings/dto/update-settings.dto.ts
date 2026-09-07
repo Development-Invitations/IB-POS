@@ -60,4 +60,10 @@ export class UpdateSettingsDto {
   @IsNumber({}, { each: true })
   @Min(1, { each: true })
   quickCashAmounts?: number[];
+
+  // Не из исходного ТЗ — по прямому запросу клиента: показывать ли на кассе панель быстрого
+  // добавления расходников (Product.isConsumable), см. ReceiptPanel.tsx.
+  @IsOptional()
+  @IsBoolean()
+  showConsumablesPanel?: boolean;
 }

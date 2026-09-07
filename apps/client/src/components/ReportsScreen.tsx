@@ -375,6 +375,33 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
               ))}
             </div>
           </div>
+
+          {dashboard.consumables.quantity > 0 && (
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-700">{t("reports.consumables")}</h3>
+              <p className="mb-3 text-xs text-slate-400">{t("reports.consumablesHint")}</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-xs text-slate-400">{t("reports.revenue")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.revenue)} {t("common.currency")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">{t("products.cost")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.cost)} {t("common.currency")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">{t("reports.profit")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.profit)} {t("common.currency")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </>
       )}
 

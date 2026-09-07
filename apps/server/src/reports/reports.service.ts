@@ -36,6 +36,7 @@ export class ReportsService {
     organizationId: string,
     from: Date,
     to: Date,
+    consumableProductIds: Set<string>,
     storeId?: string,
   ) {
     const receipts = await this.prisma.receipt.findMany({
@@ -69,15 +70,29 @@ export class ReportsService {
 
     let profit = 0;
     let hasIncompleteCostData = false;
+    // Расходники (Product.isConsumable — посуда/пакеты, не из исходного ТЗ) считаются и в
+    // общей выручке/прибыли выше, и отдельно здесь — клиенту нужно видеть, сколько именно
+    // потрачено/заработано конкретно на них, а не только их вклад в общий итог.
+    let consumablesRevenue = 0;
+    let consumablesCost = 0;
+    let consumablesQuantity = 0;
     for (const receipt of receipts) {
       for (const item of receipt.items) {
+        const soldQuantity =
+          Number(item.quantity) - Number(item.returnedQuantity);
+        const isConsumable = consumableProductIds.has(item.productId);
+        if (isConsumable) {
+          consumablesRevenue += Number(item.price) * soldQuantity;
+          consumablesQuantity += soldQuantity;
+        }
         if (item.cost === null) {
           hasIncompleteCostData = true;
           continue;
         }
-        const soldQuantity =
-          Number(item.quantity) - Number(item.returnedQuantity);
         profit += (Number(item.price) - Number(item.cost)) * soldQuantity;
+        if (isConsumable) {
+          consumablesCost += Number(item.cost) * soldQuantity;
+        }
       }
     }
 
@@ -117,6 +132,12 @@ export class ReportsService {
       profitDataIncomplete: hasIncompleteCostData,
       salesByHour,
       salesByDay,
+      consumables: {
+        revenue: consumablesRevenue,
+        cost: consumablesCost,
+        profit: consumablesRevenue - consumablesCost,
+        quantity: consumablesQuantity,
+      },
     };
   }
 
@@ -128,12 +149,25 @@ export class ReportsService {
     const previousTo = new Date(from.getTime() - 1);
     const previousFrom = new Date(previousTo.getTime() - durationMs);
 
+    const consumableProducts = await this.prisma.product.findMany({
+      where: { organizationId, isConsumable: true },
+      select: { id: true },
+    });
+    const consumableProductIds = new Set(consumableProducts.map((p) => p.id));
+
     const [current, previous] = await Promise.all([
-      this.computePeriodStats(organizationId, from, to, filter.storeId),
+      this.computePeriodStats(
+        organizationId,
+        from,
+        to,
+        consumableProductIds,
+        filter.storeId,
+      ),
       this.computePeriodStats(
         organizationId,
         previousFrom,
         previousTo,
+        consumableProductIds,
         filter.storeId,
       ),
     ]);

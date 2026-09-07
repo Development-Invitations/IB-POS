@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { TitleBar } from "./components/TitleBar";
 import { UpdateNotifier } from "./components/UpdateNotifier";
 import { HomeScreen } from "./components/HomeScreen";
@@ -6,7 +7,7 @@ import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { CategoryTabs } from "./components/CategoryTabs";
 import { ProductGrid } from "./components/ProductGrid";
-import { ReceiptPanel, type CartLine, type PaidReceipt } from "./components/ReceiptPanel";
+import { ReceiptPanel, type PaidReceipt, type Ticket } from "./components/ReceiptPanel";
 import { PaymentModal, type PaymentStatus, type ClickProvider } from "./components/PaymentModal";
 import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
@@ -25,6 +26,8 @@ import { LoginScreen } from "./components/LoginScreen";
 import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
 import { CloseShiftModal } from "./components/CloseShiftModal";
+import { ReturnIcon, ClockIcon, BoxIcon, MonitorIcon, SearchIcon } from "./components/icons";
+import { Modal } from "./components/Modal";
 import {
   ApiError,
   closeShift,
@@ -85,6 +88,7 @@ function toBackendMethod(method: PaymentMethod, clickProvider: ClickProvider): B
 }
 
 function App() {
+  const { t } = useTranslation();
   const [session, setSession] = useState<AuthSession | null>(() => loadSession());
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [prefillOrgId, setPrefillOrgId] = useState<string | undefined>(undefined);
@@ -101,6 +105,9 @@ function App() {
   // Кнопки быстрых сумм наличными в PaymentModal.tsx — не из исходного ТЗ, заполняет вкладку
   // "Продажа" в Настройках. Пустой массив = кнопки выключены.
   const [quickCashAmounts, setQuickCashAmounts] = useState<number[]>([]);
+  // Показывать ли на кассе панель быстрого добавления расходников (посуда/пакет, не из
+  // исходного ТЗ) — см. Product.isConsumable, Настройки → Продажа.
+  const [showConsumablesPanel, setShowConsumablesPanel] = useState(false);
   // Порог "заканчивается" для уведомлений в шапке — не из исходного ТЗ, по прямому запросу
   // клиента. null = уведомления выключены (порог не настроен).
   const [lowStockProducts, setLowStockProducts] = useState<{ name: string; quantity: number }[]>([]);
@@ -110,8 +117,16 @@ function App() {
   const [activeCategory, setActiveCategory] = useState("all");
   const [products, setProducts] = useState<CartProduct[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [lines, setLines] = useState<CartLine[]>([]);
-  const [discountPercent, setDiscountPercent] = useState(0);
+  // Несколько параллельно открытых чеков (по запросу клиента: касса раньше могла вести только
+  // одного покупателя за раз) — tickets — это массив корзин-вкладок, activeTicketId — какая из
+  // них сейчас на экране. См. Ticket в ReceiptPanel.tsx и updateActiveTicket ниже.
+  const [tickets, setTickets] = useState<Ticket[]>(() => [
+    { id: crypto.randomUUID(), label: "1", lines: [], discountPercent: 0 },
+  ]);
+  const [activeTicketId, setActiveTicketId] = useState<string>(() => tickets[0].id);
+  const activeTicket = tickets.find((ticket) => ticket.id === activeTicketId) ?? tickets[0];
+  const lines = activeTicket.lines;
+  const discountPercent = activeTicket.discountPercent;
   const [receiptPreview, setReceiptPreview] = useState<ReceiptPreview | null>(null);
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -123,6 +138,11 @@ function App() {
   const [closeShiftOpen, setCloseShiftOpen] = useState(false);
   const [expectedCash, setExpectedCash] = useState(0);
 
+  // У Кассира нет сайдбара (см. Sidebar ниже) — по прямому запросу клиента убрали левое меню
+  // на экране "Продажа" и заменили нижними кнопками, которые открывают те же разделы (Товары/
+  // Клиенты/Возвраты/Смены/Оборудование) поверх кассы в модальном окне, а не отдельным экраном.
+  const [cashierModal, setCashierModal] = useState<"products" | "returns" | "shifts" | "equipment" | null>(null);
+
   // Бампится после приёмки/корректировки на экране "Склад" (WarehouseScreen), чтобы эффект ниже
   // перечитал остатки для плиток товара — сам он не знает, что где-то в другом экране склад
   // изменился, раз ни workstation, ни businessType при этом не меняются.
@@ -133,7 +153,9 @@ function App() {
     setSession(null);
     setShift(null);
     setWorkstation(null);
-    setLines([]);
+    const id = crypto.randomUUID();
+    setTickets([{ id, label: "1", lines: [], discountPercent: 0 }]);
+    setActiveTicketId(id);
   }
 
   function handleUnauthorized() {
@@ -159,6 +181,7 @@ function App() {
             barcode: p.barcode,
             categoryId: p.categoryId,
             imageUrl: p.imageUrl,
+            isConsumable: p.isConsumable,
           })),
       );
     } catch (err) {
@@ -180,6 +203,7 @@ function App() {
         setBusinessType(r.businessType);
         setMaxCashierDiscountPercent(r.maxCashierDiscountPercent);
         setQuickCashAmounts(r.quickCashAmounts);
+        setShowConsumablesPanel(r.showConsumablesPanel);
       })
       .catch(() => undefined);
   }, [session]);
@@ -217,11 +241,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, canSeeStockNotifications]);
 
-  // Остатки на плитках товара — только для Магазина/Аптеки (см. businessType выше) и только
-  // когда известна касса (без неё непонятно, остаток по какой точке показывать). Ресторан не
-  // тратит лишний запрос — товары там не привязаны к конечным остаткам так строго.
+  // Остатки нужны, только когда известна касса (без неё непонятно, остаток по какой точке
+  // показывать). Раньше запрос пропускался целиком для Ресторана — обычные блюда там готовятся
+  // на месте и остаток вести не нужно, это по-прежнему так (см. visibleProducts ниже). Но
+  // расходники (Product.isConsumable — посуда и т.п.) есть и у Ресторана, и они ДОЛЖНЫ быть
+  // реальным покупным товаром с остатком, поэтому запрос теперь идёт для всех профилей.
   useEffect(() => {
-    if (!session || !workstation || businessType === "RESTAURANT") return;
+    if (!session || !workstation) return;
     let cancelled = false;
     getStockReport(session.accessToken, workstation.storeId)
       .then((entries) => {
@@ -247,15 +273,28 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [session, workstation, businessType, products.length, stockVersion]);
+  }, [session, workstation, products.length, stockVersion]);
 
-  const visibleProducts = useMemo(
-    () =>
-      activeCategory === "all"
-        ? products
-        : products.filter((product) => product.categoryId === activeCategory),
-    [products, activeCategory],
-  );
+  // Товар, который ни разу не оприходовали через "Склад" (или оприходовали на 0), не должен
+  // появляться на "Продаже" вообще — не просто быть недоступным для клика, а не отображаться
+  // в списке до тех пор, пока по нему не дали приход с реальным кол-вом (жалоба клиента:
+  // "добавили товар, но не завели остаток — не должен быть в продаже"). Исключение — обычные
+  // блюда Ресторана (готовятся на месте, остаток по ним принципиально не ведётся): для них
+  // действует старое поведение. Но расходники (isConsumable) — покупной товар в любом
+  // профиле, включая Ресторан, и обязаны пройти "Склад", как и всё остальное в Магазине/Аптеке.
+  function isHiddenForNoStock(product: CartProduct): boolean {
+    if (product.stockQty === undefined || product.stockQty > 0) return false;
+    return businessType !== "RESTAURANT" || Boolean(product.isConsumable);
+  }
+
+  const visibleProducts = useMemo(() => {
+    const byCategory =
+      activeCategory === "all" ? products : products.filter((product) => product.categoryId === activeCategory);
+    return byCategory.filter((product) => !isHiddenForNoStock(product));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, activeCategory, businessType]);
+
+  const consumableProducts = useMemo(() => products.filter((product) => product.isConsumable), [products]);
 
   // Предпросчёт итога с учётом авто-скидок (см. ReceiptsService.calculateTotals на сервере) —
   // кассир должен видеть тот же итог, что реально спишется при оплате. Если сети нет или запрос
@@ -284,41 +323,90 @@ function App() {
     };
   }, [session, lines, discountPercent]);
 
+  function updateActiveTicket(updater: (ticket: Ticket) => Ticket) {
+    setTickets((prev) => prev.map((ticket) => (ticket.id === activeTicketId ? updater(ticket) : ticket)));
+  }
+
   function addToCart(product: CartProduct) {
-    // Магазин/Аптека торгуют с реальных остатков (Ресторан — нет, там позиции готовятся на
-    // месте и remainingQty не считается) — товар с нулевым/отрицательным остатком нельзя
-    // продать, каким бы путём его ни пытались добавить (клик по плитке или скан штрихкода).
-    if (businessType !== "RESTAURANT" && product.stockQty !== undefined && product.stockQty <= 0) {
+    // Тот же критерий, что и в visibleProducts (isHiddenForNoStock) — товар с нулевым/не
+    // заведённым остатком нельзя продать, каким бы путём его ни пытались добавить (клик по
+    // плитке, скан штрихкода или поиск в шапке — плитка обычно скрыта, но эти пути её обходят).
+    if (isHiddenForNoStock(product)) {
       return;
     }
-    setLines((prev) => {
-      const existing = prev.find((line) => line.product.id === product.id);
-      if (existing) {
-        return prev.map((line) => (line.product.id === product.id ? { ...line, qty: line.qty + 1 } : line));
-      }
-      return [...prev, { product, qty: 1 }];
+    updateActiveTicket((ticket) => {
+      const existing = ticket.lines.find((line) => line.product.id === product.id);
+      const lines = existing
+        ? ticket.lines.map((line) => (line.product.id === product.id ? { ...line, qty: line.qty + 1 } : line))
+        : [...ticket.lines, { product, qty: 1 }];
+      return { ...ticket, lines };
     });
   }
 
   function increment(productId: string) {
-    setLines((prev) => prev.map((line) => (line.product.id === productId ? { ...line, qty: line.qty + 1 } : line)));
+    updateActiveTicket((ticket) => ({
+      ...ticket,
+      lines: ticket.lines.map((line) => (line.product.id === productId ? { ...line, qty: line.qty + 1 } : line)),
+    }));
   }
 
   function decrement(productId: string) {
-    setLines((prev) =>
-      prev
+    updateActiveTicket((ticket) => ({
+      ...ticket,
+      lines: ticket.lines
         .map((line) => (line.product.id === productId ? { ...line, qty: line.qty - 1 } : line))
         .filter((line) => line.qty > 0),
-    );
+    }));
   }
 
   function remove(productId: string) {
-    setLines((prev) => prev.filter((line) => line.product.id !== productId));
+    updateActiveTicket((ticket) => ({ ...ticket, lines: ticket.lines.filter((line) => line.product.id !== productId) }));
   }
 
   function clear() {
-    setLines([]);
-    setDiscountPercent(0);
+    updateActiveTicket((ticket) => ({ ...ticket, lines: [], discountPercent: 0 }));
+  }
+
+  function setDiscountPercent(percent: number) {
+    updateActiveTicket((ticket) => ({ ...ticket, discountPercent: percent }));
+  }
+
+  function nextTicketLabel(list: Ticket[]): string {
+    const used = new Set(list.map((ticket) => Number(ticket.label)).filter((n) => !Number.isNaN(n)));
+    let n = 1;
+    while (used.has(n)) n++;
+    return String(n);
+  }
+
+  // На кассовом тачскрине один физический тап иногда прилетает как несколько click-событий
+  // подряд (дребезг сенсора) — жалоба клиента "прокликиваю, открывается много чеков". Блокируем
+  // повторные вызовы на короткое окно и ограничиваем сверху общее число вкладок, чтобы один
+  // "залипший" тап не наплодил десятки пустых чеков.
+  const addTicketLockRef = useRef(false);
+  const MAX_TICKETS = 8;
+
+  function addTicket() {
+    if (addTicketLockRef.current || tickets.length >= MAX_TICKETS) return;
+    addTicketLockRef.current = true;
+    window.setTimeout(() => {
+      addTicketLockRef.current = false;
+    }, 400);
+    const id = crypto.randomUUID();
+    setTickets((prev) => [...prev, { id, label: nextTicketLabel(prev), lines: [], discountPercent: 0 }]);
+    setActiveTicketId(id);
+  }
+
+  function switchTicket(id: string) {
+    setActiveTicketId(id);
+  }
+
+  function closeTicket(id: string) {
+    if (tickets.length <= 1) return;
+    const remaining = tickets.filter((ticket) => ticket.id !== id);
+    setTickets(remaining);
+    if (activeTicketId === id) {
+      setActiveTicketId(remaining[0].id);
+    }
   }
 
   function openPaymentModal() {
@@ -343,7 +431,13 @@ function App() {
       setLastReceipt({ id: paid.id, total: Number(paid.total), method });
       setPaymentModalOpen(false);
       setPaymentStatus("idle");
-      clear();
+      // Оплаченный чек не единственный открытый — закрываем его вкладку, чтобы не копились
+      // пустые "Чек N" от прошлых покупателей; единственный чек просто остаётся пустым.
+      if (tickets.length > 1) {
+        closeTicket(activeTicketId);
+      } else {
+        clear();
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         handleUnauthorized();
@@ -392,6 +486,18 @@ function App() {
       setNotFoundCode(code);
     }
   });
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (activeScreen !== "sale" || !shift || !workstation) return;
+      if (e.key === "F9") {
+        e.preventDefault();
+        setReturnModalOpen(true);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeScreen, shift, workstation]);
 
   if (!session) {
     return (
@@ -463,14 +569,16 @@ function App() {
         className="no-print"
       />
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((v) => !v)}
-          activeScreen={activeScreen}
-          onNavigate={setActiveScreen}
-          role={session.role}
-          className="no-print"
-        />
+        {session.role !== "CASHIER" && (
+          <Sidebar
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed((v) => !v)}
+            activeScreen={activeScreen}
+            onNavigate={setActiveScreen}
+            role={session.role}
+            className="no-print"
+          />
+        )}
 
         {activeScreen === "home" && (
           <main className="flex-1 overflow-y-auto p-4">
@@ -493,10 +601,71 @@ function App() {
 
         {activeScreen === "sale" && shift && workstation && (
           <>
-            <main className="flex-1 space-y-4 overflow-y-auto p-4">
-              <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
-              <ProductGrid products={visibleProducts} onAdd={addToCart} businessType={businessType} />
-            </main>
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <main className="flex-1 space-y-4 overflow-y-auto p-4">
+                <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
+                {businessType === "STORE" && activeCategory === "all" ? (
+                  <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-20 text-center">
+                    <SearchIcon width={28} height={28} className="text-slate-300" />
+                    <p className="text-sm font-semibold text-slate-600">{t("sale.searchHintTitle")}</p>
+                    <p className="max-w-sm text-xs text-slate-400">{t("sale.searchHintBody")}</p>
+                  </div>
+                ) : (
+                  <ProductGrid products={visibleProducts} onAdd={addToCart} businessType={businessType} />
+                )}
+              </main>
+
+              <div className="no-print grid grid-cols-3 gap-2.5 border-t border-slate-200 bg-white px-4 py-3 sm:grid-cols-6">
+                <button
+                  onClick={() => setReturnModalOpen(true)}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                >
+                  <ReturnIcon width={20} height={20} />
+                  {t("sale.returnAction")}
+                </button>
+                <button
+                  onClick={addTicket}
+                  disabled={tickets.length >= MAX_TICKETS}
+                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent disabled:opacity-30"
+                >
+                  <ClockIcon width={20} height={20} />
+                  {t("sale.holdTicket")}
+                </button>
+
+                {session.role === "CASHIER" && (
+                  <>
+                    <button
+                      onClick={() => setCashierModal("products")}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                    >
+                      <BoxIcon width={20} height={20} />
+                      {t("nav.products")}
+                    </button>
+                    <button
+                      onClick={() => setCashierModal("returns")}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                    >
+                      <ReturnIcon width={20} height={20} />
+                      {t("nav.returns")}
+                    </button>
+                    <button
+                      onClick={() => setCashierModal("shifts")}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                    >
+                      <ClockIcon width={20} height={20} />
+                      {t("nav.shifts")}
+                    </button>
+                    <button
+                      onClick={() => setCashierModal("equipment")}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                    >
+                      <MonitorIcon width={20} height={20} />
+                      {t("nav.equipment")}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
 
             <ReceiptPanel
               lines={lines}
@@ -515,6 +684,15 @@ function App() {
               onPay={openPaymentModal}
               lastReceipt={lastReceipt}
               onReturnClick={() => setReturnModalOpen(true)}
+              tickets={tickets}
+              activeTicketId={activeTicketId}
+              onSwitchTicket={switchTicket}
+              onAddTicket={addTicket}
+              addTicketDisabled={tickets.length >= MAX_TICKETS}
+              onCloseTicket={closeTicket}
+              consumableProducts={showConsumablesPanel ? consumableProducts : []}
+              onAddConsumable={addToCart}
+              onDecrementConsumable={decrement}
             />
           </>
         )}
@@ -615,6 +793,27 @@ function App() {
           onConfirm={handleCloseShift}
           onDone={handleCloseShiftDone}
         />
+      )}
+
+      {cashierModal === "products" && (
+        <Modal title={t("nav.products")} onClose={() => setCashierModal(null)}>
+          <ProductsScreen session={session} onCatalogChanged={loadCatalog} businessType={businessType} />
+        </Modal>
+      )}
+      {cashierModal === "returns" && (
+        <Modal title={t("nav.returns")} onClose={() => setCashierModal(null)}>
+          <ReturnsScreen session={session} />
+        </Modal>
+      )}
+      {cashierModal === "shifts" && (
+        <Modal title={t("nav.shifts")} onClose={() => setCashierModal(null)}>
+          <ShiftsScreen session={session} storeId={workstation?.storeId} />
+        </Modal>
+      )}
+      {cashierModal === "equipment" && (
+        <Modal title={t("nav.equipment")} onClose={() => setCashierModal(null)}>
+          <EquipmentScreen session={session} />
+        </Modal>
       )}
     </div>
   );

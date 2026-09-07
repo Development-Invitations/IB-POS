@@ -16,6 +16,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Полная история + теги нужны шагу "Changelog" ниже, чтобы найти предыдущий тег и
+          # перечислить коммиты между ним и текущим — стандартный checkout (глубина 1) этого
+          # не позволяет.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
         with:
@@ -35,6 +40,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Текст релиза формируется из коммитов с прошлого тега — именно он попадает в
+      # latest.json (поле notes) и его показывает UpdateNotifier.tsx кассиру/админу перед
+      # обновлением ("что сделано в приложении в текстовом виде", не из исходного ТЗ — по
+      # прямому запросу клиента). Первый релиз (нет предыдущего тега) — весь лог до тега.
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty=format:"- %s" HEAD)
+          else
+            LOG=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD)
+          fi
+          {
+            echo "notes<<CHANGELOG_EOF"
+            echo "$LOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -46,7 +71,7 @@ jobs:
           projectPath: apps/client
           tagName: ${{ github.ref_name }}
           releaseName: "IB-POS ${{ github.ref_name }}"
-          releaseBody: "Изменения см. в docs/Roadmap_TZ.md."
+          releaseBody: ${{ steps.changelog.outputs.notes }}
           # Черновик — публикуется вручную на GitHub после проверки, чтобы не раскатывать
           # автообновление на все кассы раньше времени. GitHub "latest release" (и, значит,
           # апдейтер) игнорирует черновики и pre-release до явной публикации.

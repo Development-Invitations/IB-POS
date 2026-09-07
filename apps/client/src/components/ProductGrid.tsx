@@ -21,7 +21,10 @@ const EXPIRY_WARNING_DAYS = 30;
 
 export function ProductGrid({ products, onAdd, businessType }: ProductGridProps) {
   const { t } = useTranslation();
-  const showImages = loadShowProductImages();
+  // Для Магазина по прямому запросу клиента плитки товара никогда не показывают фото, даже
+  // если оно загружено и общий переключатель "Показывать фото товаров" включён в Настройках —
+  // при большом ассортименте фото на плитках только замедляет узнавание нужного товара.
+  const showImages = loadShowProductImages() && businessType !== "STORE";
   const showStockInfo = businessType && businessType !== "RESTAURANT";
 
   return (

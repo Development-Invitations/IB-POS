@@ -39,6 +39,7 @@ export function ProductFormModal({
   const [cost, setCost] = useState(product?.cost ? Number(product.cost) : 0);
   const [unit, setUnit] = useState(product?.unit ?? "pcs");
   const [expiryDate, setExpiryDate] = useState(product?.expiryDate?.slice(0, 10) ?? "");
+  const [isConsumable, setIsConsumable] = useState(product?.isConsumable ?? false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     product?.imageUrl ? `${API_BASE}${product.imageUrl}` : null,
@@ -94,6 +95,7 @@ export function ProductFormModal({
         cost: cost > 0 ? cost : undefined,
         unit: unit.trim() || "pcs",
         expiryDate: isPharmacy && expiryDate ? expiryDate : undefined,
+        isConsumable,
       };
 
       let saved = isEdit
@@ -258,6 +260,25 @@ export function ProductFormModal({
               />
             </label>
           )}
+
+          <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+            <span className="text-xs font-medium text-slate-600">{t("products.isConsumable")}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isConsumable}
+              onClick={() => setIsConsumable((v) => !v)}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out ${
+                isConsumable ? "bg-accent" : "bg-slate-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 block h-5 w-5 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform duration-200 ease-in-out ${
+                  isConsumable ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
 
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>}
         </div>

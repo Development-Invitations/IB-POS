@@ -247,7 +247,14 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}</td>
+                  <td className="px-4 py-3 font-medium text-slate-800">
+                    {p.name}
+                    {p.isConsumable && (
+                      <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                        {t("products.consumable")}
+                      </span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
                   <td className="px-4 py-3 text-slate-500">{p.sku}</td>
                   <td className="px-4 py-3 text-right text-slate-800">

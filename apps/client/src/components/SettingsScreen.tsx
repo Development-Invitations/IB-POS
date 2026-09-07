@@ -1,9 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
-import { ApiError, downloadBackup, getBackups, getProductsCsv, getSettings, runBackup, updateSettings } from "../lib/api";
+import {
+  ApiError,
+  createProduct,
+  downloadBackup,
+  getBackups,
+  getProducts,
+  getProductsCsv,
+  getSettings,
+  runBackup,
+  updateProduct,
+  updateSettings,
+} from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
-import type { ApiBackup, ApiSettings, BusinessType } from "../types/api";
+import { AmountInput } from "./AmountInput";
+import type { ApiBackup, ApiProduct, ApiSettings, BusinessType } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface SettingsScreenProps {
@@ -36,7 +48,17 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [maxCashierDiscountPercent, setMaxCashierDiscountPercent] = useState("");
   const [lowStockThreshold, setLowStockThreshold] = useState("");
   const [quickCashAmounts, setQuickCashAmounts] = useState("");
+  const [showConsumablesPanel, setShowConsumablesPanel] = useState(false);
   const [showProductImages, setShowProductImages] = useState(loadShowProductImages());
+
+  // Управление расходниками (посуда/пакет, не из исходного ТЗ) прямо из Настроек — по прямому
+  // запросу клиента, чтобы не заходить в каждый товар в Товарах и искать там галочку вручную.
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [consumableAddQuery, setConsumableAddQuery] = useState("");
+  const [newConsumableName, setNewConsumableName] = useState("");
+  const [newConsumablePrice, setNewConsumablePrice] = useState(0);
+  const [consumableBusy, setConsumableBusy] = useState(false);
+  const [consumableError, setConsumableError] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -53,13 +75,15 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     let cancelled = false;
     async function load() {
       try {
-        const [settingsResult, backupList] = await Promise.all([
+        const [settingsResult, backupList, productList] = await Promise.all([
           getSettings(session.accessToken),
           getBackups(session.accessToken),
+          getProducts(session.accessToken),
         ]);
         if (cancelled) return;
         setSettings(settingsResult);
         setBackups(backupList);
+        setProducts(productList);
         setName(settingsResult.name);
         setCurrency(settingsResult.currency);
         setDefaultLanguage(settingsResult.defaultLanguage);
@@ -72,6 +96,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
           settingsResult.lowStockThreshold != null ? String(settingsResult.lowStockThreshold) : "",
         );
         setQuickCashAmounts(settingsResult.quickCashAmounts.join(", "));
+        setShowConsumablesPanel(settingsResult.showConsumablesPanel);
       } catch (err) {
         if (!cancelled) {
           if (err instanceof ApiError && err.status === 403) {
@@ -143,6 +168,77 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       setBusinessTypeError(err instanceof ApiError ? err.message : t("settings.saveError"));
     } finally {
       setBusinessTypeSaving(false);
+    }
+  }
+
+  // Тот же паттерн авто-сохранения по клику, что и у businessType выше — переключатель
+  // выглядит завершённым действием сам по себе, отдельная кнопка "Сохранить" ниже для него
+  // была бы той же ловушкой, что уже поймали на businessType.
+  async function handleToggleConsumablesPanel(value: boolean) {
+    const previous = showConsumablesPanel;
+    setShowConsumablesPanel(value);
+    try {
+      const updated = await updateSettings(session.accessToken, { showConsumablesPanel: value });
+      setSettings(updated);
+    } catch {
+      setShowConsumablesPanel(previous);
+    }
+  }
+
+  const consumableProducts = useMemo(
+    () => products.filter((p) => p.isConsumable && p.isActive),
+    [products],
+  );
+  const consumableSearchResults = useMemo(() => {
+    const query = consumableAddQuery.trim().toLowerCase();
+    if (!query) return [];
+    return products.filter((p) => p.isActive && !p.isConsumable && p.name.toLowerCase().includes(query)).slice(0, 8);
+  }, [products, consumableAddQuery]);
+
+  async function handleAddExistingConsumable(product: ApiProduct) {
+    setConsumableBusy(true);
+    setConsumableError(null);
+    try {
+      const updated = await updateProduct(session.accessToken, product.id, { isConsumable: true });
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setConsumableAddQuery("");
+    } catch (err) {
+      setConsumableError(err instanceof ApiError ? err.message : t("settings.consumablesError"));
+    } finally {
+      setConsumableBusy(false);
+    }
+  }
+
+  async function handleRemoveConsumable(product: ApiProduct) {
+    setConsumableBusy(true);
+    setConsumableError(null);
+    try {
+      const updated = await updateProduct(session.accessToken, product.id, { isConsumable: false });
+      setProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+    } catch (err) {
+      setConsumableError(err instanceof ApiError ? err.message : t("settings.consumablesError"));
+    } finally {
+      setConsumableBusy(false);
+    }
+  }
+
+  async function handleCreateConsumable() {
+    if (!newConsumableName.trim() || newConsumablePrice <= 0) return;
+    setConsumableBusy(true);
+    setConsumableError(null);
+    try {
+      const created = await createProduct(session.accessToken, {
+        name: newConsumableName.trim(),
+        price: newConsumablePrice,
+        isConsumable: true,
+      });
+      setProducts((prev) => [...prev, created]);
+      setNewConsumableName("");
+      setNewConsumablePrice(0);
+    } catch (err) {
+      setConsumableError(err instanceof ApiError ? err.message : t("settings.consumablesError"));
+    } finally {
+      setConsumableBusy(false);
     }
   }
 
@@ -411,6 +507,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       )}
 
       {!loading && !loadError && tab === "sale" && (
+        <div className="space-y-4">
         <div className="max-w-md space-y-3 rounded-xl bg-white p-4 shadow-sm">
           <label className="block text-xs font-medium text-slate-500">
             {t("settings.quickCashAmounts")}
@@ -423,6 +520,27 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
           </label>
           <p className="text-xs text-slate-400">{t("settings.quickCashAmountsHint")}</p>
 
+          <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2">
+            <div>
+              <div className="text-sm text-slate-600">{t("settings.showConsumablesPanel")}</div>
+              <p className="mt-0.5 text-xs text-slate-400">{t("settings.showConsumablesPanelHint")}</p>
+            </div>
+            <button
+              role="switch"
+              aria-checked={showConsumablesPanel}
+              onClick={() => handleToggleConsumablesPanel(!showConsumablesPanel)}
+              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out ${
+                showConsumablesPanel ? "bg-accent" : "bg-slate-300"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 block h-5 w-5 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform duration-200 ease-in-out ${
+                  showConsumablesPanel ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+
           {saveMessage && <p className="text-xs text-slate-500">{saveMessage}</p>}
           <button
             onClick={handleSave}
@@ -431,6 +549,82 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
           >
             {saving ? t("common.loading") : t("settings.save")}
           </button>
+        </div>
+
+        <div className="max-w-xl rounded-xl bg-white p-4 shadow-sm">
+          <h3 className="mb-1 text-sm font-semibold text-slate-700">{t("settings.consumablesTitle")}</h3>
+          <p className="mb-3 text-xs text-slate-400">{t("settings.consumablesHint")}</p>
+
+          <div className="space-y-1.5">
+            {consumableProducts.length === 0 && (
+              <p className="text-xs text-slate-400">{t("settings.consumablesEmpty")}</p>
+            )}
+            {consumableProducts.map((p) => (
+              <div key={p.id} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                <span className="text-sm text-slate-700">{p.name}</span>
+                <button
+                  onClick={() => handleRemoveConsumable(p)}
+                  disabled={consumableBusy}
+                  className="shrink-0 text-xs font-medium text-slate-400 hover:text-red-600 disabled:opacity-40"
+                >
+                  {t("settings.consumablesRemove")}
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative mt-3">
+            <input
+              value={consumableAddQuery}
+              onChange={(e) => setConsumableAddQuery(e.target.value)}
+              placeholder={t("settings.consumablesAddExisting")}
+              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            />
+            {consumableSearchResults.length > 0 && (
+              <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                {consumableSearchResults.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => handleAddExistingConsumable(p)}
+                    disabled={consumableBusy}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    {p.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-end gap-2">
+            <label className="block flex-1 text-xs font-medium text-slate-500">
+              {t("settings.consumablesNewName")}
+              <input
+                value={newConsumableName}
+                onChange={(e) => setNewConsumableName(e.target.value)}
+                placeholder={t("settings.consumablesNewNamePlaceholder")}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
+            <label className="block w-28 text-xs font-medium text-slate-500">
+              {t("products.price")}
+              <AmountInput
+                value={newConsumablePrice}
+                onChange={setNewConsumablePrice}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
+            <button
+              onClick={handleCreateConsumable}
+              disabled={consumableBusy || !newConsumableName.trim() || newConsumablePrice <= 0}
+              className="shrink-0 rounded-lg bg-accent px-4 py-2 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+            >
+              {t("settings.consumablesCreate")}
+            </button>
+          </div>
+
+          {consumableError && <p className="mt-2 text-xs text-red-600">{consumableError}</p>}
+        </div>
         </div>
       )}
 

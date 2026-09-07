@@ -36,6 +36,7 @@ export class SettingsService {
       maxCashierDiscountPercent: settings.maxCashierDiscountPercent,
       lowStockThreshold: settings.lowStockThreshold,
       quickCashAmounts: settings.quickCashAmounts,
+      showConsumablesPanel: settings.showConsumablesPanel,
       warnings: this.buildTaxWarnings(
         settings.taxRatePercent,
         Boolean(hasFiscalIntegration),
@@ -56,6 +57,7 @@ export class SettingsService {
       businessType: settings.businessType,
       maxCashierDiscountPercent: settings.maxCashierDiscountPercent,
       quickCashAmounts: settings.quickCashAmounts,
+      showConsumablesPanel: settings.showConsumablesPanel,
     };
   }
 
@@ -115,6 +117,7 @@ export class SettingsService {
         maxCashierDiscountPercent: dto.maxCashierDiscountPercent,
         lowStockThreshold: dto.lowStockThreshold,
         quickCashAmounts: dto.quickCashAmounts,
+        showConsumablesPanel: dto.showConsumablesPanel,
       },
       update: {
         currency: dto.currency,
@@ -125,6 +128,7 @@ export class SettingsService {
         maxCashierDiscountPercent: dto.maxCashierDiscountPercent,
         lowStockThreshold: dto.lowStockThreshold,
         quickCashAmounts: dto.quickCashAmounts,
+        showConsumablesPanel: dto.showConsumablesPanel,
       },
     });
 

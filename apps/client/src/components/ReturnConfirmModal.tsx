@@ -28,7 +28,11 @@ export function ReturnConfirmModal({ organizationId, onClose, onConfirm }: Retur
         setError(t("returns.wrongPin"));
         return;
       }
-      if (approver.role !== "ADMIN" && approver.role !== "MANAGER") {
+      // Раздел 3 ТЗ изначально требовал подтверждения возврата логином/PIN менеджера/админа —
+      // по прямому запросу клиента: если админ сам выдал кассиру PIN, ввод этого PIN здесь и
+      // есть авторизация (тот же принцип, что и раньше, просто круг ролей шире). Роли без
+      // отношения к продажам (Зав.складом, Бухгалтер) по-прежнему не подходят.
+      if (!["ADMIN", "MANAGER", "CASHIER"].includes(approver.role)) {
         setError(t("returns.notAuthorized"));
         return;
       }

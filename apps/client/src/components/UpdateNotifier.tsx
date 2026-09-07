@@ -29,6 +29,15 @@ export function UpdateNotifier() {
 
   if (phase === "idle" || !update) return null;
 
+  // Тело релиза (см. .github/workflows/release.yml — Generate changelog) — список коммитов
+  // с прошлого тега построчно, с "- " в начале. Не из исходного ТЗ — по прямому запросу
+  // клиента: перед обновлением кассир/админ должен видеть текстом, что именно изменилось,
+  // а не только номер версии.
+  const changeLines = (update.body ?? "")
+    .split("\n")
+    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean);
+
   const handleUpdate = async () => {
     setPhase("downloading");
     let total = 0;
@@ -51,21 +60,38 @@ export function UpdateNotifier() {
   };
 
   return (
-    <div className="no-print fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-lg bg-slate-800 px-4 py-3 text-sm text-white shadow-lg">
+    <div className="no-print fixed bottom-4 right-4 z-50 w-80 overflow-hidden rounded-xl bg-white shadow-xl ring-1 ring-slate-200">
       {phase === "available" && (
         <>
-          <span>{t("updater.available", { version: update.version })}</span>
-          <button
-            onClick={handleUpdate}
-            className="rounded bg-accent px-3 py-1.5 font-medium hover:opacity-90"
-          >
-            {t("updater.update")}
-          </button>
+          <div className="border-b border-slate-100 px-4 py-3">
+            <p className="text-sm font-semibold text-slate-800">
+              {t("updater.available", { version: update.version })}
+            </p>
+          </div>
+
+          {changeLines.length > 0 && (
+            <ul className="max-h-40 list-disc space-y-1 overflow-y-auto px-4 py-3 pl-8 text-xs text-slate-500">
+              {changeLines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          )}
+
+          <div className="px-4 py-3">
+            <button
+              onClick={handleUpdate}
+              className="w-full rounded-lg bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover"
+            >
+              {t("updater.update")}
+            </button>
+          </div>
         </>
       )}
-      {phase === "downloading" && <span>{t("updater.downloading", { percent })}</span>}
-      {phase === "installing" && <span>{t("updater.installing")}</span>}
-      {phase === "error" && <span className="text-red-400">{t("updater.error")}</span>}
+      {phase === "downloading" && (
+        <p className="px-4 py-4 text-sm text-slate-600">{t("updater.downloading", { percent })}</p>
+      )}
+      {phase === "installing" && <p className="px-4 py-4 text-sm text-slate-600">{t("updater.installing")}</p>}
+      {phase === "error" && <p className="px-4 py-4 text-sm text-red-600">{t("updater.error")}</p>}
     </div>
   );
 }

@@ -156,7 +156,9 @@
     "stockQty": "{{qty}} {{unit}}",
     "outOfStock": "Mavjud emas",
     "expired": "Muddati oʻtgan",
-    "expiresSoon": "{{date}} gacha yaroqli"
+    "expiresSoon": "{{date}} gacha yaroqli",
+    "isConsumable": "Sarf materiali (idish-tovoq, paket va h.k.)",
+    "consumable": "sarf materiali"
   },
   "customers": {
     "addTitle": "Yangi mijoz",
@@ -253,6 +255,8 @@
     "salesByHourHint": "Tanlangan kunning soatlar boʻyicha sotuvlari",
     "salesByDay": "Kunlar boʻyicha sotuvlar",
     "salesByDayHint": "Tanlangan davrning har bir kuni boʻyicha sotuvlar summasi",
+    "consumables": "Sarf materiallari",
+    "consumablesHint": "Tanlangan davr uchun «Sarf materiali» belgili tovarlar boʻyicha tushum va tannarx",
     "quantity": "Qoldiq",
     "stockEmpty": "Qoldiqlar boʻyicha maʻlumot yoʻq",
     "exportCsv": "CSV formatida eksport",
@@ -329,13 +333,23 @@
     "neverSynced": "1C hali bu manzilga hech murojaat qilmagan"
   },
   "receipt": {
-    "current": "Joriy chek",
     "total": "Jami",
     "discount": "Chegirma",
     "autoDiscount": "Avto-chegirma",
     "clear": "Tozalash",
     "pay": "Toʻlash",
-    "empty": "Chek boʻsh"
+    "empty": "Chek boʻsh",
+    "ticket": "{{n}}-chek",
+    "newTicket": "Yangi chek",
+    "closeTicket": "Chekni yopish",
+    "closeTicketConfirm": "{{n}}-chekda sotilmagan tovarlar bor — yopilsa, ular butunlay yoʻqoladi. Chekni yopasizmi?",
+    "consumables": "Sarf materiallari"
+  },
+  "sale": {
+    "returnAction": "Qaytarish (F9)",
+    "holdTicket": "Chekni saqlab qoʻyish",
+    "searchHintTitle": "Tovarni toping",
+    "searchHintBody": "Nomini kiriting yoki shtrix-kodni skanerlang (yuqoridagi qidiruv, F2), yoki kategoriyani tanlang. Toʻliq katalog — pastdagi «Tovarlar» tugmasi."
   },
   "roles": {
     "cashier": "Kassir",
@@ -526,6 +540,17 @@
     "lowStockThresholdHint": "Mahsulot qoldigʻi shu sondan past tushsa, u bildirishnomalarda koʻrinadi (shapkadagi qoʻngʻiroqcha).",
     "quickCashAmounts": "Naqd tezkor summalar",
     "quickCashAmountsPlaceholder": "5000, 10000, 20000, 50000, 100000",
-    "quickCashAmountsHint": "Vergul bilan. Naqd toʻlov oynasida summani qoʻlda kiritish oʻrniga tugmalar sifatida koʻrinadi."
+    "quickCashAmountsHint": "Vergul bilan. Naqd toʻlov oynasida summani qoʻlda kiritish oʻrniga tugmalar sifatida koʻrinadi.",
+    "showConsumablesPanel": "Kassada sarf materiallari tezkor paneli",
+    "showConsumablesPanelHint": "«Sarf materiali» belgisi qoʻyilgan tovarlar (Tovarlar → tovar kartochkasi) chekda tezkor +/- paneli sifatida koʻrinadi",
+    "consumablesTitle": "Sarf materiallari",
+    "consumablesHint": "Kassir chekka tezkor qoʻshadigan tovarlar: Restoran uchun idish-tovoq, Doʻkon/Dorixona uchun paket va h.k.",
+    "consumablesEmpty": "Hozircha birorta tovar belgilanmagan",
+    "consumablesRemove": "Olib tashlash",
+    "consumablesAddExisting": "Mavjud tovarni qoʻshish...",
+    "consumablesNewName": "Yangisini yaratish",
+    "consumablesNewNamePlaceholder": "Masalan, «1-paket»",
+    "consumablesCreate": "Qoʻshish",
+    "consumablesError": "Saqlab boʻlmadi"
   }
 }
