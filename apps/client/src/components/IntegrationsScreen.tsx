@@ -14,7 +14,6 @@ import type { AuthSession } from "../types/auth";
 import arcaGroupLogo from "../assets/integrations/arcagroup.svg";
 import eposLogo from "../assets/integrations/epos.svg";
 import rahmatPosLogo from "../assets/integrations/rahmatpos.svg";
-import smartPosLogo from "../assets/integrations/smartpos.svg";
 import regosLogo from "../assets/integrations/regos.png";
 import onecLogo from "../assets/integrations/1c.png";
 
@@ -66,7 +65,6 @@ const PROVIDER_META: Record<
 > = {
   REGOS: { label: "Regos", initials: "RG", color: "bg-slate-100", logo: regosLogo },
   EPOS: { label: "Epos", initials: "EP", color: "bg-teal-600", logo: eposLogo },
-  SMARTPOS: { label: "SmartPOS", initials: "SP", color: "bg-slate-100", logo: smartPosLogo },
   ARCAGROUP: { label: "ArcaGroup", initials: "AG", color: "bg-slate-100", logo: arcaGroupLogo },
   RAHMATPOS: { label: "RahmatPOS", initials: "RP", color: "bg-slate-100", logo: rahmatPosLogo },
 };

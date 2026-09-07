@@ -5,10 +5,10 @@ import { createRegosAdapter } from './regos-adapter';
 import { createEposAdapter } from './epos-adapter';
 import { FISCAL_PROVIDERS, type FiscalProvider } from './adapter.interface';
 
-// Regos и Epos — единственные из пяти касс с подтверждённой документацией на сегодня
-// (docs.regos.uz, Postman-коллекция клиента на Epos "Universal Communicator"), поэтому у них
-// реальные адаптеры; SmartPos/ArcaGroup/RahmatPos остаются на честной симуляции до получения
-// их реальных протоколов.
+// Regos и Epos — единственные из четырёх касс (см. FISCAL_PROVIDERS — SMARTPOS убран
+// 2026-09-07) с подтверждённой документацией на сегодня (docs.regos.uz, Postman-коллекция
+// клиента на Epos "Universal Communicator"), поэтому у них реальные адаптеры; ArcaGroup/
+// RahmatPos остаются на честной симуляции до получения их реальных протоколов.
 const REAL_ADAPTERS: Partial<Record<FiscalProvider, () => IntegrationAdapter>> =
   {
     [IntegrationProvider.REGOS]: createRegosAdapter,

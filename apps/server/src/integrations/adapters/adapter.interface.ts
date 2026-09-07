@@ -2,10 +2,15 @@ import { IntegrationProvider } from '@prisma/client';
 
 // Провайдеры фискализации через виртуальную кассу (Этап 5). ONEC (1С) сюда не входит —
 // это отдельный протокол синхронизации товаров/остатков, не отправка чеков на фискализацию (Этап 6).
+// SMARTPOS убран из списка 2026-09-07: документация, присланная под этим названием, оказалась
+// на казахстанский платёжный терминал Kaspi Pay Smart POS (приём карт/QR, без фискального чека
+// с ИКПУ) — не то же самое, что подразумевала карточка «SmartPOS» в «Интеграции». Значение
+// SMARTPOS оставлено в enum IntegrationProvider (schema.prisma) специально — просто больше не
+// используется, чтобы не гонять миграцию, удаляющую enum-значение, ради ещё не подключённого
+// провайдера.
 export const FISCAL_PROVIDERS = [
   IntegrationProvider.REGOS,
   IntegrationProvider.EPOS,
-  IntegrationProvider.SMARTPOS,
   IntegrationProvider.ARCAGROUP,
   IntegrationProvider.RAHMATPOS,
 ] as const;

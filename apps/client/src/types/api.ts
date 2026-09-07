@@ -197,7 +197,7 @@ export interface ApiStockEntry {
   store: ApiStore;
 }
 
-export type FiscalProviderName = "REGOS" | "EPOS" | "SMARTPOS" | "ARCAGROUP" | "RAHMATPOS";
+export type FiscalProviderName = "REGOS" | "EPOS" | "ARCAGROUP" | "RAHMATPOS";
 
 export interface ApiIntegration {
   provider: FiscalProviderName;
