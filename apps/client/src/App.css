@@ -12,6 +12,12 @@
   height: 8px;
 }
 
+/* WebView2 по умолчанию рисует классические стрелки-кнопки на концах полосы (как в Windows 95) —
+   ни один экран приложения на них не рассчитан, выглядят чужеродно поверх остального дизайна. */
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
 *::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -23,6 +29,20 @@
 
 *::-webkit-scrollbar-thumb:hover {
   background-color: theme("colors.slate.400");
+}
+
+/* Тёмный сайдбар (Sidebar.tsx) — светлый slate-полоса на нём почти не видна/выглядит грязно
+   пятном, нужен полупрозрачный белый ползунок в тон остальным hover-состояниям сайдбара. */
+.sidebar-scroll {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
 }
 
 @media print {

@@ -13,6 +13,7 @@ export const FISCAL_PROVIDERS = [
   IntegrationProvider.EPOS,
   IntegrationProvider.ARCAGROUP,
   IntegrationProvider.RAHMATPOS,
+  IntegrationProvider.SMARTBIZNES,
 ] as const;
 
 export type FiscalProvider = (typeof FISCAL_PROVIDERS)[number];

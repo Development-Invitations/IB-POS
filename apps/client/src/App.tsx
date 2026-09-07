@@ -12,6 +12,7 @@ import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
 import { ProductsScreen } from "./components/ProductsScreen";
+import { WarehouseScreen } from "./components/WarehouseScreen";
 import { CustomersScreen } from "./components/CustomersScreen";
 import { DiscountsScreen } from "./components/DiscountsScreen";
 import { ReturnsScreen } from "./components/ReturnsScreen";
@@ -121,6 +122,11 @@ function App() {
 
   const [closeShiftOpen, setCloseShiftOpen] = useState(false);
   const [expectedCash, setExpectedCash] = useState(0);
+
+  // Бампится после приёмки/корректировки на экране "Склад" (WarehouseScreen), чтобы эффект ниже
+  // перечитал остатки для плиток товара — сам он не знает, что где-то в другом экране склад
+  // изменился, раз ни workstation, ни businessType при этом не меняются.
+  const [stockVersion, setStockVersion] = useState(0);
 
   function handleLogout() {
     clearSession();
@@ -234,7 +240,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [session, workstation, businessType, products.length]);
+  }, [session, workstation, businessType, products.length, stockVersion]);
 
   const visibleProducts = useMemo(
     () =>
@@ -272,6 +278,12 @@ function App() {
   }, [session, lines, discountPercent]);
 
   function addToCart(product: CartProduct) {
+    // Магазин/Аптека торгуют с реальных остатков (Ресторан — нет, там позиции готовятся на
+    // месте и remainingQty не считается) — товар с нулевым/отрицательным остатком нельзя
+    // продать, каким бы путём его ни пытались добавить (клик по плитке или скан штрихкода).
+    if (businessType !== "RESTAURANT" && product.stockQty !== undefined && product.stockQty <= 0) {
+      return;
+    }
     setLines((prev) => {
       const existing = prev.find((line) => line.product.id === product.id);
       if (existing) {
@@ -509,6 +521,12 @@ function App() {
         {activeScreen === "products" && (
           <main className="flex-1 overflow-y-auto p-4">
             <ProductsScreen session={session} onCatalogChanged={loadCatalog} businessType={businessType} />
+          </main>
+        )}
+
+        {activeScreen === "warehouse" && (
+          <main className="flex-1 overflow-y-auto p-4">
+            <WarehouseScreen session={session} onStockChanged={() => setStockVersion((v) => v + 1)} />
           </main>
         )}
 

@@ -32,11 +32,18 @@ export function ProductGrid({ products, onAdd, businessType }: ProductGridProps)
             ? Math.ceil((new Date(product.expiryDate).getTime() - Date.now()) / 86400000)
             : null;
 
+        const outOfStock = showStockInfo && product.stockQty !== undefined && product.stockQty <= 0;
+
         return (
           <button
             key={product.id}
             onClick={() => onAdd(product)}
-            className="relative flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md active:translate-y-0"
+            disabled={outOfStock}
+            className={`relative flex flex-col items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-left shadow-sm transition ${
+              outOfStock
+                ? "cursor-not-allowed opacity-50"
+                : "hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-md active:translate-y-0"
+            }`}
           >
             {showStockInfo && product.stockQty !== undefined && (
               <span

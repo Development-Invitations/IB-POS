@@ -546,6 +546,45 @@ export function getStockReport(token: string, storeId?: string) {
   return request<ApiStockEntry[]>(`/reports/stock${qs}`, {}, token);
 }
 
+// StockService.applyMovement() отдаёт "голую" строку Stock (upsert без include) — без
+// вложенных product/store, в отличие от ApiStockEntry, который приходит из /reports/stock.
+export interface ApiStockRow {
+  id: string;
+  storeId: string;
+  productId: string;
+  quantity: string;
+}
+
+export interface ReceiveStockPayload {
+  storeId: string;
+  productId: string;
+  quantity: number;
+  comment?: string;
+}
+
+export function receiveStock(token: string, payload: ReceiveStockPayload) {
+  return request<ApiStockRow>(
+    "/stock/receive",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
+export interface AdjustStockPayload {
+  storeId: string;
+  productId: string;
+  newQuantity: number;
+  reason?: string;
+}
+
+export function adjustStock(token: string, payload: AdjustStockPayload) {
+  return request<ApiStockRow>(
+    "/stock/adjust",
+    { method: "POST", body: JSON.stringify(payload) },
+    token,
+  );
+}
+
 export function getTopProducts(token: string, filter: PeriodFilter) {
   return request<TopProduct[]>(`/reports/top-products${periodQuery(filter)}`, {}, token);
 }

@@ -140,6 +140,9 @@ export class IntegrationsService {
       login: config?.login ?? null,
       exchangePath: `/onec/${organizationId}/exchange`,
       updatedAt: integration?.updatedAt ?? null,
+      // "Подключено" (isConnected) значит только "токен когда-то выдан" — lastSyncAt честно
+      // показывает, была ли 1С реально здесь (см. OneCService.touchLastSync).
+      lastSyncAt: integration?.lastSyncAt ?? null,
     };
   }
 }

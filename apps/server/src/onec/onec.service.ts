@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ReceiptStatus } from '@prisma/client';
+import { IntegrationProvider, ReceiptStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseClassifierAndCatalog, parseOffers } from './commerceml-parser';
 
@@ -22,6 +22,16 @@ export class OneCService {
 
   getInitResponse(): string {
     return `zip=no\nfile_limit=${FILE_LIMIT_BYTES}`;
+  }
+
+  // Вызывается на каждый входящий запрос от 1С (см. OneCController.exchange), независимо от
+  // type/mode — сам факт обращения с верной Basic Auth уже подтверждает, что 1С реально здесь
+  // была, в отличие от Integration.updatedAt, который двигается и от простой генерации токена.
+  async touchLastSync(organizationId: string): Promise<void> {
+    await this.prisma.integration.updateMany({
+      where: { organizationId, provider: IntegrationProvider.ONEC },
+      data: { lastSyncAt: new Date() },
+    });
   }
 
   saveFile(organizationId: string, filename: string, content: Buffer) {

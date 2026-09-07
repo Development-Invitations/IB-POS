@@ -32,6 +32,7 @@ export class OneCController {
     @Res() res: Response,
   ) {
     try {
+      await this.onec.touchLastSync(organizationId);
       const body = await this.handle(organizationId, type, mode, filename, req);
       res.status(200).send(body);
     } catch (error) {

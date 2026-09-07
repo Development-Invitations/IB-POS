@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { API_BASE, ApiError, deactivateProduct, getCategories, getProducts, updateProduct } from "../lib/api";
+import {
+  API_BASE,
+  ApiError,
+  deactivateProduct,
+  getCategories,
+  getProducts,
+  getStockReport,
+  updateProduct,
+} from "../lib/api";
 import { formatSum } from "../lib/format";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ProductFormModal } from "./ProductFormModal";
@@ -20,9 +28,15 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
   const { t } = useTranslation();
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
   const isPharmacy = businessType === "PHARMACY";
+  // Ресторан не ведёт остатки поштучно (готовится на месте) — колонка там только сбивала бы с
+  // толку нулями. Магазин/Аптека торгуют со склада (см. WarehouseScreen.tsx), поэтому здесь
+  // видно, сколько реально есть — без этого связь "Товары" (каталог) ↔ "Склад" (остатки) была
+  // не очевидна: можно было решить, что это два независимых, не связанных друг с другом списка.
+  const showStock = businessType && businessType !== "RESTAURANT";
 
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [categories, setCategories] = useState<ApiCategory[]>([]);
+  const [stockByProduct, setStockByProduct] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -44,6 +58,17 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
       ]);
       setProducts(productList);
       setCategories(categoryList);
+      if (showStock) {
+        // Без storeId — сумма остатков по всем точкам сразу (та же логика, что у уведомлений
+        // "заканчивается на складе" в Header.tsx): здесь это общий обзор каталога, а не разбивка
+        // по конкретной кассе — за ней уже идут на "Склад".
+        const stockEntries = await getStockReport(session.accessToken);
+        const totals = new Map<string, number>();
+        for (const entry of stockEntries) {
+          totals.set(entry.productId, (totals.get(entry.productId) ?? 0) + Number(entry.quantity));
+        }
+        setStockByProduct(totals);
+      }
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : t("products.loadError"));
     } finally {
@@ -53,8 +78,11 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
 
   useEffect(() => {
     load();
+    // businessType приходит из App.tsx отдельным асинхронным запросом (getSaleConfig) и может
+    // долететь уже после первого монтирования — без этой зависимости остаток для Магазина/Аптеки
+    // иногда не подгружался бы, если businessType опоздал к первому вызову load().
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.accessToken]);
+  }, [session.accessToken, showStock]);
 
   const categoryName = useMemo(() => {
     const map = new Map(categories.map((c) => [c.id, c.name]));
@@ -170,6 +198,7 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                 <th className="px-4 py-3 font-medium text-right">{t("products.price")}</th>
                 <th className="px-4 py-3 font-medium text-right">{t("products.cost")}</th>
                 <th className="px-4 py-3 font-medium">{t("products.unit")}</th>
+                {showStock && <th className="px-4 py-3 font-medium text-right">{t("warehouse.stockTitle")}</th>}
                 {isPharmacy && <th className="px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
                 <th className="px-4 py-3 font-medium">{t("products.status")}</th>
                 {canManage && <th className="px-4 py-3 font-medium" />}
@@ -197,6 +226,15 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                     {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
                   </td>
                   <td className="px-4 py-3 text-slate-500">{p.unit}</td>
+                  {showStock && (
+                    <td
+                      className={`px-4 py-3 text-right ${
+                        (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
+                      }`}
+                    >
+                      {stockByProduct.get(p.id) ?? 0} {p.unit}
+                    </td>
+                  )}
                   {isPharmacy && (
                     <td className="px-4 py-3 text-slate-500">
                       {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
@@ -237,7 +275,7 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0)}
+                    colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0) + (showStock ? 1 : 0)}
                     className="px-4 py-8 text-center text-sm text-slate-400"
                   >
                     {t("products.empty")}

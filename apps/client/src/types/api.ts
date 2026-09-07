@@ -197,7 +197,7 @@ export interface ApiStockEntry {
   store: ApiStore;
 }
 
-export type FiscalProviderName = "REGOS" | "EPOS" | "ARCAGROUP" | "RAHMATPOS";
+export type FiscalProviderName = "REGOS" | "EPOS" | "ARCAGROUP" | "RAHMATPOS" | "SMARTBIZNES";
 
 export interface ApiIntegration {
   provider: FiscalProviderName;
@@ -216,6 +216,7 @@ export interface OneCStatus {
   login: string | null;
   exchangePath: string;
   updatedAt: string | null;
+  lastSyncAt: string | null;
 }
 
 export interface OneCCredentials {

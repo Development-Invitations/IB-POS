@@ -483,6 +483,9 @@ enum IntegrationProvider {
   SMARTPOS
   ARCAGROUP
   RAHMATPOS
+  // Добавлен 2026-09-07 по запросу клиента — документация ещё не прислана, пока честная
+  // симуляция через mock-adapter.ts, как раньше было с ArcaGroup/RahmatPos.
+  SMARTBIZNES
   ONEC
 }
 
@@ -494,6 +497,11 @@ model Integration {
   isConnected    Boolean             @default(false) @map("is_connected")
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
+  // Не из исходного ТЗ — по прямому запросу клиента: "Подключено" у 1С означало только "токен
+  // выдан" (см. IntegrationsService.configureOneC), а не "1С реально сюда стучалась" — updatedAt
+  // для этого не годится, он же меняется при генерации токена. Проставляется отдельно на каждый
+  // реальный входящий запрос от 1С (см. OneCService.touchLastSync/OneCController.exchange).
+  lastSyncAt     DateTime?           @map("last_sync_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 

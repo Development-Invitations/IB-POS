@@ -38,6 +38,14 @@ export const BoxIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const WarehouseIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M3 10.5 12 5l9 5.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10.5Z" />
+    <path d="M8 21v-6h8v6" />
+    <path d="M8 13h8" />
+  </svg>
+);
+
 export const UsersIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <circle cx="9" cy="8" r="3.2" />

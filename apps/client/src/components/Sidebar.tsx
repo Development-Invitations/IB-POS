@@ -4,6 +4,7 @@ import {
   HomeIcon,
   CartIcon,
   BoxIcon,
+  WarehouseIcon,
   UsersIcon,
   TagIcon,
   ReturnIcon,
@@ -29,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "home", labelKey: "nav.home", icon: HomeIcon, screen: "home" },
   { key: "sale", labelKey: "nav.sale", icon: CartIcon, screen: "sale" },
   { key: "products", labelKey: "nav.products", icon: BoxIcon, screen: "products" },
+  { key: "warehouse", labelKey: "nav.warehouse", icon: WarehouseIcon, screen: "warehouse" },
   { key: "customers", labelKey: "nav.customers", icon: UsersIcon, screen: "customers" },
   { key: "discounts", labelKey: "nav.discounts", icon: TagIcon, screen: "discounts" },
   { key: "returns", labelKey: "nav.returns", icon: ReturnIcon, screen: "returns" },
@@ -58,6 +60,10 @@ export const SCREEN_ACCESS: Record<ScreenKey, Role[]> = {
   home: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   sale: ["ADMIN", "MANAGER", "CASHIER"],
   products: ["ADMIN", "MANAGER", "WAREHOUSE", "CASHIER"],
+  // Приём/инвентаризация — только Админ и Зав.складом (см. StockController: @Roles на
+  // /stock/receive и /stock/adjust); Управляющий и Бухгалтер видят экран, но только на чтение
+  // (тот же принцип, что и у "Скидок" — canManage внутри самого экрана).
+  warehouse: ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"],
   customers: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
   discounts: ["ADMIN", "MANAGER", "ACCOUNTANT"],
   returns: ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"],
@@ -93,7 +99,7 @@ export function Sidebar({ collapsed, onToggle, activeScreen, onNavigate, role, c
         collapsed ? "w-[76px]" : "w-60"
       } ${className ?? ""}`}
     >
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="sidebar-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           const isActive = item.screen === activeScreen;

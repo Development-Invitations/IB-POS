@@ -3,6 +3,7 @@ export type ScreenKey =
   | "sale"
   | "equipment"
   | "products"
+  | "warehouse"
   | "customers"
   | "discounts"
   | "returns"

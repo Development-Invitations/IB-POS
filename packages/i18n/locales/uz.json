@@ -25,12 +25,18 @@
     "notificationsEmpty": "Hozircha bildirishnomalar yoʻq",
     "lowStockTitle": "Omborda tugayapti",
     "remove": "Oʻchirish",
-    "close": "Yopish"
+    "close": "Yopish",
+    "justNow": "hozirgina",
+    "minutesAgo": "{{count}} daqiqa oldin",
+    "hoursAgo": "{{count}} soat oldin",
+    "daysAgo": "{{count}} kun oldin",
+    "refresh": "Holatni yangilash"
   },
   "nav": {
     "home": "Bosh sahifa",
     "sale": "Sotuv",
     "products": "Mahsulotlar",
+    "warehouse": "Ombor",
     "customers": "Mijozlar",
     "discounts": "Chegirmalar va aksiyalar",
     "returns": "Qaytarishlar",
@@ -311,7 +317,9 @@
     "onecTitle": "1C — maʻlumot almashinuvi",
     "generateOnec": "Ulanish maʻlumotlarini yaratish",
     "exchangePath": "Almashinuv manzili",
-    "onecHint": "Bu maʻlumotlarni 1C almashinuv sozlamalariga kiriting (saqlab qoʻying — token boshqa koʻrsatilmaydi)"
+    "onecHint": "Bu maʻlumotlarni 1C almashinuv sozlamalariga kiriting (saqlab qoʻying — token boshqa koʻrsatilmaydi)",
+    "lastSync": "Oxirgi almashinuv",
+    "neverSynced": "1C hali bu manzilga hech murojaat qilmagan"
   },
   "receipt": {
     "current": "Joriy chek",
@@ -382,6 +390,26 @@
   "scanner": {
     "notFoundTitle": "Mahsulot topilmadi",
     "notFoundHint": "Kod: {{code}}"
+  },
+  "warehouse": {
+    "accessDenied": "Sizning rolingizda «Ombor» bo'limiga kirish huquqi yo'q",
+    "loadError": "Omborni yuklab bo'lmadi",
+    "receiveTitle": "Tovar qabul qilish",
+    "receiveHint": "Skanerni shtrixkodga yo'naltiring — tovar quyidagi ro'yxatga qo'shiladi. Qo'lda ham topish mumkin.",
+    "manualSearchPlaceholder": "Tovarni nomi yoki shtrixkodi bo'yicha qidirish...",
+    "scanNotFound": "«{{code}}» shtrixkodli tovar topilmadi — avval uni «Mahsulotlar»ga qo'shing",
+    "quantity": "Miqdori",
+    "receiveSubmit": "Qabul qilish ({{count}})",
+    "receiveComment": "Skaner orqali qabul (Ombor)",
+    "receiveError": "Tovarni qabul qilib bo'lmadi",
+    "stockTitle": "Qoldiqlar",
+    "adjust": "Tuzatish",
+    "newQuantity": "Yangi qoldiq",
+    "adjustReason": "Sabab (ixtiyoriy)",
+    "adjustReasonPlaceholder": "Masalan: inventarizatsiya, brakni hisobdan chiqarish",
+    "adjustInvalid": "To'g'ri miqdorni kiriting (0 yoki undan ko'p)",
+    "adjustError": "Qoldiqni tuzatib bo'lmadi",
+    "empty": "Omborda hali qoldig'i bor tovarlar yo'q"
   },
   "equipment": {
     "title": "Uskunalar",

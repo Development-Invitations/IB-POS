@@ -9,6 +9,7 @@ import {
   runFiscalizationQueue,
   testIntegration,
 } from "../lib/api";
+import { formatRelativeTime } from "../lib/format";
 import type { ApiIntegration, FiscalProviderName, OneCCredentials, OneCStatus } from "../types/api";
 import type { AuthSession } from "../types/auth";
 import arcaGroupLogo from "../assets/integrations/arcagroup.svg";
@@ -76,6 +77,10 @@ const PROVIDER_META: Record<
   EPOS: { label: "Epos", initials: "EP", color: "bg-teal-600", logo: eposLogo },
   ARCAGROUP: { label: "ArcaGroup", initials: "AG", color: "bg-slate-100", logo: arcaGroupLogo },
   RAHMATPOS: { label: "RahmatPOS", initials: "RP", color: "bg-slate-100", logo: rahmatPosLogo },
+  // Без лого и без документации пока — клиент попросил завести карточку заранее, документация
+  // придёт позже (см. mock-adapter.ts, регистрируется как честная симуляция как и было с
+  // ArcaGroup/RahmatPos до получения их реальных протоколов).
+  SMARTBIZNES: { label: "SmartBiznes", initials: "SB", color: "bg-indigo-500" },
 };
 
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN"];
@@ -99,6 +104,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
   const [queueBusy, setQueueBusy] = useState(false);
   const [queueMessage, setQueueMessage] = useState<string | null>(null);
   const [oneCBusy, setOneCBusy] = useState(false);
+  const [oneCRefreshing, setOneCRefreshing] = useState(false);
 
   // quiet=true — фоновое обновление после успешного действия (подключение/тест):
   // не должно прятать уже отрисованный экран за "Загрузка...", иначе карточки
@@ -188,16 +194,32 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
       const credentials = await configureOneC(session.accessToken);
       setOneCCredentials(credentials);
       // Ответ уже содержит всё нужное — полный рефетч не нужен, обновляем статус на месте.
-      setOneC({
+      // lastSyncAt намеренно не трогаем — генерация токена не значит, что 1С уже приходила.
+      setOneC((prev) => ({
         isConnected: true,
         login: credentials.login,
         exchangePath: credentials.exchangePath,
         updatedAt: new Date().toISOString(),
-      });
+        lastSyncAt: prev?.lastSyncAt ?? null,
+      }));
     } catch {
       // ошибку молча игнорируем — кнопка остаётся доступной для повтора
     } finally {
       setOneCBusy(false);
+    }
+  }
+
+  // Честная кнопка: IB-POS не может "достучаться" до 1С сам (обмен инициирует 1С — см.
+  // Roadmap_TZ.md), поэтому это не "проверить связь", а просто перечитать из своей БД, была ли
+  // 1С здесь на самом деле — тот же lastSyncAt, что уже показан, без обмана про пуш-проверку.
+  async function handleRefreshOneC() {
+    setOneCRefreshing(true);
+    try {
+      setOneC(await getOneCStatus(session.accessToken));
+    } catch {
+      // молча игнорируем — статус остаётся прежним
+    } finally {
+      setOneCRefreshing(false);
     }
   }
 
@@ -301,19 +323,37 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
                 </div>
               </div>
               {canManage && (
-                <button
-                  onClick={handleConfigureOneC}
-                  disabled={oneCBusy}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-accent/40 hover:text-accent disabled:opacity-40"
-                >
-                  {oneCBusy ? t("common.loading") : t("integrations.generateOnec")}
-                </button>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    onClick={handleRefreshOneC}
+                    disabled={oneCRefreshing}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-accent/40 hover:text-accent disabled:opacity-40"
+                  >
+                    {oneCRefreshing ? t("common.loading") : t("common.refresh")}
+                  </button>
+                  <button
+                    onClick={handleConfigureOneC}
+                    disabled={oneCBusy}
+                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-accent/40 hover:text-accent disabled:opacity-40"
+                  >
+                    {oneCBusy ? t("common.loading") : t("integrations.generateOnec")}
+                  </button>
+                </div>
               )}
             </div>
 
             {oneC?.exchangePath && (
               <p className="mt-3 text-xs text-slate-400">
                 {t("integrations.exchangePath")}: <span className="font-mono text-slate-600">{oneC.exchangePath}</span>
+              </p>
+            )}
+
+            {oneC?.isConnected && (
+              <p className="mt-1 text-xs text-slate-400">
+                {t("integrations.lastSync")}:{" "}
+                <span className="font-medium text-slate-600">
+                  {oneC.lastSyncAt ? formatRelativeTime(oneC.lastSyncAt, t) : t("integrations.neverSynced")}
+                </span>
               </p>
             )}
 
