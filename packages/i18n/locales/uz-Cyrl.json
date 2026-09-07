@@ -298,6 +298,8 @@
     "testError": "Алоқа хатоси",
     "connect": "Улаш",
     "token": "Токен",
+    "baseUrl": "Касса манзили (VCR)",
+    "baseUrlPlaceholder": "http://192.168.1.50:8080",
     "onecTitle": "1С — маълумот алмашинуви",
     "generateOnec": "Улaниш маълумотларини яратиш",
     "exchangePath": "Алмашинув манзили",

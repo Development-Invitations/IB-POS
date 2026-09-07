@@ -562,10 +562,10 @@ export function getIntegrations(token: string) {
   return request<ApiIntegration[]>("/integrations", {}, token);
 }
 
-export function connectIntegration(token: string, provider: string, login: string, providerToken: string) {
+export function connectIntegration(token: string, provider: string, config: Record<string, string>) {
   return request<AdapterActionResult>(
     `/integrations/${provider}/connect`,
-    { method: "POST", body: JSON.stringify({ config: { login, token: providerToken } }) },
+    { method: "POST", body: JSON.stringify({ config }) },
     token,
   );
 }

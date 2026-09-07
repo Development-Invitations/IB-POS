@@ -22,6 +22,31 @@ interface IntegrationsScreenProps {
   session: AuthSession;
 }
 
+interface ProviderField {
+  key: string;
+  labelKey: string;
+  type?: "text" | "password";
+  placeholderKey?: string;
+}
+
+// Поля формы «Настроить» для каждой кассы — под её реальный протокол подключения.
+// По умолчанию (пока нет подтверждённой документации) — общая пара логин/токен, как и раньше.
+const DEFAULT_FIELDS: ProviderField[] = [
+  { key: "login", labelKey: "auth.login" },
+  { key: "token", labelKey: "integrations.token" },
+];
+
+// Regos: VCR — реальный протокол (см. docs.regos.uz), адаптер уже настоящий
+// (apps/server/src/integrations/adapters/regos-adapter.ts): нужен адрес самой кассы (VCR
+// ставится локально у клиента, фиксированного адреса нет) + логин/пароль пользователя-кассира.
+const PROVIDER_FIELDS: Partial<Record<FiscalProviderName, ProviderField[]>> = {
+  REGOS: [
+    { key: "baseUrl", labelKey: "integrations.baseUrl", placeholderKey: "integrations.baseUrlPlaceholder" },
+    { key: "login", labelKey: "auth.login" },
+    { key: "password", labelKey: "auth.password", type: "password" },
+  ],
+};
+
 // Лого касс, для которых оно предоставлено (см. apps/client/src/assets/integrations/) —
 // показывается как есть на светлой карточке. Пока лого нет — цветная плашка с инициалами
 // провайдера (как у Slack/Stripe для интеграций без загруженной иконки); заменяется на
@@ -51,8 +76,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
   const [accessDenied, setAccessDenied] = useState(false);
 
   const [activeProvider, setActiveProvider] = useState<FiscalProviderName | null>(null);
-  const [login, setLogin] = useState("");
-  const [providerToken, setProviderToken] = useState("");
+  const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [providerBusy, setProviderBusy] = useState(false);
   const [providerMessage, setProviderMessage] = useState<string | null>(null);
 
@@ -91,8 +115,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
 
   function openProviderForm(provider: FiscalProviderName) {
     setActiveProvider(provider);
-    setLogin("");
-    setProviderToken("");
+    setFormValues({});
     setProviderMessage(null);
   }
 
@@ -101,7 +124,10 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
     setProviderBusy(true);
     setProviderMessage(null);
     try {
-      const result = await connectIntegration(session.accessToken, activeProvider, login.trim(), providerToken.trim());
+      const config = Object.fromEntries(
+        Object.entries(formValues).map(([key, value]) => [key, value.trim()]),
+      );
+      const result = await connectIntegration(session.accessToken, activeProvider, config);
       setProviderMessage(result.message ?? (result.success ? t("integrations.connected") : t("integrations.connectError")));
       if (result.success) {
         await load(true);
@@ -297,23 +323,19 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
               <h2 className="text-lg font-semibold text-slate-800">{PROVIDER_META[activeProvider].label}</h2>
             </div>
             <div className="space-y-3 px-5 py-4">
-              <label className="block text-xs font-medium text-slate-500">
-                {t("auth.login")}
-                <input
-                  value={login}
-                  onChange={(e) => setLogin(e.target.value)}
-                  autoFocus
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </label>
-              <label className="block text-xs font-medium text-slate-500">
-                {t("integrations.token")}
-                <input
-                  value={providerToken}
-                  onChange={(e) => setProviderToken(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
-                />
-              </label>
+              {(PROVIDER_FIELDS[activeProvider] ?? DEFAULT_FIELDS).map((field, index) => (
+                <label key={field.key} className="block text-xs font-medium text-slate-500">
+                  {t(field.labelKey)}
+                  <input
+                    type={field.type === "password" ? "password" : "text"}
+                    value={formValues[field.key] ?? ""}
+                    onChange={(e) => setFormValues((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    placeholder={field.placeholderKey ? t(field.placeholderKey) : undefined}
+                    autoFocus={index === 0}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+              ))}
               {providerMessage && <p className="text-xs text-slate-500">{providerMessage}</p>}
             </div>
             <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
@@ -325,7 +347,10 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
               </button>
               <button
                 onClick={handleConnect}
-                disabled={providerBusy || !login.trim() || !providerToken.trim()}
+                disabled={
+                  providerBusy ||
+                  (PROVIDER_FIELDS[activeProvider] ?? DEFAULT_FIELDS).some((field) => !formValues[field.key]?.trim())
+                }
                 className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
               >
                 {providerBusy ? t("common.loading") : t("integrations.connect")}
