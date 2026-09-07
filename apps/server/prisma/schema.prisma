@@ -212,6 +212,12 @@ model Product {
   // быстрого добавления на кассе (см. ReceiptPanel.tsx) и отдельной строкой в Отчётах
   // (себестоимость/выручка по расходникам), а не только в общей выручке.
   isConsumable   Boolean   @default(false) @map("is_consumable")
+  // Не из исходного ТЗ — по прямому запросу клиента: код ИКПУ/MXIK из госкаталога
+  // tasnif.soliq.uz (см. ProductsService.lookupBarcode). У одного штрихкода в каталоге может
+  // быть до ~20 разных товаров с разными ИКПУ (разные производители/варианты зарегистрировали
+  // один и тот же GTIN) — код сохраняется, чтобы приёмщик выбрал нужный при сканировании, а не
+  // получал наугад первый попавшийся вариант.
+  mxikCode       String?   @map("mxik_code")
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 

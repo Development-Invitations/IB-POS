@@ -145,11 +145,15 @@ export function getProducts(token: string) {
   return request<ApiProduct[]>("/products", {}, token);
 }
 
+export interface BarcodeLookupItem {
+  mxikCode: string;
+  name: string;
+  unit?: string;
+}
+
 export interface BarcodeLookupResult {
   found: boolean;
-  name?: string;
-  unit?: string;
-  mxikCode?: string;
+  items: BarcodeLookupItem[];
 }
 
 // Госкаталог tasnif.soliq.uz (не из исходного ТЗ) — автозаполнение названия товара по
@@ -168,6 +172,7 @@ export interface ProductPayload {
   unit?: string;
   expiryDate?: string;
   isConsumable?: boolean;
+  mxikCode?: string;
 }
 
 export function createProduct(token: string, payload: ProductPayload) {

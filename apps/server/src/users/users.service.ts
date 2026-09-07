@@ -1,10 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { hashSecret } from '../common/crypto';
@@ -28,16 +29,31 @@ export class UsersService {
       throw new BadRequestException('Укажите PIN и/или пароль для входа');
     }
 
-    const user = await this.prisma.user.create({
-      data: {
-        organizationId,
-        fullName: dto.fullName,
-        login: dto.login,
-        role: dto.role,
-        pinHash: dto.pin ? await hashSecret(dto.pin) : null,
-        passwordHash: dto.password ? await hashSecret(dto.password) : null,
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          organizationId,
+          fullName: dto.fullName,
+          login: dto.login,
+          role: dto.role,
+          pinHash: dto.pin ? await hashSecret(dto.pin) : null,
+          passwordHash: dto.password ? await hashSecret(dto.password) : null,
+        },
+      });
+    } catch (err) {
+      // Раньше падало необработанным исключением — 500 "Internal server error" в модалке
+      // без объяснения причины (жалоба клиента, скриншот "Новый сотрудник" с этой ошибкой).
+      // Логин уникален в рамках организации (@@unique([organizationId, login])) — самая
+      // частая причина: логин уже занят другим сотрудником.
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('Такой логин уже используется другим сотрудником');
+      }
+      throw err;
+    }
 
     await this.audit.log(
       organizationId,

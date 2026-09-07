@@ -47,4 +47,10 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isConsumable?: boolean;
+
+  // Не из исходного ТЗ — код ИКПУ/MXIK из госкаталога tasnif.soliq.uz, см. schema.prisma
+  // Product.mxikCode и ProductsService.lookupBarcode.
+  @IsOptional()
+  @IsString()
+  mxikCode?: string;
 }

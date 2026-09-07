@@ -9,6 +9,7 @@ import {
   getStores,
   lookupBarcode,
   receiveStock,
+  type BarcodeLookupItem,
 } from "../lib/api";
 import { useBarcodeScanner } from "../lib/use-barcode-scanner";
 import { AmountInput } from "./AmountInput";
@@ -58,12 +59,16 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
 
   // Штрихкод не найден среди своих товаров — пробуем госкаталог (tasnif.soliq.uz, см.
   // ProductsService.lookupBarcode на сервере), не из исходного ТЗ, по прямому запросу клиента:
-  // "пробил штрихкод — данные ввелись автоматически". fromCatalog=false — каталог тоже не
-  // знает этот штрихкод, форма открывается пустой для ручного ввода вместо тупика "не найден".
-  const [scanLookup, setScanLookup] = useState<{ barcode: string; fromCatalog: boolean } | null>(null);
+  // "пробил штрихкод — данные ввелись автоматически". Один штрихкод в каталоге нередко
+  // зарегистрирован под НЕСКОЛЬКИМИ разными ИКПУ (до ~20 вариантов — разные производители/
+  // фасовки) — если найдено больше одного, сначала показываем список на выбор (pickingItem),
+  // а не берём наугад первый попавшийся.
+  const [scanLookup, setScanLookup] = useState<{ barcode: string; items: BarcodeLookupItem[] } | null>(null);
+  const [pickingItem, setPickingItem] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [quickPrice, setQuickPrice] = useState(0);
   const [quickUnit, setQuickUnit] = useState("pcs");
+  const [quickMxikCode, setQuickMxikCode] = useState<string | null>(null);
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
 
@@ -118,21 +123,33 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     lookupBarcode(session.accessToken, code)
       .then((result) => {
         setScanMessage(null);
-        setQuickPrice(0);
-        setQuickUnit(result.unit || "pcs");
-        setQuickName(result.found ? (result.name ?? "") : "");
-        setQuickError(null);
-        setScanLookup({ barcode: code, fromCatalog: result.found });
+        openScanResult(code, result.items);
       })
       .catch(() => {
         setScanMessage(null);
-        setQuickPrice(0);
-        setQuickUnit("pcs");
-        setQuickName("");
-        setQuickError(null);
-        setScanLookup({ barcode: code, fromCatalog: false });
+        openScanResult(code, []);
       });
   });
+
+  function openScanResult(barcode: string, items: BarcodeLookupItem[]) {
+    setScanLookup({ barcode, items });
+    setQuickError(null);
+    if (items.length === 1) {
+      pickItem(items[0]);
+    } else if (items.length === 0) {
+      pickItem(null);
+    } else {
+      setPickingItem(true);
+    }
+  }
+
+  function pickItem(item: BarcodeLookupItem | null) {
+    setQuickName(item?.name ?? "");
+    setQuickUnit(item?.unit || "pcs");
+    setQuickPrice(0);
+    setQuickMxikCode(item?.mxikCode ?? null);
+    setPickingItem(false);
+  }
 
   async function handleQuickCreate() {
     if (!scanLookup || !quickName.trim() || quickPrice <= 0) return;
@@ -144,6 +161,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
         barcode: scanLookup.barcode,
         price: quickPrice,
         unit: quickUnit.trim() || "pcs",
+        mxikCode: quickMxikCode ?? undefined,
       });
       setProducts((prev) => [...prev, created]);
       addToBatch(created);
@@ -507,13 +525,46 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
         </div>
       )}
 
-      {scanLookup && (
+      {scanLookup && pickingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="flex w-full max-w-md flex-col rounded-xl bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.pickMxikTitle")}</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {t("warehouse.pickMxikHint", { count: scanLookup.items.length })}
+              </p>
+            </div>
+            <div className="max-h-72 overflow-y-auto px-2 py-2">
+              {scanLookup.items.map((item) => (
+                <button
+                  key={item.mxikCode}
+                  onClick={() => pickItem(item)}
+                  className="flex w-full flex-col items-start gap-0.5 rounded-lg px-3 py-2 text-left hover:bg-slate-50"
+                >
+                  <span className="text-sm font-medium text-slate-800">{item.name}</span>
+                  <span className="text-xs text-slate-400">{t("warehouse.mxikCode")}: {item.mxikCode}</span>
+                </button>
+              ))}
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={() => pickItem(null)}
+                className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("warehouse.pickMxikManual")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scanLookup && !pickingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
           <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.quickCreateTitle")}</h2>
               <p className="mt-1 text-xs text-slate-400">
-                {scanLookup.fromCatalog ? t("warehouse.quickCreateFoundHint") : t("warehouse.quickCreateNotFoundHint")}
+                {quickMxikCode ? t("warehouse.quickCreateFoundHint") : t("warehouse.quickCreateNotFoundHint")}
               </p>
             </div>
             <div className="space-y-3 px-5 py-4">
@@ -547,6 +598,19 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
               <p className="text-xs text-slate-400">
                 {t("products.barcode")}: {scanLookup.barcode}
               </p>
+              {quickMxikCode && (
+                <p className="text-xs text-slate-400">
+                  {t("warehouse.mxikCode")}: {quickMxikCode}
+                  {scanLookup.items.length > 1 && (
+                    <button
+                      onClick={() => setPickingItem(true)}
+                      className="ml-2 font-medium text-accent hover:underline"
+                    >
+                      {t("warehouse.pickMxikChange")}
+                    </button>
+                  )}
+                </p>
+              )}
               {quickError && <p className="text-xs text-red-600">{quickError}</p>}
             </div>
             <div className="flex gap-2 border-t border-slate-100 px-5 py-4">

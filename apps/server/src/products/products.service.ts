@@ -40,49 +40,60 @@ interface TasnifItem {
   commonUnitName?: string;
 }
 
+export interface BarcodeLookupItem {
+  mxikCode: string;
+  name: string;
+  unit?: string;
+}
+
 export interface BarcodeLookupResult {
   found: boolean;
-  name?: string;
-  unit?: string;
-  mxikCode?: string;
+  items: BarcodeLookupItem[];
 }
 
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Один и тот же штрихкод в госкаталоге нередко зарегистрирован под несколькими разными
+  // ИКПУ (разные производители/фасовки/варианты одного и того же GTIN — по прямому запросу
+  // клиента: "у товара может быть 1 штрихкод, но примерно 20 товар с разными ИКПУ") — поэтому
+  // возвращаем ВСЕ найденные варианты, а не наугад первый: приёмщик выбирает нужный сам.
   async lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
     const gtin = barcode.trim();
-    if (!gtin) return { found: false };
+    if (!gtin) return { found: false, items: [] };
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
     try {
       const url = `${TASNIF_SEARCH_URL}?gtin=${encodeURIComponent(gtin)}&lang=ru`;
       const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) return { found: false };
+      if (!response.ok) return { found: false, items: [] };
 
       const json = (await response.json()) as {
         data?: { content?: TasnifItem[] };
       };
-      const item = json.data?.content?.[0];
-      if (!item) return { found: false };
+      const content = json.data?.content ?? [];
 
-      const name = item.brandName
-        ? [item.brandName, item.attributeName].filter(Boolean).join(', ')
-        : item.mxikName;
-      if (!name) return { found: false };
+      const items: BarcodeLookupItem[] = [];
+      for (const item of content) {
+        if (!item.mxikCode) continue;
+        const name = item.brandName
+          ? [item.brandName, item.attributeName].filter(Boolean).join(', ')
+          : item.mxikName;
+        if (!name) continue;
+        items.push({
+          mxikCode: item.mxikCode,
+          name,
+          unit: item.unitName ?? item.commonUnitName ?? undefined,
+        });
+      }
 
-      return {
-        found: true,
-        name,
-        unit: item.unitName ?? item.commonUnitName ?? undefined,
-        mxikCode: item.mxikCode,
-      };
+      return { found: items.length > 0, items };
     } catch {
       // Нет сети, таймаут, госсайт лёг или сменил формат ответа — не критично, приёмщик
       // просто вводит название вручную, как и раньше.
-      return { found: false };
+      return { found: false, items: [] };
     } finally {
       clearTimeout(timeout);
     }

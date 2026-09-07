@@ -22,6 +22,7 @@ export interface ApiProduct {
   isActive: boolean;
   expiryDate: string | null;
   isConsumable: boolean;
+  mxikCode: string | null;
 }
 
 export interface ApiStore {
