@@ -3,12 +3,15 @@ import { useTranslation } from "react-i18next";
 import {
   ApiError,
   adjustStock,
+  createProduct,
   getProducts,
   getStockReport,
   getStores,
+  lookupBarcode,
   receiveStock,
 } from "../lib/api";
 import { useBarcodeScanner } from "../lib/use-barcode-scanner";
+import { AmountInput } from "./AmountInput";
 import { CloseIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
 import type { ApiProduct, ApiStockEntry, ApiStore } from "../types/api";
 import type { AuthSession } from "../types/auth";
@@ -53,6 +56,17 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
 
+  // Штрихкод не найден среди своих товаров — пробуем госкаталог (tasnif.soliq.uz, см.
+  // ProductsService.lookupBarcode на сервере), не из исходного ТЗ, по прямому запросу клиента:
+  // "пробил штрихкод — данные ввелись автоматически". fromCatalog=false — каталог тоже не
+  // знает этот штрихкод, форма открывается пустой для ручного ввода вместо тупика "не найден".
+  const [scanLookup, setScanLookup] = useState<{ barcode: string; fromCatalog: boolean } | null>(null);
+  const [quickName, setQuickName] = useState("");
+  const [quickPrice, setQuickPrice] = useState(0);
+  const [quickUnit, setQuickUnit] = useState("pcs");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
+  const [quickError, setQuickError] = useState<string | null>(null);
+
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
     setLoadError(null);
@@ -95,13 +109,51 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   useBarcodeScanner((code) => {
     if (!canManage) return;
     const product = products.find((p) => p.barcode === code);
-    if (!product) {
-      setScanMessage(t("warehouse.scanNotFound", { code }));
+    if (product) {
+      setScanMessage(null);
+      addToBatch(product);
       return;
     }
-    setScanMessage(null);
-    addToBatch(product);
+    setScanMessage(t("warehouse.scanLookingUp", { code }));
+    lookupBarcode(session.accessToken, code)
+      .then((result) => {
+        setScanMessage(null);
+        setQuickPrice(0);
+        setQuickUnit(result.unit || "pcs");
+        setQuickName(result.found ? (result.name ?? "") : "");
+        setQuickError(null);
+        setScanLookup({ barcode: code, fromCatalog: result.found });
+      })
+      .catch(() => {
+        setScanMessage(null);
+        setQuickPrice(0);
+        setQuickUnit("pcs");
+        setQuickName("");
+        setQuickError(null);
+        setScanLookup({ barcode: code, fromCatalog: false });
+      });
   });
+
+  async function handleQuickCreate() {
+    if (!scanLookup || !quickName.trim() || quickPrice <= 0) return;
+    setQuickSubmitting(true);
+    setQuickError(null);
+    try {
+      const created = await createProduct(session.accessToken, {
+        name: quickName.trim(),
+        barcode: scanLookup.barcode,
+        price: quickPrice,
+        unit: quickUnit.trim() || "pcs",
+      });
+      setProducts((prev) => [...prev, created]);
+      addToBatch(created);
+      setScanLookup(null);
+    } catch (err) {
+      setQuickError(err instanceof ApiError ? err.message : t("warehouse.quickCreateError"));
+    } finally {
+      setQuickSubmitting(false);
+    }
+  }
 
   function addToBatch(product: ApiProduct) {
     setBatch((prev) => {
@@ -449,6 +501,67 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
               >
                 {adjustSubmitting ? t("common.loading") : t("products.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {scanLookup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.quickCreateTitle")}</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {scanLookup.fromCatalog ? t("warehouse.quickCreateFoundHint") : t("warehouse.quickCreateNotFoundHint")}
+              </p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <label className="block text-xs font-medium text-slate-500">
+                {t("products.name")}
+                <input
+                  value={quickName}
+                  onChange={(e) => setQuickName(e.target.value)}
+                  autoFocus
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block text-xs font-medium text-slate-500">
+                  {t("products.price")}
+                  <AmountInput
+                    value={quickPrice}
+                    onChange={setQuickPrice}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-accent"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-slate-500">
+                  {t("products.unit")}
+                  <input
+                    value={quickUnit}
+                    onChange={(e) => setQuickUnit(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-slate-400">
+                {t("products.barcode")}: {scanLookup.barcode}
+              </p>
+              {quickError && <p className="text-xs text-red-600">{quickError}</p>}
+            </div>
+            <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={() => setScanLookup(null)}
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("returns.cancel")}
+              </button>
+              <button
+                onClick={handleQuickCreate}
+                disabled={quickSubmitting || !quickName.trim() || quickPrice <= 0}
+                className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+              >
+                {quickSubmitting ? t("common.loading") : t("warehouse.quickCreateSubmit")}
               </button>
             </div>
           </div>

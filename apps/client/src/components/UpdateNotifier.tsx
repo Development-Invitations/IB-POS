@@ -5,9 +5,14 @@ import { relaunch } from "@tauri-apps/plugin-process";
 
 type Phase = "idle" | "available" | "downloading" | "installing" | "error";
 
-// Проверяем обновления один раз при старте приложения, вне зависимости от того, залогинен
-// ли пользователь — это киоск-устройство, апдейт должен долетать даже до экрана логина.
-// Вне Tauri (dev-режим в обычном браузере) check() бросит исключение — тихо игнорируем.
+// Раз в столько миллисекунд повторяем проверку, пока обновление не найдено — киоск обычно не
+// перезапускают неделями, проверки только при старте недостаточно, чтобы обновление реально
+// "дошло" до кассы (не из исходного ТЗ — по прямому запросу клиента).
+const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
+
+// Проверяем обновления при старте приложения и затем периодически, вне зависимости от того,
+// залогинен ли пользователь — это киоск-устройство, апдейт должен долетать даже до экрана
+// логина. Вне Tauri (dev-режим в обычном браузере) check() бросит исключение — тихо игнорируем.
 export function UpdateNotifier() {
   const { t } = useTranslation();
   const [update, setUpdate] = useState<Update | null>(null);
@@ -15,16 +20,28 @@ export function UpdateNotifier() {
   const [percent, setPercent] = useState(0);
 
   useEffect(() => {
-    check()
-      .then((result) => {
-        if (result) {
-          setUpdate(result);
-          setPhase("available");
-        }
-      })
-      .catch(() => {
-        // Нет апдейтера (dev-браузер) или нет сети — не мешаем работе кассы.
+    function runCheck() {
+      check()
+        .then((result) => {
+          if (result) {
+            setUpdate(result);
+            setPhase("available");
+          }
+        })
+        .catch(() => {
+          // Нет апдейтера (dev-браузер) или нет сети — не мешаем работе кассы.
+        });
+    }
+    runCheck();
+    const id = window.setInterval(() => {
+      // Не перепроверяем, если уже что-то нашли/качаем/ставим — не сбивать кассира с толку
+      // новым баннером поверх уже идущего процесса.
+      setPhase((current) => {
+        if (current === "idle") runCheck();
+        return current;
       });
+    }, RECHECK_INTERVAL_MS);
+    return () => window.clearInterval(id);
   }, []);
 
   if (phase === "idle" || !update) return null;

@@ -145,6 +145,19 @@ export function getProducts(token: string) {
   return request<ApiProduct[]>("/products", {}, token);
 }
 
+export interface BarcodeLookupResult {
+  found: boolean;
+  name?: string;
+  unit?: string;
+  mxikCode?: string;
+}
+
+// Госкаталог tasnif.soliq.uz (не из исходного ТЗ) — автозаполнение названия товара по
+// штрихкоду при приёмке на "Склад", см. WarehouseScreen.tsx.
+export function lookupBarcode(token: string, barcode: string) {
+  return request<BarcodeLookupResult>(`/products/lookup-barcode/${encodeURIComponent(barcode)}`, {}, token);
+}
+
 export interface ProductPayload {
   name: string;
   categoryId?: string;

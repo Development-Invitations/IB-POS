@@ -56,6 +56,14 @@ export class ProductsController {
     return this.products.findAll(user.organizationId);
   }
 
+  // Поиск по госкаталогу (tasnif.soliq.uz) для автозаполнения при приёмке на "Склад" —
+  // см. ProductsService.lookupBarcode. Роли те же, что у создания товара (@Post() выше).
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
+  @Get('lookup-barcode/:barcode')
+  lookupBarcode(@Param('barcode') barcode: string) {
+    return this.products.lookupBarcode(barcode);
+  }
+
   // Должно идти раньше @Get(':id'), иначе "export" попадёт в параметр :id.
   @Get('export')
   async exportCsv(

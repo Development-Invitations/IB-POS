@@ -22,9 +22,71 @@ const CSV_HEADER = [
   'isActive',
 ];
 
+// Госкаталог товаров и услуг Узбекистана (ИКПУ/MXIK) — публичный, без авторизации, см.
+// tasnif.soliq.uz. Не в исходном ТЗ — по прямому запросу клиента: при приёмке на "Склад"
+// штрихкод незнакомого товара пробуется здесь, чтобы не вводить название вручную. Эндпоинт
+// не документирован официально (найден разбором фронтенда tasnif.soliq.uz), поэтому падение
+// или изменение формата ответа не должно ронять приёмку — lookupBarcode всегда возвращает
+// { found: false }, а не бросает исключение.
+const TASNIF_SEARCH_URL =
+  'https://tasnif.soliq.uz/api/cls-api/mxik/search/by-params';
+
+interface TasnifItem {
+  mxikCode?: string;
+  mxikName?: string;
+  brandName?: string;
+  attributeName?: string;
+  unitName?: string;
+  commonUnitName?: string;
+}
+
+export interface BarcodeLookupResult {
+  found: boolean;
+  name?: string;
+  unit?: string;
+  mxikCode?: string;
+}
+
 @Injectable()
 export class ProductsService {
   constructor(private readonly prisma: PrismaService) {}
+
+  async lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
+    const gtin = barcode.trim();
+    if (!gtin) return { found: false };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    try {
+      const url = `${TASNIF_SEARCH_URL}?gtin=${encodeURIComponent(gtin)}&lang=ru`;
+      const response = await fetch(url, { signal: controller.signal });
+      if (!response.ok) return { found: false };
+
+      const json = (await response.json()) as {
+        data?: { content?: TasnifItem[] };
+      };
+      const item = json.data?.content?.[0];
+      if (!item) return { found: false };
+
+      const name = item.brandName
+        ? [item.brandName, item.attributeName].filter(Boolean).join(', ')
+        : item.mxikName;
+      if (!name) return { found: false };
+
+      return {
+        found: true,
+        name,
+        unit: item.unitName ?? item.commonUnitName ?? undefined,
+        mxikCode: item.mxikCode,
+      };
+    } catch {
+      // Нет сети, таймаут, госсайт лёг или сменил формат ответа — не критично, приёмщик
+      // просто вводит название вручную, как и раньше.
+      return { found: false };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
 
   create(organizationId: string, dto: CreateProductDto) {
     const { expiryDate, ...rest } = dto;
