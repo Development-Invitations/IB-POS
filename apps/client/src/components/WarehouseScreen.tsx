@@ -29,6 +29,21 @@ interface WarehouseScreenProps {
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "WAREHOUSE", "ACCOUNTANT"];
 const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN", "WAREHOUSE"];
 
+// useBarcodeScanner (use-barcode-scanner.ts) намеренно игнорирует любой скан, пока фокус стоит
+// на INPUT/TEXTAREA — иначе сканер печатал бы штрихкод прямо в открытое поле ввода где-нибудь ещё
+// на экране. Но у попапов сканирования маркировки (beginMarkingReceive/openMarkingAdjust) нет
+// СВОЕГО поля ввода — если фокус к моменту открытия попапа случайно остался на постороннем поле
+// (например, поиск "Найти товар..." или "Поиск по названию, арти..." в "Остатках" — где угодно
+// на этом же экране), сканер продолжает печатать туда, а попап сканирования молча ничего не
+// получает — визуально выглядит так, будто сканирование вообще не работает (жалоба клиента: "тут
+// не показывает что пробивали"). Снимаем фокус принудительно при открытии — переносить его больше
+// некуда (в попапе нет полей), значит фокус уйдёт на body, а он не "редактируемый".
+function blurActiveElement() {
+  if (document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+}
+
 interface BatchLine {
   product: ApiProduct;
   quantity: number;
@@ -271,6 +286,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // и один физический код маркировки можно было записать второй раз (жалоба клиента: "просто
   // количество поднял, а штрихкод остался 1" — то есть тот же товар получил задвоенный приход).
   function beginMarkingReceive(product: ApiProduct) {
+    blurActiveElement();
     const historical = markingCodesByProduct.get(product.id) ?? [];
     const inDraft = batch.get(product.id)?.markingCodes ?? [];
     setPendingMarking({
@@ -287,6 +303,9 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   function confirmMarkingQuantity() {
     const n = Number(pendingQtyInput);
     if (!Number.isFinite(n) || n <= 0) return;
+    // Поле количества (autoFocus) сейчас в фокусе — следующий попап сканирования своих полей
+    // не имеет, снимаем фокус явно, не полагаясь на то, что React сам уберёт его при размонтировании поля.
+    blurActiveElement();
     setPendingMarking((prev) => (prev ? { ...prev, targetQty: Math.floor(n) } : prev));
   }
 
@@ -461,6 +480,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // из истории движений остатка (все RECEIPT_IN когда-либо, не только последний приход), чтобы
   // повторный скан уже учтённой упаковки молча игнорировался, а не задваивал остаток.
   async function openMarkingAdjust(entry: ApiStockEntry) {
+    blurActiveElement();
     setMarkingAdjustTarget(entry);
     setMarkingAdjustNew([]);
     setMarkingAdjustSkipped(0);
