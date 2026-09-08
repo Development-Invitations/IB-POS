@@ -1,11 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditService } from '../audit/audit.service';
 import { FISCAL_PROVIDERS } from '../integrations/adapters/adapter.interface';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class SettingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly audit: AuditService,
+  ) {}
 
   async get(organizationId: string) {
     const [organization, settings, hasFiscalIntegration] = await Promise.all([
@@ -133,5 +137,38 @@ export class SettingsService {
     });
 
     return this.get(organizationId);
+  }
+
+  // Не из исходного ТЗ — по прямому запросу клиента: очистка тестовых данных (чеки/смены,
+  // накопленные во время настройки и тестирования), чтобы можно было начать с чистой истории
+  // и после этого свободно удалять товары, на которые ссылались тестовые чеки (Product.purge()
+  // блокируется внешним ключом ReceiptItem.product, пока по товару есть хоть один чек — это
+  // намеренная защита от порчи реальной истории продаж, а не баг, снимать её точечно не стали).
+  // Порядок удаления важен из-за внешних ключей без каскада: сначала чеки (тянут за собой
+  // позиции чеков и оплаты — у них onDelete: Cascade на Receipt), потом смены (Receipt.shift
+  // без каскада, поэтому смену нельзя удалить, пока на неё ссылается хоть один чек).
+  async clearHistory(organizationId: string, actingUserId: string) {
+    const [outbox, receipts, shifts] = await this.prisma.$transaction([
+      this.prisma.outboxEvent.deleteMany({ where: { organizationId } }),
+      this.prisma.receipt.deleteMany({ where: { store: { organizationId } } }),
+      this.prisma.shift.deleteMany({ where: { store: { organizationId } } }),
+    ]);
+
+    const result = {
+      receiptsDeleted: receipts.count,
+      shiftsDeleted: shifts.count,
+      outboxDeleted: outbox.count,
+    };
+
+    await this.audit.log(
+      organizationId,
+      actingUserId,
+      'history.cleared',
+      'Organization',
+      organizationId,
+      result,
+    );
+
+    return result;
   }
 }

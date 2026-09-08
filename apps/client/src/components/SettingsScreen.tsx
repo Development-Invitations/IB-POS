@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import {
   ApiError,
+  clearHistory,
   createProduct,
   downloadBackup,
   getBackups,
@@ -12,10 +13,12 @@ import {
   runBackup,
   updateProduct,
   updateSettings,
+  type ClearHistoryResult,
 } from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
 import { loadApiBase, loadConnectionMode } from "../lib/server-config";
 import { AmountInput } from "./AmountInput";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ServerConnectionScreen } from "./ServerConnectionScreen";
 import type { ApiBackup, ApiProduct, ApiSettings, BusinessType } from "../types/api";
 import type { AuthSession } from "../types/auth";
@@ -39,6 +42,12 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [connectionScreenOpen, setConnectionScreenOpen] = useState(false);
   const currentApiBase = loadApiBase();
   const connectionMode = loadConnectionMode();
+  // Очистка тестовых чеков/смен (не из исходного ТЗ, по прямому запросу клиента) — необратимо,
+  // поэтому отдельное подтверждение с явным предупреждением, как у "Удалить товар безвозвратно".
+  const [clearHistoryOpen, setClearHistoryOpen] = useState(false);
+  const [clearHistorySubmitting, setClearHistorySubmitting] = useState(false);
+  const [clearHistoryError, setClearHistoryError] = useState<string | null>(null);
+  const [clearHistoryResult, setClearHistoryResult] = useState<ClearHistoryResult | null>(null);
   const [settings, setSettings] = useState<ApiSettings | null>(null);
   const [backups, setBackups] = useState<ApiBackup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -247,6 +256,20 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     }
   }
 
+  async function handleClearHistory() {
+    setClearHistorySubmitting(true);
+    setClearHistoryError(null);
+    try {
+      const result = await clearHistory(session.accessToken);
+      setClearHistoryResult(result);
+      setClearHistoryOpen(false);
+    } catch (err) {
+      setClearHistoryError(err instanceof ApiError ? err.message : t("settings.clearHistoryError"));
+    } finally {
+      setClearHistorySubmitting(false);
+    }
+  }
+
   async function handleCreateBackup() {
     setBackupBusy(true);
     try {
@@ -369,6 +392,32 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
                 {t("serverConnection.change")}
               </button>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-red-100 bg-red-50/40 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-red-700">{t("settings.clearHistoryTitle")}</h3>
+                <p className="mt-0.5 text-xs text-red-500">{t("settings.clearHistoryHint")}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setClearHistoryError(null);
+                  setClearHistoryOpen(true);
+                }}
+                className="shrink-0 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+              >
+                {t("settings.clearHistoryButton")}
+              </button>
+            </div>
+            {clearHistoryResult && (
+              <p className="mt-2 text-xs text-emerald-600">
+                {t("settings.clearHistoryDone", {
+                  receipts: clearHistoryResult.receiptsDeleted,
+                  shifts: clearHistoryResult.shiftsDeleted,
+                })}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -710,6 +759,19 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       )}
 
       {connectionScreenOpen && <ServerConnectionScreen onClose={() => setConnectionScreenOpen(false)} />}
+
+      {clearHistoryOpen && (
+        <ConfirmDialog
+          title={t("settings.clearHistoryTitle")}
+          message={t("settings.clearHistoryConfirm")}
+          confirmLabel={t("settings.clearHistoryButton")}
+          danger
+          submitting={clearHistorySubmitting}
+          error={clearHistoryError}
+          onClose={() => setClearHistoryOpen(false)}
+          onConfirm={handleClearHistory}
+        />
+      )}
     </div>
   );
 }

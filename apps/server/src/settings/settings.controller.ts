@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { SettingsService } from './settings.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
@@ -47,5 +47,12 @@ export class SettingsController {
     @Body() dto: UpdateSettingsDto,
   ) {
     return this.settings.update(user.organizationId, dto);
+  }
+
+  // Только Админ (класс уже ограничен @Roles(Role.ADMIN) выше) — необратимо удаляет чеки/смены
+  // организации, см. SettingsService.clearHistory.
+  @Post('clear-history')
+  clearHistory(@CurrentUser() user: AuthenticatedUser) {
+    return this.settings.clearHistory(user.organizationId, user.userId);
   }
 }

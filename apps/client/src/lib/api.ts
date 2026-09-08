@@ -680,6 +680,19 @@ export function updateSettings(token: string, payload: UpdateSettingsPayload) {
   return request<ApiSettings>("/settings", { method: "PATCH", body: JSON.stringify(payload) }, token);
 }
 
+export interface ClearHistoryResult {
+  receiptsDeleted: number;
+  shiftsDeleted: number;
+  outboxDeleted: number;
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента: очистка тестовых чеков/смен, накопленных
+// при настройке, чтобы после можно было свободно удалять товары без блокировки по внешнему
+// ключу (см. SettingsService.clearHistory на сервере). Необратимо.
+export function clearHistory(token: string) {
+  return request<ClearHistoryResult>("/settings/clear-history", { method: "POST" }, token);
+}
+
 // Доступно всем ролям (не только Админу, как остальные /settings) — экран "Продажа" должен
 // знать профиль бизнеса, лимит скидки кассира и быстрые суммы наличными независимо от того,
 // кто за кассой.

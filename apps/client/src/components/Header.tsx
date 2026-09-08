@@ -31,6 +31,11 @@ interface HeaderProps {
   // Не из исходного ТЗ — по прямому запросу клиента (порог в Настройках → Уведомления).
   // Пустой массив = либо порог не настроен, либо у роли нет доступа к остаткам.
   lowStockProducts: { name: string; quantity: number }[];
+  // Тот же критерий, что и App.tsx::isHiddenForNoStock — товар с нулевым остатком нельзя
+  // добавить в чек. Раньше поиск в шапке позволял его найти и "выбрать", но addToCart молча
+  // ничего не делал — выглядело как "поиск не работает" (жалоба клиента). Теперь такие
+  // результаты в списке видны, но помечены и недоступны для выбора, как и плитки на "Продаже".
+  isProductUnavailable: (product: CartProduct) => boolean;
   onSelectProduct: (product: CartProduct) => void;
   onLogout: () => void;
   onCloseShift: () => void;
@@ -43,6 +48,7 @@ export function Header({
   shiftOpenedAt,
   products,
   lowStockProducts,
+  isProductUnavailable,
   onSelectProduct,
   onLogout,
   onCloseShift,
@@ -92,6 +98,7 @@ export function Header({
   }, [hasSaleAccess]);
 
   function selectProduct(product: CartProduct) {
+    if (isProductUnavailable(product)) return;
     onSelectProduct(product);
     setQuery("");
     setSearchOpen(false);
@@ -149,30 +156,42 @@ export function Header({
               {results.length === 0 && (
                 <p className="px-4 py-3 text-sm text-slate-400">{t("common.searchEmpty")}</p>
               )}
-              {results.map((product, i) => (
-                <button
-                  key={product.id}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectProduct(product)}
-                  onMouseEnter={() => setActiveIndex(i)}
-                  className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
-                    i === activeIndex ? "bg-slate-50" : ""
-                  }`}
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500">
-                    {product.imageUrl ? (
-                      <img src={`${API_BASE}${product.imageUrl}`} alt="" className="h-full w-full object-cover" />
+              {results.map((product, i) => {
+                const unavailable = isProductUnavailable(product);
+                return (
+                  <button
+                    key={product.id}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectProduct(product)}
+                    onMouseEnter={() => setActiveIndex(i)}
+                    disabled={unavailable}
+                    className={`flex w-full items-center gap-3 px-3 py-2 text-left ${
+                      unavailable ? "cursor-not-allowed opacity-50" : i === activeIndex ? "bg-slate-50" : ""
+                    }`}
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 text-[10px] font-bold text-slate-500">
+                      {product.imageUrl ? (
+                        <img src={`${API_BASE}${product.imageUrl}`} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        initials(product.name)
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-slate-800">{product.name}</span>
+                      {product.barcode && <span className="block text-xs text-slate-400">{product.barcode}</span>}
+                    </span>
+                    {unavailable ? (
+                      <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-xs font-semibold text-red-600">
+                        {t("products.outOfStock")}
+                      </span>
                     ) : (
-                      initials(product.name)
+                      <span className="shrink-0 text-sm font-semibold text-slate-700">
+                        {product.price.toLocaleString("ru-RU")}
+                      </span>
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800">{product.name}</span>
-                    {product.barcode && <span className="block text-xs text-slate-400">{product.barcode}</span>}
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold text-slate-700">{product.price.toLocaleString("ru-RU")}</span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

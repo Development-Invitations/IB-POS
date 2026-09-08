@@ -560,6 +560,7 @@ function App() {
         shiftOpenedAt={shift?.openedAt ?? null}
         products={products}
         lowStockProducts={lowStockProducts}
+        isProductUnavailable={isHiddenForNoStock}
         onSelectProduct={(product) => {
           addToCart(product);
           setActiveScreen("sale");
@@ -615,7 +616,7 @@ function App() {
                 )}
               </main>
 
-              <div className="no-print grid grid-cols-3 gap-2.5 border-t border-slate-200 bg-white px-4 py-3 sm:grid-cols-6">
+              <div className="no-print flex flex-wrap gap-2.5 border-t border-slate-200 bg-white px-4 py-3">
                 <button
                   onClick={() => setReturnModalOpen(true)}
                   className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
