@@ -46,6 +46,14 @@ interface PendingMarkingReceive {
   product: ApiProduct;
   targetQty: number | null;
   markings: string[];
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше повторный скан штрихкода уже
+  // известного товара открывал СОВСЕМ новую, "незнающую" сессию — ни истории приёмок с сервера
+  // (см. markingCodesByProduct), ни уже добавленной в этот же черновик прихода строки для этого
+  // товара она не видела, поэтому один и тот же физический код маркировки можно было записать
+  // второй раз, просто подняв количество. known — объединение того и другого, собирается один
+  // раз в beginMarkingReceive; и новые сканы, и вводимое количество сверяются против него же.
+  known: string[];
+  skipped: number;
 }
 
 export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProps) {
@@ -256,9 +264,22 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
 
   // Приход по маркировке (Настройки → Магазин, не из исходного ТЗ): сначала спрашиваем
   // количество (по накладной), затем сканируем маркировку каждой единицы — см.
-  // handleMarkingScan/finishMarkingReceive.
+  // handleMarkingScan/finishMarkingReceive. known — уже учтённые коды по этому товару: и вся
+  // история приёмок с сервера (markingCodesByProduct), и то, что уже лежит в ЕЩЁ не отправленном
+  // черновике прихода для этого же товара (batch) — без этого повторный скан штрихкода того же
+  // товара открывал "слепую" сессию, не знающую о ранее принятых или ещё не отправленных кодах,
+  // и один физический код маркировки можно было записать второй раз (жалоба клиента: "просто
+  // количество поднял, а штрихкод остался 1" — то есть тот же товар получил задвоенный приход).
   function beginMarkingReceive(product: ApiProduct) {
-    setPendingMarking({ product, targetQty: null, markings: [] });
+    const historical = markingCodesByProduct.get(product.id) ?? [];
+    const inDraft = batch.get(product.id)?.markingCodes ?? [];
+    setPendingMarking({
+      product,
+      targetQty: null,
+      markings: [],
+      known: [...new Set([...historical, ...inDraft])],
+      skipped: 0,
+    });
     setPendingQtyInput("");
     setMarkingError(null);
   }
@@ -272,9 +293,9 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   function handleMarkingScan(code: string) {
     setPendingMarking((prev) => {
       if (!prev) return prev;
-      if (prev.markings.includes(code)) {
+      if (prev.known.includes(code) || prev.markings.includes(code)) {
         setMarkingError(t("warehouse.markingDuplicate"));
-        return prev;
+        return { ...prev, skipped: prev.skipped + 1 };
       }
       setMarkingError(null);
       return { ...prev, markings: [...prev.markings, code] };
@@ -1048,6 +1069,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{pendingMarking.product.name}</h2>
               <p className="mt-1 text-xs text-slate-400">{t("warehouse.markingQtyHint")}</p>
+              {pendingMarking.known.length > 0 && (
+                <p className="mt-1 text-xs text-amber-600">
+                  {t("warehouse.markingKnownHint", { count: pendingMarking.known.length })}
+                </p>
+              )}
             </div>
             <div className="space-y-3 px-5 py-4">
               <label className="block text-xs font-medium text-slate-500">
@@ -1104,6 +1130,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 />
               </div>
               {markingError && <p className="text-xs text-red-600">{markingError}</p>}
+              {pendingMarking.skipped > 0 && (
+                <p className="text-xs text-amber-600">
+                  {t("warehouse.markingAdjustSkipped", { count: pendingMarking.skipped })}
+                </p>
+              )}
               {pendingMarking.markings.length > 0 && (
                 <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg bg-slate-50 px-2 py-2">
                   {pendingMarking.markings.map((code, i) => (

@@ -473,6 +473,7 @@
     "markingQtyLabel": "Количество",
     "markingQtyConfirm": "Далее — сканировать маркировку",
     "markingScanHint": "Отсканируйте маркировку каждой единицы: {{done}} из {{total}}",
+    "markingKnownHint": "По этому товару уже известно кодов: {{count}} — повторный скан такой маркировки будет пропущен.",
     "markingScanFinish": "Готово ({{count}})",
     "markingDuplicate": "Эта маркировка уже отсканирована",
     "markingReceiveAdded": "Добавлено в приход: «{{name}}» — {{count}} шт",

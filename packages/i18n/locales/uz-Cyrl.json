@@ -473,6 +473,7 @@
     "markingQtyLabel": "Миқдор",
     "markingQtyConfirm": "Кейингиси — маркировкани сканерлаш",
     "markingScanHint": "Ҳар бир бирлик маркировкасини сканерланг: {{done}} / {{total}}",
+    "markingKnownHint": "Бу маҳсулот бўйича аллақачон маълум кодлар: {{count}} — бундай маркировкани қайта сканерлаш ўтказиб юборилади.",
     "markingScanFinish": "Тайёр ({{count}})",
     "markingDuplicate": "Бу маркировка аллақачон сканерланган",
     "markingReceiveAdded": "Қабулга қўшилди: «{{name}}» — {{count}} дона",
