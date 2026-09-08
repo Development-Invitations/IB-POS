@@ -4,8 +4,8 @@ import {
   ApiError,
   adjustStock,
   createProduct,
+  getMarkings,
   getProducts,
-  getStockMovements,
   getStockReport,
   getStores,
   getWarehouseConfig,
@@ -154,25 +154,31 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       .catch(() => undefined);
   }, [session.accessToken, canManage]);
 
-  // Не из исходного ТЗ — по прямому запросу клиента: у товара в "Остатках" не было видно, есть
-  // ли по нему уже отсканированная маркировка вообще — приходилось верить внутренней логике на
-  // слово. Один запрос по всей точке разом (не по товару отдельно — не дёргать эндпоинт N раз),
-  // агрегирует коды из истории движений в карту "товар → его коды", используется и для колонки
-  // статуса, и как быстрый предзагруз при открытии "Корректировки" по маркировке.
-  const [markingCodesByProduct, setMarkingCodesByProduct] = useState<Map<string, string[]>>(new Map());
+  // Не из исходного ТЗ — по прямому запросу клиента: маркировка расходуется вместе с остатком
+  // при продаже (StockService.trySale — без сканирования на кассе, это была бы отдельная более
+  // медленная функция), поэтому у товара в "Остатках" нужно видеть не "все коды, что вообще
+  // когда-то приняли", а именно "сколько ещё физически в наличии". availableByProduct — только
+  // непроданные коды (consumedAt === null), для бейджа/попапа-списка. allByProduct — все коды,
+  // и активные, и уже проданные (защита от повторного скана уже известного кода при приёмке
+  // должна ловить и "код уже принят", и "код уже продан" — оба одинаково подозрительны). Один
+  // запрос по всей точке разом (не по товару отдельно — не дёргать эндпоинт N раз).
+  const [availableMarkingsByProduct, setAvailableMarkingsByProduct] = useState<Map<string, string[]>>(new Map());
+  const [allMarkingsByProduct, setAllMarkingsByProduct] = useState<Map<string, string[]>>(new Map());
 
   function refreshMarkingCodes() {
     if (!markingModeActive || !storeId) return;
-    getStockMovements(session.accessToken, storeId)
-      .then((movements) => {
-        const byProduct = new Map<string, Set<string>>();
-        for (const m of movements) {
-          if (m.type !== "RECEIPT_IN") continue;
-          const set = byProduct.get(m.stock.productId) ?? new Set<string>();
-          for (const code of m.markingCodes) set.add(code);
-          byProduct.set(m.stock.productId, set);
+    getMarkings(session.accessToken, storeId)
+      .then((markings) => {
+        const available = new Map<string, string[]>();
+        const all = new Map<string, string[]>();
+        for (const m of markings) {
+          all.set(m.productId, [...(all.get(m.productId) ?? []), m.code]);
+          if (!m.consumedAt) {
+            available.set(m.productId, [...(available.get(m.productId) ?? []), m.code]);
+          }
         }
-        setMarkingCodesByProduct(new Map([...byProduct].map(([id, set]) => [id, [...set]])));
+        setAvailableMarkingsByProduct(available);
+        setAllMarkingsByProduct(all);
       })
       .catch(() => undefined);
   }
@@ -291,7 +297,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // количество поднял, а штрихкод остался 1" — то есть тот же товар получил задвоенный приход).
   function beginMarkingReceive(product: ApiProduct) {
     blurActiveElement();
-    const historical = markingCodesByProduct.get(product.id) ?? [];
+    const historical = allMarkingsByProduct.get(product.id) ?? [];
     const inDraft = batch.get(product.id)?.markingCodes ?? [];
     setPendingMarking({
       product,
@@ -491,14 +497,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     setMarkingAdjustError(null);
     setMarkingAdjustLoading(true);
     try {
-      const movements = await getStockMovements(session.accessToken, entry.storeId, entry.productId);
-      const existing = new Set<string>();
-      for (const m of movements) {
-        if (m.type === "RECEIPT_IN") {
-          for (const code of m.markingCodes) existing.add(code);
-        }
-      }
-      setMarkingAdjustExisting([...existing]);
+      const markings = await getMarkings(session.accessToken, entry.storeId);
+      // Все когда-либо виденные коды этого товара — и активные, и уже проданные (повторный скан
+      // проданного кода тоже подозрителен и должен быть пойман, не только скан ещё лежащего на
+      // складе), см. allMarkingsByProduct выше.
+      const existing = markings.filter((m) => m.productId === entry.productId).map((m) => m.code);
+      setMarkingAdjustExisting(existing);
     } catch (err) {
       setMarkingAdjustError(err instanceof ApiError ? err.message : t("warehouse.markingAdjustLoadError"));
       setMarkingAdjustExisting([]);
@@ -774,7 +778,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
               </thead>
               <tbody>
                 {filteredEntries.map((entry) => {
-                  const knownCodes = markingCodesByProduct.get(entry.productId) ?? [];
+                  const knownCodes = availableMarkingsByProduct.get(entry.productId) ?? [];
                   return (
                   <tr key={entry.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-800">{entry.product.name}</td>
@@ -965,7 +969,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 <h2 className="text-lg font-semibold text-slate-800">{viewMarkingsFor.product.name}</h2>
                 <p className="mt-0.5 text-xs text-slate-400">
                   {t("warehouse.markingCount", {
-                    count: (markingCodesByProduct.get(viewMarkingsFor.productId) ?? []).length,
+                    count: (availableMarkingsByProduct.get(viewMarkingsFor.productId) ?? []).length,
                   })}
                 </p>
               </div>
@@ -979,7 +983,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
             </div>
             <div className="max-h-80 overflow-y-auto px-5 py-4">
               <div className="space-y-1">
-                {(markingCodesByProduct.get(viewMarkingsFor.productId) ?? []).map((code, i) => (
+                {(availableMarkingsByProduct.get(viewMarkingsFor.productId) ?? []).map((code, i) => (
                   <div
                     key={code}
                     className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 [word-break:break-all]"

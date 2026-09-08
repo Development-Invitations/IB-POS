@@ -356,10 +356,13 @@ export class ReceiptsService {
         if (requiresStock) {
           const ok = await this.stock.trySale(
             tx,
+            organizationId,
             updated.storeId,
             item.productId,
             Number(item.quantity),
             userId,
+            undefined,
+            item.id,
           );
           if (!ok) {
             throw new BadRequestException(
@@ -484,6 +487,11 @@ export class ReceiptsService {
           StockMovementType.RETURN,
           userId,
         );
+
+        // Не из исходного ТЗ — по прямому запросу клиента: возвращённые единицы должны вернуть
+        // именно СВОИ коды маркировки в "активные" (списанные при продаже этой же позиции чека,
+        // см. StockService.trySale), а не просто увеличить число остатка без следа маркировки.
+        await this.stock.restoreMarkings(tx, item.id, qty);
 
         refundAmount += Number(item.price) * qty;
         returnedLines.push({

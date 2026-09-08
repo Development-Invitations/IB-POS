@@ -47,13 +47,24 @@ export class StockService {
   // WHERE-условие в самом UPDATE безопасно и под конкурентным доступом, Postgres сериализует
   // конфликтующие обновления одной строки). count === 0 — либо остатка нет вовсе, либо кто-то
   // другой только что списал последнее раньше нас.
+  //
+  // Не из исходного ТЗ — по прямому запросу клиента: маркировка расходуется вместе с остатком —
+  // продали 2 шт., значит 2 "активных" кода маркировки должны перейти в "проданные" (см.
+  // ProductMarking.consumedAt в schema.prisma). Без сканирования на кассе — это отдельная, более
+  // медленная функция, от которой клиент прямо отказался ("ускорит продажи"); коды выбираются
+  // САМИ, по очереди прихода (FIFO — сначала те, что приняли раньше). best-effort: если
+  // промаркированных кодов на товар меньше, чем quantity (обычный случай для товара, который
+  // приходовали ДО включения режима маркировки, или для организаций без маркировки вовсе) —
+  // списываем сколько есть, это не повод отменять продажу.
   async trySale(
     client: Client,
+    organizationId: string,
     storeId: string,
     productId: string,
     quantity: number,
     userId: string | null,
     comment?: string,
+    receiptItemId?: string,
   ): Promise<boolean> {
     const result = await client.stock.updateMany({
       where: { storeId, productId, quantity: { gte: quantity } },
@@ -73,7 +84,62 @@ export class StockService {
         comment,
       },
     });
+
+    const toConsume = await client.productMarking.findMany({
+      where: { organizationId, storeId, productId, consumedAt: null },
+      orderBy: { createdAt: 'asc' },
+      take: quantity,
+      select: { id: true },
+    });
+    if (toConsume.length > 0) {
+      await client.productMarking.updateMany({
+        where: { id: { in: toConsume.map((m) => m.id) } },
+        data: { consumedAt: new Date(), receiptItemId: receiptItemId ?? null },
+      });
+    }
+
     return true;
+  }
+
+  // Не из исходного ТЗ — по прямому запросу клиента: при возврате чека возвращённые единицы
+  // должны "вернуть" именно свои коды маркировки в "активные" (не чужие — поэтому ищем строго
+  // по receiptItemId), а не просто увеличить число остатка.
+  async restoreMarkings(client: Client, receiptItemId: string, quantity: number) {
+    const toRestore = await client.productMarking.findMany({
+      where: { receiptItemId, consumedAt: { not: null } },
+      orderBy: { consumedAt: 'desc' },
+      take: quantity,
+      select: { id: true },
+    });
+    if (toRestore.length > 0) {
+      await client.productMarking.updateMany({
+        where: { id: { in: toRestore.map((m) => m.id) } },
+        data: { consumedAt: null, receiptItemId: null },
+      });
+    }
+  }
+
+  // Не из исходного ТЗ — по прямому запросу клиента: "1 файл активных маркировок который не
+  // чистится, 2 файл маркировок товаров которые проданы который можно чистить" — обе половины
+  // это одна таблица ProductMarking, разделённая по consumedAt. Чистка удаляет ТОЛЬКО проданные
+  // (consumedAt заполнен) — активные (ещё в наличии) не трогает никогда, иначе сломалась бы
+  // защита от повторного прихода уже принятого товара.
+  async clearMarkingCache(organizationId: string) {
+    const result = await this.prisma.productMarking.deleteMany({
+      where: { organizationId, consumedAt: { not: null } },
+    });
+    return { cleared: result.count };
+  }
+
+  // Не из исходного ТЗ — по прямому запросу клиента: список кодов маркировки для отображения на
+  // клиенте (бейдж/попап в "Остатках" — только активные, ещё физически в наличии — и известные
+  // коды для защиты от повторного скана при приёмке — активные и проданные вместе, см.
+  // WarehouseScreen.tsx). Отдаём оба состояния одним списком, клиент сам решает, что ему нужно.
+  findMarkings(organizationId: string, storeId: string) {
+    return this.prisma.productMarking.findMany({
+      where: { organizationId, storeId },
+      select: { productId: true, code: true, consumedAt: true },
+    });
   }
 
   // Не из исходного ТЗ — по прямому запросу клиента (только Магазин/Аптека — там есть
@@ -102,6 +168,7 @@ export class StockService {
         await tx.productMarking.createMany({
           data: dto.markingCodes!.map((code) => ({
             organizationId,
+            storeId: dto.storeId,
             productId: dto.productId,
             code,
           })),

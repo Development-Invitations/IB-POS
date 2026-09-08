@@ -648,6 +648,35 @@ export function getStockMovements(token: string, storeId: string, productId?: st
   return request<ApiStockMovement[]>(`/stock/movements?${params.toString()}`, {}, token);
 }
 
+export interface ApiProductMarking {
+  productId: string;
+  code: string;
+  // Не из исходного ТЗ — по прямому запросу клиента: null — товар ещё в наличии ("активная"
+  // маркировка), заполнено — товар продан ("проданная", хранится до ручной очистки кеша, чтобы
+  // при возврате можно было вернуть именно этот код, см. StockService.restoreMarkings).
+  consumedAt: string | null;
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента: маркировка расходуется вместе с остатком при
+// продаже (без сканирования на кассе — это сделал бы продажу медленнее), поэтому бейдж/попап в
+// "Остатках" и защита от повторного скана при приёмке используют этот эндпоинт вместо истории
+// движений — тот отдаёт ВСЕ когда-либо принятые коды без учёта того, что часть уже продана.
+export function getMarkings(token: string, storeId: string) {
+  return request<ApiProductMarking[]>(`/stock/markings?storeId=${encodeURIComponent(storeId)}`, {}, token);
+}
+
+export interface ClearMarkingCacheResult {
+  cleared: number;
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента: "1 файл активных маркировок который не
+// чистится, 2 файл маркировок товаров которые проданы который можно чистить" — удаляет ТОЛЬКО
+// уже проданные коды (активные, ещё в наличии, сервер не трогает никогда), см.
+// StockService.clearMarkingCache.
+export function clearMarkingCache(token: string) {
+  return request<ClearMarkingCacheResult>("/stock/markings/clear-cache", { method: "POST" }, token);
+}
+
 export function getTopProducts(token: string, filter: PeriodFilter) {
   return request<TopProduct[]>(`/reports/top-products${periodQuery(filter)}`, {}, token);
 }

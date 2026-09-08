@@ -49,4 +49,24 @@ export class StockController {
   ) {
     return this.stock.findMovements(user.organizationId, storeId, productId);
   }
+
+  // Не из исходного ТЗ — по прямому запросу клиента: коды маркировки по точке (активные и
+  // проданные вместе — см. StockService.findMarkings), для бейджа/попапа в "Остатках" и для
+  // защиты от повторного скана уже известного кода при приёмке.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE, Role.ACCOUNTANT)
+  @Get('markings')
+  findMarkings(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('storeId') storeId: string,
+  ) {
+    return this.stock.findMarkings(user.organizationId, storeId);
+  }
+
+  // Только Админ — необратимо удаляет коды маркировки уже ПРОДАННЫХ товаров (активные,
+  // ещё в наличии, не трогает никогда), см. StockService.clearMarkingCache.
+  @Roles(Role.ADMIN)
+  @Post('markings/clear-cache')
+  clearMarkingCache(@CurrentUser() user: AuthenticatedUser) {
+    return this.stock.clearMarkingCache(user.organizationId);
+  }
 }

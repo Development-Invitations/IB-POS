@@ -4,6 +4,7 @@ import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import {
   ApiError,
   clearHistory,
+  clearMarkingCache,
   createProduct,
   downloadBackup,
   getBackups,
@@ -14,6 +15,7 @@ import {
   updateProduct,
   updateSettings,
   type ClearHistoryResult,
+  type ClearMarkingCacheResult,
 } from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
 import { loadApiBase, loadConnectionMode } from "../lib/server-config";
@@ -48,6 +50,14 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [clearHistorySubmitting, setClearHistorySubmitting] = useState(false);
   const [clearHistoryError, setClearHistoryError] = useState<string | null>(null);
   const [clearHistoryResult, setClearHistoryResult] = useState<ClearHistoryResult | null>(null);
+  // Не из исходного ТЗ — по прямому запросу клиента: очистка "кеша" уже ПРОДАННЫХ кодов
+  // маркировки (см. ProductMarking.consumedAt) — сервер никогда не трогает активные (ещё в
+  // наличии) коды, эта кнопка не может испортить защиту от повторного прихода товара, который
+  // реально ещё на складе. Раз в месяц-два, по словам клиента.
+  const [clearMarkingsOpen, setClearMarkingsOpen] = useState(false);
+  const [clearMarkingsSubmitting, setClearMarkingsSubmitting] = useState(false);
+  const [clearMarkingsError, setClearMarkingsError] = useState<string | null>(null);
+  const [clearMarkingsResult, setClearMarkingsResult] = useState<ClearMarkingCacheResult | null>(null);
   const [settings, setSettings] = useState<ApiSettings | null>(null);
   const [backups, setBackups] = useState<ApiBackup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -291,6 +301,20 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     }
   }
 
+  async function handleClearMarkingCache() {
+    setClearMarkingsSubmitting(true);
+    setClearMarkingsError(null);
+    try {
+      const result = await clearMarkingCache(session.accessToken);
+      setClearMarkingsResult(result);
+      setClearMarkingsOpen(false);
+    } catch (err) {
+      setClearMarkingsError(err instanceof ApiError ? err.message : t("settings.clearMarkingsError"));
+    } finally {
+      setClearMarkingsSubmitting(false);
+    }
+  }
+
   async function handleCreateBackup() {
     setBackupBusy(true);
     try {
@@ -422,6 +446,31 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
                 ))}
               </div>
               {receivingModeSaving && <p className="mt-2 text-xs text-slate-400">{t("common.loading")}</p>}
+            </div>
+          )}
+
+          {businessType === "STORE" && (
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-700">{t("settings.clearMarkingsTitle")}</h3>
+                  <p className="mt-0.5 text-xs text-slate-400">{t("settings.clearMarkingsHint")}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setClearMarkingsError(null);
+                    setClearMarkingsOpen(true);
+                  }}
+                  className="shrink-0 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+                >
+                  {t("settings.clearMarkingsButton")}
+                </button>
+              </div>
+              {clearMarkingsResult && (
+                <p className="mt-2 text-xs text-emerald-600">
+                  {t("settings.clearMarkingsDone", { count: clearMarkingsResult.cleared })}
+                </p>
+              )}
             </div>
           )}
 
@@ -818,6 +867,18 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
           error={clearHistoryError}
           onClose={() => setClearHistoryOpen(false)}
           onConfirm={handleClearHistory}
+        />
+      )}
+
+      {clearMarkingsOpen && (
+        <ConfirmDialog
+          title={t("settings.clearMarkingsTitle")}
+          message={t("settings.clearMarkingsConfirm")}
+          confirmLabel={t("settings.clearMarkingsButton")}
+          submitting={clearMarkingsSubmitting}
+          error={clearMarkingsError}
+          onClose={() => setClearMarkingsOpen(false)}
+          onConfirm={handleClearMarkingCache}
         />
       )}
     </div>

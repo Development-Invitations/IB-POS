@@ -122,6 +122,7 @@ model Store {
   shifts       Shift[]
   receipts     Receipt[]
   devices      Device[]
+  productMarkings ProductMarking[]
 
   @@index([organizationId])
   @@map("stores")
@@ -248,22 +249,42 @@ model Product {
 }
 
 // Не из исходного ТЗ — по прямому запросу клиента (только для Магазина/Аптеки, где есть
-// маркировка): постоянный журнал всех кодов маркировки, когда-либо принятых организацией —
-// авторитетная (не только клиентская) защита от повторного прихода товара с уже учтённым кодом,
-// см. StockService.receive(). Уникальность на (organizationId, code) — сама природа маркировки
-// такова, что один и тот же код не может законно встретиться дважды у одной организации.
+// маркировка): постоянный журнал кодов маркировки организации — авторитетная (не только
+// клиентская) защита от повторного прихода товара с уже учтённым кодом (StockService.receive) и
+// автоматическое списание маркировки при продаже (StockService.trySale — по количеству, без
+// сканирования на кассе, чтобы не замедлять продажу). Условно два "файла" в одной таблице,
+// разделённые по consumedAt (по прямому запросу клиента: "1 файл активных маркировок который не
+// чистится, 2 файл маркировок товаров которые проданы который можно чистить"):
+//   - consumedAt = null   — "активные": товар физически ещё на складе, не чистится никогда.
+//   - consumedAt заполнен — "проданные": оставлены на время (для возврата — returnReceipt
+//     находит их по receiptItemId и возвращает в consumedAt=null), можно вручную почистить
+//     через Настройки (SettingsService.clearMarkingCache) — раз в месяц-два, по словам клиента.
+// Уникальность на (organizationId, code) — сама природа маркировки такова, что один и тот же код
+// не может законно встретиться дважды у одной организации (ни как активный, ни как проданный).
 model ProductMarking {
-  id             String   @id @default(uuid())
-  organizationId String   @map("organization_id")
-  productId      String   @map("product_id")
+  id             String    @id @default(uuid())
+  organizationId String    @map("organization_id")
+  storeId        String    @map("store_id")
+  productId      String    @map("product_id")
   code           String
-  createdAt      DateTime @default(now()) @map("created_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  // Не из исходного ТЗ — по прямому запросу клиента: маркировка расходуется при продаже
+  // пропорционально проданному количеству (продали 2 — списались 2 маркировки), без
+  // сканирования на кассе — это отдельная, более медленная функция, которую клиент прямо не
+  // захотел ("ускорит продажи"). null — товар ещё в наличии.
+  consumedAt     DateTime? @map("consumed_at")
+  // Чек, которым маркировка была списана — нужен, чтобы при возврате именно этой позиции чека
+  // вернуть именно эти коды обратно в "активные", а не чужие.
+  receiptItemId  String?   @map("receipt_item_id")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  store        Store        @relation(fields: [storeId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  receiptItem  ReceiptItem? @relation(fields: [receiptItemId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, code])
-  @@index([productId])
+  @@index([storeId, productId, consumedAt])
+  @@index([receiptItemId])
   @@map("product_markings")
 }
 
@@ -499,6 +520,7 @@ model ReceiptItem {
 
   receipt Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
+  consumedMarkings ProductMarking[]
 
   @@index([receiptId])
   @@map("receipt_items")
