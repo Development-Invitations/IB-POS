@@ -108,6 +108,10 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [markingAdjustError, setMarkingAdjustError] = useState<string | null>(null);
   const [markingAdjustSkipped, setMarkingAdjustSkipped] = useState(0);
 
+  // Не из исходного ТЗ — по прямому запросу клиента: бейдж "N шт." в "Остатках" раньше показывал
+  // только число, сами коды маркировки нигде не были видны — клиент попросил список по клику.
+  const [viewMarkingsFor, setViewMarkingsFor] = useState<ApiStockEntry | null>(null);
+
   // Штрихкод не найден среди своих товаров — пробуем госкаталог (tasnif.soliq.uz, см.
   // ProductsService.lookupBarcode на сервере), не из исходного ТЗ, по прямому запросу клиента:
   // "пробил штрихкод — данные ввелись автоматически". Один штрихкод в каталоге нередко
@@ -783,9 +787,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                     {markingModeActive && (
                       <td className="px-4 py-3">
                         {knownCodes.length > 0 ? (
-                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                          <button
+                            onClick={() => setViewMarkingsFor(entry)}
+                            className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100"
+                          >
                             {t("warehouse.markingCount", { count: knownCodes.length })}
-                          </span>
+                          </button>
                         ) : (
                           <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
                             {t("warehouse.markingNone")}
@@ -944,6 +951,50 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 {markingAdjustSubmitting
                   ? t("common.loading")
                   : t("warehouse.markingAdjustSave", { count: markingAdjustNew.length })}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewMarkingsFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-800">{viewMarkingsFor.product.name}</h2>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {t("warehouse.markingCount", {
+                    count: (markingCodesByProduct.get(viewMarkingsFor.productId) ?? []).length,
+                  })}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewMarkingsFor(null)}
+                className="text-slate-400 hover:text-slate-700"
+                aria-label={t("common.close")}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto px-5 py-4">
+              <div className="space-y-1">
+                {(markingCodesByProduct.get(viewMarkingsFor.productId) ?? []).map((code, i) => (
+                  <div
+                    key={code}
+                    className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 [word-break:break-all]"
+                  >
+                    {i + 1}. {code}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={() => setViewMarkingsFor(null)}
+                className="w-full rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("common.close")}
               </button>
             </div>
           </div>
