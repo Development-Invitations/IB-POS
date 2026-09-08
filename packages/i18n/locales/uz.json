@@ -434,7 +434,9 @@
   },
   "scanner": {
     "notFoundTitle": "Mahsulot topilmadi",
-    "notFoundHint": "Kod: {{code}}"
+    "notFoundHint": "Kod: {{code}}",
+    "blockedStockHint": "«{{name}}» omborda tugagan — mahsulot chekka qo'shilmadi. «Ombor»da qabul qiling.",
+    "blockedPriceHint": "«{{name}}» uchun narx ko'rsatilmagan — mahsulot chekka qo'shilmadi. «Mahsulotlar»da narxni to'ldiring."
   },
   "warehouse": {
     "accessDenied": "Sizning rolingizda «Ombor» bo'limiga kirish huquqi yo'q",

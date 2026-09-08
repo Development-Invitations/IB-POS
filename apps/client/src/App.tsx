@@ -11,6 +11,7 @@ import { ReceiptPanel, type PaidReceipt, type Ticket } from "./components/Receip
 import { PaymentModal, type PaymentStatus, type ClickProvider } from "./components/PaymentModal";
 import { ReturnConfirmModal } from "./components/ReturnConfirmModal";
 import { ProductNotFoundModal } from "./components/ProductNotFoundModal";
+import { ScanBlockedModal } from "./components/ScanBlockedModal";
 import { EquipmentScreen } from "./components/EquipmentScreen";
 import { ProductsScreen } from "./components/ProductsScreen";
 import { WarehouseScreen } from "./components/WarehouseScreen";
@@ -135,6 +136,11 @@ function App() {
   const [lastReceipt, setLastReceipt] = useState<PaidReceipt | null>(null);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [notFoundCode, setNotFoundCode] = useState<string | null>(null);
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше скан товара, закончившегося на
+  // складе (или без цены), молча ничего не добавлял в чек — узнавали об этом только на оплате
+  // (см. более раннее дополнение про серверную проверку остатка), когда чек уже пробит и это
+  // теряет время. Сигнал должен быть сразу в момент скана, а не после.
+  const [blockedScan, setBlockedScan] = useState<{ product: CartProduct; reason: "stock" | "price" } | null>(null);
 
   const [closeShiftOpen, setCloseShiftOpen] = useState(false);
   const [expectedCash, setExpectedCash] = useState(0);
@@ -505,7 +511,13 @@ function App() {
     if (activeScreen !== "sale") return;
     const product = products.find((p) => p.barcode === code);
     if (product) {
-      addToCart(product);
+      if (isHiddenForNoStock(product)) {
+        setBlockedScan({ product, reason: "stock" });
+      } else if (isHiddenForNoPrice(product)) {
+        setBlockedScan({ product, reason: "price" });
+      } else {
+        addToCart(product);
+      }
     } else {
       setNotFoundCode(code);
     }
@@ -810,6 +822,14 @@ function App() {
 
       {notFoundCode && (
         <ProductNotFoundModal code={notFoundCode} onClose={() => setNotFoundCode(null)} />
+      )}
+
+      {blockedScan && (
+        <ScanBlockedModal
+          productName={blockedScan.product.name}
+          reason={blockedScan.reason}
+          onClose={() => setBlockedScan(null)}
+        />
       )}
 
       {closeShiftOpen && (

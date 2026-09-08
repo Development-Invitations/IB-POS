@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
@@ -76,8 +76,49 @@ export class StockService {
     return true;
   }
 
+  // Не из исходного ТЗ — по прямому запросу клиента (только Магазин/Аптека — там есть
+  // маркировка): постоянный журнал всех кодов маркировки, когда-либо принятых организацией
+  // (см. ProductMarking в schema.prisma) — авторитетная, а не только клиентская, защита от
+  // повторного прихода товара с уже учтённым кодом. Клиент уже отсеивает известные ему коды
+  // сам (см. WarehouseScreen.tsx — known/markingCodesByProduct), это здесь — подстраховка на
+  // случай гонки (два человека одновременно принимают один и тот же физический товар) или
+  // устаревшего локального кэша на клиенте, а не дублирование той же проверки. Природа
+  // маркировки такова, что один и тот же код не может законно встретиться дважды — поэтому вся
+  // приёмка отклоняется целиком, а не "тихо" обрезается до новых кодов.
   async receive(organizationId: string, userId: string, dto: ReceiveStockDto) {
     await this.assertBelongsToOrg(organizationId, dto.storeId, dto.productId);
+
+    if (dto.markingCodes && dto.markingCodes.length > 0) {
+      return this.prisma.$transaction(async (tx) => {
+        const existing = await tx.productMarking.findMany({
+          where: { organizationId, code: { in: dto.markingCodes } },
+          select: { code: true },
+        });
+        if (existing.length > 0) {
+          throw new BadRequestException(
+            `Эти коды маркировки уже были приняты ранее: ${existing.map((e) => e.code).join(', ')}`,
+          );
+        }
+        await tx.productMarking.createMany({
+          data: dto.markingCodes!.map((code) => ({
+            organizationId,
+            productId: dto.productId,
+            code,
+          })),
+        });
+        return this.applyMovement(
+          tx,
+          dto.storeId,
+          dto.productId,
+          dto.quantity,
+          StockMovementType.RECEIPT_IN,
+          userId,
+          dto.comment,
+          dto.markingCodes,
+        );
+      });
+    }
+
     return this.applyMovement(
       this.prisma,
       dto.storeId,

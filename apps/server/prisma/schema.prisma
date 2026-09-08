@@ -28,6 +28,7 @@ model Organization {
   settings     OrganizationSettings?
   backups      Backup[]
   equipment    Equipment[]
+  productMarkings ProductMarking[]
 
   @@map("organizations")
 }
@@ -238,11 +239,32 @@ model Product {
   stock        Stock[]
   receiptItems ReceiptItem[]
   discounts    Discount[]
+  markings     ProductMarking[]
 
   @@unique([organizationId, externalId])
   @@index([organizationId])
   @@index([barcode])
   @@map("products")
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента (только для Магазина/Аптеки, где есть
+// маркировка): постоянный журнал всех кодов маркировки, когда-либо принятых организацией —
+// авторитетная (не только клиентская) защита от повторного прихода товара с уже учтённым кодом,
+// см. StockService.receive(). Уникальность на (organizationId, code) — сама природа маркировки
+// такова, что один и тот же код не может законно встретиться дважды у одной организации.
+model ProductMarking {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  productId      String   @map("product_id")
+  code           String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@index([productId])
+  @@map("product_markings")
 }
 
 model Stock {
