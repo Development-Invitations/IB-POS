@@ -477,7 +477,8 @@
     "markingDuplicate": "Эта маркировка уже отсканирована",
     "markingReceiveAdded": "Добавлено в приход: «{{name}}» — {{count}} шт",
     "markingVerifiedBadge": "по маркировке",
-    "markingVerifiedHint": "Количество подтверждено сканированием маркировки каждой единицы"
+    "markingVerifiedHint": "Количество подтверждено сканированием маркировки каждой единицы",
+    "markingAddMore": "Досканировать ещё"
   },
   "equipment": {
     "title": "Оборудование",

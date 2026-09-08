@@ -477,7 +477,8 @@
     "markingDuplicate": "Бу маркировка аллақачон сканерланган",
     "markingReceiveAdded": "Қабулга қўшилди: «{{name}}» — {{count}} дона",
     "markingVerifiedBadge": "маркировка бўйича",
-    "markingVerifiedHint": "Миқдор ҳар бир бирлик маркировкасини сканерлаш орқали тасдиқланган"
+    "markingVerifiedHint": "Миқдор ҳар бир бирлик маркировкасини сканерлаш орқали тасдиқланган",
+    "markingAddMore": "Яна сканерлаш"
   },
   "equipment": {
     "title": "Ускуналар",

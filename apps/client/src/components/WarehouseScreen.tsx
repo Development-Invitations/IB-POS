@@ -541,13 +541,23 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                         </div>
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <button
-                          onClick={() => removeFromBatch(line.product.id)}
-                          className="text-slate-400 hover:text-red-500"
-                          aria-label={t("common.remove")}
-                        >
-                          <CloseIcon width={14} height={14} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {markingModeActive && (
+                            <button
+                              onClick={() => beginMarkingReceive(line.product)}
+                              className="whitespace-nowrap text-xs font-medium text-accent hover:underline"
+                            >
+                              {t("warehouse.markingAddMore")}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => removeFromBatch(line.product.id)}
+                            className="text-slate-400 hover:text-red-500"
+                            aria-label={t("common.remove")}
+                          >
+                            <CloseIcon width={14} height={14} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

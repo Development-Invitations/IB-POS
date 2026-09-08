@@ -477,7 +477,8 @@
     "markingDuplicate": "Bu markirovka allaqachon skanerlangan",
     "markingReceiveAdded": "Qabulga qo'shildi: «{{name}}» — {{count}} dona",
     "markingVerifiedBadge": "markirovka bo'yicha",
-    "markingVerifiedHint": "Miqdor har bir birlik markirovkasini skanerlash orqali tasdiqlangan"
+    "markingVerifiedHint": "Miqdor har bir birlik markirovkasini skanerlash orqali tasdiqlangan",
+    "markingAddMore": "Yana skanerlash"
   },
   "equipment": {
     "title": "Uskunalar",
