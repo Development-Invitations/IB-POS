@@ -179,6 +179,7 @@ function App() {
             price: Number(p.price),
             unit: p.unit,
             barcode: p.barcode,
+            sku: p.sku,
             categoryId: p.categoryId,
             imageUrl: p.imageUrl,
             isConsumable: p.isConsumable,

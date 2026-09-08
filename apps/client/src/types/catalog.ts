@@ -6,6 +6,7 @@ export interface CartProduct {
   price: number;
   unit: string;
   barcode: string | null;
+  sku: string | null;
   categoryId: string | null;
   imageUrl: string | null;
   // Заполняются только для профилей "Магазин"/"Аптека" (см. BusinessType, App.tsx loadCatalog) —

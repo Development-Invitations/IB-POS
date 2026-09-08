@@ -75,7 +75,10 @@ export function Header({
   const results = trimmedQuery
     ? products
         .filter(
-          (p) => p.name.toLowerCase().includes(trimmedQuery) || (p.barcode && p.barcode.includes(trimmedQuery)),
+          (p) =>
+            p.name.toLowerCase().includes(trimmedQuery) ||
+            (p.barcode && p.barcode.includes(trimmedQuery)) ||
+            (p.sku && p.sku.toLowerCase().includes(trimmedQuery)),
         )
         .slice(0, MAX_RESULTS)
     : [];
