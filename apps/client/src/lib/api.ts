@@ -30,8 +30,14 @@ import type {
   TopProduct,
 } from "../types/api";
 import type { Role } from "../types/auth";
+import { loadApiBase } from "./server-config";
 
-export const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+// Не из исходного ТЗ — по прямому запросу клиента: раньше адрес сервера был вшит в сборку
+// (VITE_API_URL) и не менялся без пересборки. Теперь берётся из localStorage (см.
+// server-config.ts, экран "Подключение к серверу"), с тем же дефолтом, если ещё не настроен.
+// После смены адреса приложение перезагружается целиком (см. ServerConnectionScreen.tsx) —
+// этого достаточно, чтобы подхватить новое значение здесь, отдельный сеттер не нужен.
+export const API_BASE = loadApiBase();
 
 export class ApiError extends Error {
   // status 0 значит запрос вообще не дошёл до сервера (сеть/таймаут) — используется, чтобы

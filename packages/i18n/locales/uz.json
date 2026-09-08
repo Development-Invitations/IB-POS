@@ -95,6 +95,25 @@
     "passwordTooShort": "Parol kamida 8 ta belgidan iborat boʻlishi kerak",
     "registerError": "Tashkilotni roʻyxatdan oʻtkazib boʻlmadi"
   },
+  "serverConnection": {
+    "title": "Serverga ulanish",
+    "linkLabel": "Serverga ulanishni sozlash",
+    "address": "Server manzili",
+    "save": "Saqlash va qayta kirish",
+    "change": "Oʻzgartirish",
+    "modes": {
+      "local": {
+        "title": "Lokal tarmoq (shu Wi-Fi)",
+        "hint": "Server-kompyuterning shu tarmoqdagi manzili. Agar server shu kompyuter boʻlsa, localhost qoldiring.",
+        "placeholder": "localhost yoki 192.168.1.50"
+      },
+      "internet": {
+        "title": "Internet (masofaviy server)",
+        "hint": "Joylashtirishda berilgan serverning internetdagi toʻliq manzili.",
+        "placeholder": "https://api.mybiznes.uz"
+      }
+    }
+  },
   "workstation": {
     "setupTitle": "Kassani tanlash",
     "store": "Savdo nuqtasi",

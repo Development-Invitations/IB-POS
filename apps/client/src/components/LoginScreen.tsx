@@ -11,6 +11,7 @@ import {
   loadLastLogin,
   saveLastLogin,
 } from "../lib/session";
+import { ServerConnectionScreen } from "./ServerConnectionScreen";
 import type { AuthSession } from "../types/auth";
 
 interface LoginScreenProps {
@@ -27,6 +28,10 @@ export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialL
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Настройка адреса сервера доступна прямо с экрана входа — новая касса ещё не может войти,
+  // чтобы попасть в Настройки, а сервер может быть другим компьютером в локальной сети
+  // (не из исходного ТЗ, по прямому запросу клиента).
+  const [connectionScreenOpen, setConnectionScreenOpen] = useState(false);
   // Если и организация, и логин уже известны (возврат кассира), сразу переходим к паролю —
   // не заставляем перепечатывать то, что уже сохранено.
   const hasSavedLogin = organizationId.length > 0 && loginValue.length > 0;
@@ -133,7 +138,17 @@ export function LoginScreen({ onSuccess, onRegisterClick, initialOrgId, initialL
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          onClick={() => setConnectionScreenOpen(true)}
+          className="mt-4 w-full text-center text-[11px] font-medium text-slate-400 hover:text-slate-600 hover:underline"
+        >
+          {t("serverConnection.linkLabel")}
+        </button>
       </div>
+
+      {connectionScreenOpen && <ServerConnectionScreen onClose={() => setConnectionScreenOpen(false)} />}
     </div>
   );
 }

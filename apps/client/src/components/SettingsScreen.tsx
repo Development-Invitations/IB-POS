@@ -14,7 +14,9 @@ import {
   updateSettings,
 } from "../lib/api";
 import { loadShowProductImages, saveShowProductImages } from "../lib/preferences";
+import { loadApiBase, loadConnectionMode } from "../lib/server-config";
 import { AmountInput } from "./AmountInput";
+import { ServerConnectionScreen } from "./ServerConnectionScreen";
 import type { ApiBackup, ApiProduct, ApiSettings, BusinessType } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -34,6 +36,9 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
 
   const [tab, setTab] = useState<Tab>("general");
+  const [connectionScreenOpen, setConnectionScreenOpen] = useState(false);
+  const currentApiBase = loadApiBase();
+  const connectionMode = loadConnectionMode();
   const [settings, setSettings] = useState<ApiSettings | null>(null);
   const [backups, setBackups] = useState<ApiBackup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -347,6 +352,23 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
             </div>
             {businessTypeSaving && <p className="mt-2 text-xs text-slate-400">{t("common.loading")}</p>}
             {businessTypeError && <p className="mt-2 text-xs text-red-600">{businessTypeError}</p>}
+          </div>
+
+          <div className="rounded-xl bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700">{t("serverConnection.title")}</h3>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {t(`serverConnection.modes.${connectionMode}.title`)} — {currentApiBase}
+                </p>
+              </div>
+              <button
+                onClick={() => setConnectionScreenOpen(true)}
+                className="shrink-0 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                {t("serverConnection.change")}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -686,6 +708,8 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
           <p className="text-sm text-slate-400">{t("settings.tabNotReady")}</p>
         </div>
       )}
+
+      {connectionScreenOpen && <ServerConnectionScreen onClose={() => setConnectionScreenOpen(false)} />}
     </div>
   );
 }
