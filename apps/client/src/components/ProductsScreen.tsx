@@ -219,26 +219,28 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
 
       {!loading && !loadError && (
         <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-xs text-slate-400">
-                <th className="px-4 py-3 font-medium" />
-                <th className="px-4 py-3 font-medium">{t("products.name")}</th>
-                <th className="px-4 py-3 font-medium">{t("products.category")}</th>
-                <th className="px-4 py-3 font-medium">{t("products.sku")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t("products.price")}</th>
-                <th className="px-4 py-3 font-medium text-right">{t("products.cost")}</th>
-                <th className="px-4 py-3 font-medium">{t("products.unit")}</th>
-                {showStock && <th className="px-4 py-3 font-medium text-right">{t("warehouse.stockTitle")}</th>}
-                {isPharmacy && <th className="px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
-                <th className="px-4 py-3 font-medium">{t("products.status")}</th>
-                {canManage && <th className="px-4 py-3 font-medium" />}
+                <th className="whitespace-nowrap px-4 py-3 font-medium" />
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.name")}</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.category")}</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.sku")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.price")}</th>
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.cost")}</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.unit")}</th>
+                {showStock && (
+                  <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("warehouse.stockTitle")}</th>
+                )}
+                {isPharmacy && <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
+                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.status")}</th>
+                {canManage && <th className="whitespace-nowrap px-4 py-3 font-medium" />}
               </tr>
             </thead>
             <tbody>
               {filtered.map((p) => (
                 <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
                       {p.imageUrl ? (
                         <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
@@ -247,7 +249,7 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                       )}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800">
+                  <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-800">
                     {p.name}
                     {p.isConsumable && (
                       <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
@@ -255,18 +257,18 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
-                  <td className="px-4 py-3 text-slate-500">{p.sku}</td>
-                  <td className="px-4 py-3 text-right text-slate-800">
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.sku}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-slate-800">
                     {formatSum(Number(p.price))} {t("common.currency")}
                   </td>
-                  <td className="px-4 py-3 text-right text-slate-500">
+                  <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
                     {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{p.unit}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.unit}</td>
                   {showStock && (
                     <td
-                      className={`px-4 py-3 text-right ${
+                      className={`whitespace-nowrap px-4 py-3 text-right ${
                         (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
                       }`}
                     >
@@ -274,11 +276,11 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                     </td>
                   )}
                   {isPharmacy && (
-                    <td className="px-4 py-3 text-slate-500">
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
                       {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
                     </td>
                   )}
-                  <td className="px-4 py-3">
+                  <td className="whitespace-nowrap px-4 py-3">
                     {p.isActive ? (
                       <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
                         {t("products.active")}
@@ -290,7 +292,7 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
                     )}
                   </td>
                   {canManage && (
-                    <td className="px-4 py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <div className="flex justify-end gap-3">
                         <button
                           onClick={() => openEdit(p)}
