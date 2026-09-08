@@ -476,6 +476,8 @@
     "markingQtyConfirm": "Keyingisi — markirovkani skanerlash",
     "markingScanHint": "Har bir birlik markirovkasini skanerlang: {{done}} / {{total}}",
     "markingKnownHint": "Bu mahsulot bo'yicha allaqachon ma'lum kodlar: {{count}} — bunday markirovkani qayta skanerlash o'tkazib yuboriladi.",
+    "markingSkipButton": "Bu mahsulotda markirovka yo'q — miqdor bo'yicha qo'shish",
+    "markingSkipAdded": "Markirovkasiz qabulga qo'shildi: «{{name}}» — {{count}} dona",
     "markingScanFinish": "Tayyor ({{count}})",
     "markingDuplicate": "Bu markirovka allaqachon skanerlangan",
     "markingReceiveAdded": "Qabulga qo'shildi: «{{name}}» — {{count}} dona",

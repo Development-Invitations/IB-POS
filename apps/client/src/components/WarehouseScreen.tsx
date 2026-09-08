@@ -319,6 +319,23 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     setPendingMarking((prev) => (prev ? { ...prev, targetQty: Math.floor(n) } : prev));
   }
 
+  // Не из исходного ТЗ — по прямому запросу клиента: не у каждого товара в Магазине физически
+  // есть маркировка (обязательность по категориям вводится государством поэтапно, не разом на
+  // всё) — жёстко требовать сканирование для абсолютно любого товара в режиме "по штрихкоду и
+  // маркировке" было бы неверно. Добавляет введённое количество в приход как обычный товар без
+  // кодов — та же логика, что уже была у режима "Вручную" (addBatchWithQuantity с пустым
+  // markingCodes ведёт себя идентично обычному addToBatch на сервере: /stock/receive пропускает
+  // весь путь с ProductMarking, если markingCodes пуст).
+  function receiveWithoutMarking() {
+    if (!pendingMarking) return;
+    const n = Number(pendingQtyInput);
+    if (!Number.isFinite(n) || n <= 0) return;
+    const quantity = Math.floor(n);
+    addBatchWithQuantity(pendingMarking.product, quantity, []);
+    setScanMessage(t("warehouse.markingSkipAdded", { name: pendingMarking.product.name, count: quantity }));
+    setPendingMarking(null);
+  }
+
   function handleMarkingScan(code: string) {
     setPendingMarking((prev) => {
       if (!prev) return prev;
@@ -1163,6 +1180,13 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                   className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
                 />
               </label>
+              <button
+                onClick={receiveWithoutMarking}
+                disabled={!pendingQtyInput || Number(pendingQtyInput) <= 0}
+                className="w-full rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700 disabled:opacity-40"
+              >
+                {t("warehouse.markingSkipButton")}
+              </button>
             </div>
             <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
               <button

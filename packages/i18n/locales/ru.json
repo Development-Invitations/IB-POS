@@ -476,6 +476,8 @@
     "markingQtyConfirm": "Далее — сканировать маркировку",
     "markingScanHint": "Отсканируйте маркировку каждой единицы: {{done}} из {{total}}",
     "markingKnownHint": "По этому товару уже известно кодов: {{count}} — повторный скан такой маркировки будет пропущен.",
+    "markingSkipButton": "У этого товара нет маркировки — добавить по количеству",
+    "markingSkipAdded": "Добавлено в приход без маркировки: «{{name}}» — {{count}} шт",
     "markingScanFinish": "Готово ({{count}})",
     "markingDuplicate": "Эта маркировка уже отсканирована",
     "markingReceiveAdded": "Добавлено в приход: «{{name}}» — {{count}} шт",
