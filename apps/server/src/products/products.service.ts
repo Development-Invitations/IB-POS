@@ -63,6 +63,12 @@ export interface BarcodeLookupItem {
 export interface BarcodeLookupResult {
   found: boolean;
   items: BarcodeLookupItem[];
+  // Когда точного совпадения нет нигде — по прямому запросу клиента ("суть облегчить работу
+  // на складе, чтобы не заполнять после скана") здесь несколько ближайших по написанию
+  // вариантов из того же нечёткого elasticsearch-поиска, БЕЗ фильтра на точное совпадение
+  // штрихкода. Не помечены как found=true — это подсказки на подтверждение приёмщиком одним
+  // тапом, а не автоматически принятый результат: штрихкод у них правда другой, просто похожий.
+  suggestions: BarcodeLookupItem[];
 }
 
 @Injectable()
@@ -75,69 +81,81 @@ export class ProductsService {
   // возвращаем ВСЕ найденные варианты, а не наугад первый: приёмщик выбирает нужный сам.
   async lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
     const gtin = barcode.trim();
-    if (!gtin) return { found: false, items: [] };
+    if (!gtin) return { found: false, items: [], suggestions: [] };
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
       const url = `${TASNIF_SEARCH_URL}?gtin=${encodeURIComponent(gtin)}&lang=ru`;
       const response = await fetch(url, { signal: controller.signal });
-      if (!response.ok) return { found: false, items: [] };
-
-      const json = (await response.json()) as {
-        data?: { content?: TasnifItem[] };
-      };
-      const content = json.data?.content ?? [];
-
       const items: BarcodeLookupItem[] = [];
-      for (const item of content) {
-        if (!item.mxikCode) continue;
-        const name = item.brandName
-          ? [item.brandName, item.attributeName].filter(Boolean).join(', ')
-          : item.mxikName;
-        if (!name) continue;
-        items.push({
-          mxikCode: item.mxikCode,
-          name,
-          unit: item.unitName ?? item.commonUnitName ?? undefined,
-        });
+      if (response.ok) {
+        const json = (await response.json()) as {
+          data?: { content?: TasnifItem[] };
+        };
+        for (const item of json.data?.content ?? []) {
+          if (!item.mxikCode) continue;
+          const name = item.brandName
+            ? [item.brandName, item.attributeName].filter(Boolean).join(', ')
+            : item.mxikName;
+          if (!name) continue;
+          items.push({
+            mxikCode: item.mxikCode,
+            name,
+            unit: item.unitName ?? item.commonUnitName ?? undefined,
+          });
+        }
+      }
+      if (items.length > 0) return { found: true, items, suggestions: [] };
+
+      const elasticItems = await this.searchElastic(gtin, controller.signal);
+      const exact = elasticItems.filter((i) => i.internationalCode === gtin);
+      if (exact.length > 0) {
+        return { found: true, items: this.toLookupItems(exact), suggestions: [] };
       }
 
-      if (items.length > 0) return { found: true, items };
-      return await this.lookupBarcodeViaElastic(gtin, controller.signal);
+      // Ничего точного нигде — по прямому запросу клиента ("суть облегчить работу на складе,
+      // чтобы не заполнять после скана") отдаём ближайшие похожие как подсказки на выбор
+      // одним тапом, вместо голого "не найден, вводите вручную".
+      return {
+        found: false,
+        items: [],
+        suggestions: this.toLookupItems(elasticItems.slice(0, 5)),
+      };
     } catch {
       // Нет сети, таймаут, госсайт лёг или сменил формат ответа — не критично, приёмщик
       // просто вводит название вручную, как и раньше.
-      return { found: false, items: [] };
+      return { found: false, items: [], suggestions: [] };
     } finally {
       clearTimeout(timeout);
     }
   }
 
-  private async lookupBarcodeViaElastic(
+  private toLookupItems(items: TasnifElasticItem[]): BarcodeLookupItem[] {
+    const result: BarcodeLookupItem[] = [];
+    for (const item of items) {
+      if (!item.mxikCode || !item.name) continue;
+      result.push({
+        mxikCode: item.mxikCode,
+        name: item.name,
+        unit: item.unitsName?.trim() || undefined,
+      });
+    }
+    return result;
+  }
+
+  private async searchElastic(
     gtin: string,
     signal: AbortSignal,
-  ): Promise<BarcodeLookupResult> {
+  ): Promise<TasnifElasticItem[]> {
     try {
       const url = `${TASNIF_ELASTIC_URL}?lang=ru&search=${encodeURIComponent(gtin)}&page=0&size=20`;
       const response = await fetch(url, { signal });
-      if (!response.ok) return { found: false, items: [] };
-
+      if (!response.ok) return [];
       const json = (await response.json()) as { data?: TasnifElasticItem[] };
-      const items: BarcodeLookupItem[] = [];
-      for (const item of json.data ?? []) {
-        // Строгая фильтрация — elasticsearch ищет нечётко (по похожим цифрам), а не по
-        // точному штрихкоду, см. комментарий у TASNIF_ELASTIC_URL выше.
-        if (!item.mxikCode || !item.name || item.internationalCode !== gtin) continue;
-        items.push({
-          mxikCode: item.mxikCode,
-          name: item.name,
-          unit: item.unitsName?.trim() || undefined,
-        });
-      }
-      return { found: items.length > 0, items };
+      return json.data ?? [];
     } catch {
-      return { found: false, items: [] };
+      return [];
     }
   }
 

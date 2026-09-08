@@ -63,12 +63,19 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // зарегистрирован под НЕСКОЛЬКИМИ разными ИКПУ (до ~20 вариантов — разные производители/
   // фасовки) — если найдено больше одного, сначала показываем список на выбор (pickingItem),
   // а не берём наугад первый попавшийся.
-  const [scanLookup, setScanLookup] = useState<{ barcode: string; items: BarcodeLookupItem[] } | null>(null);
+  const [scanLookup, setScanLookup] = useState<{
+    barcode: string;
+    items: BarcodeLookupItem[];
+    suggestions: BarcodeLookupItem[];
+  } | null>(null);
   const [pickingItem, setPickingItem] = useState(false);
   const [quickName, setQuickName] = useState("");
   const [quickPrice, setQuickPrice] = useState(0);
   const [quickUnit, setQuickUnit] = useState("pcs");
   const [quickMxikCode, setQuickMxikCode] = useState<string | null>(null);
+  // Подсказка выбрана из "похожих" (не точное совпадение штрихкода) — меняет текст
+  // предупреждения на "проверьте перед сохранением" вместо "найдено", см. pickItem().
+  const [fromSuggestion, setFromSuggestion] = useState(false);
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
 
@@ -123,16 +130,16 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     lookupBarcode(session.accessToken, code)
       .then((result) => {
         setScanMessage(null);
-        openScanResult(code, result.items);
+        openScanResult(code, result.items, result.suggestions);
       })
       .catch(() => {
         setScanMessage(null);
-        openScanResult(code, []);
+        openScanResult(code, [], []);
       });
   });
 
-  function openScanResult(barcode: string, items: BarcodeLookupItem[]) {
-    setScanLookup({ barcode, items });
+  function openScanResult(barcode: string, items: BarcodeLookupItem[], suggestions: BarcodeLookupItem[]) {
+    setScanLookup({ barcode, items, suggestions });
     setQuickError(null);
     if (items.length === 1) {
       pickItem(items[0]);
@@ -143,11 +150,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     }
   }
 
-  function pickItem(item: BarcodeLookupItem | null) {
+  function pickItem(item: BarcodeLookupItem | null, isSuggestion = false) {
     setQuickName(item?.name ?? "");
     setQuickUnit(item?.unit || "pcs");
     setQuickPrice(0);
     setQuickMxikCode(item?.mxikCode ?? null);
+    setFromSuggestion(isSuggestion);
     setPickingItem(false);
   }
 
@@ -570,10 +578,28 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.quickCreateTitle")}</h2>
               <p className="mt-1 text-xs text-slate-400">
-                {quickMxikCode ? t("warehouse.quickCreateFoundHint") : t("warehouse.quickCreateNotFoundHint")}
+                {quickMxikCode
+                  ? t(fromSuggestion ? "warehouse.quickCreateSuggestionHint" : "warehouse.quickCreateFoundHint")
+                  : t("warehouse.quickCreateNotFoundHint")}
               </p>
             </div>
             <div className="space-y-3 px-5 py-4">
+              {!quickMxikCode && scanLookup.suggestions.length > 0 && (
+                <div className="space-y-1.5 rounded-lg bg-amber-50 px-3 py-2">
+                  <p className="text-xs font-medium text-amber-700">{t("warehouse.suggestionsTitle")}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {scanLookup.suggestions.map((s) => (
+                      <button
+                        key={s.mxikCode}
+                        onClick={() => pickItem(s, true)}
+                        className="rounded-full border border-amber-200 bg-white px-2.5 py-1 text-left text-xs text-slate-700 hover:border-accent/40"
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <label className="block text-xs font-medium text-slate-500">
                 {t("products.name")}
                 <input
@@ -613,6 +639,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                       className="ml-2 font-medium text-accent hover:underline"
                     >
                       {t("warehouse.pickMxikChange")}
+                    </button>
+                  )}
+                  {fromSuggestion && (
+                    <button onClick={() => pickItem(null)} className="ml-2 font-medium text-accent hover:underline">
+                      {t("warehouse.suggestionUndo")}
                     </button>
                   )}
                 </p>

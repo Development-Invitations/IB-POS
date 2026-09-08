@@ -160,6 +160,9 @@ export interface BarcodeLookupItem {
 export interface BarcodeLookupResult {
   found: boolean;
   items: BarcodeLookupItem[];
+  // Когда items пуст — ближайшие похожие варианты (штрихкод НЕ совпадает точно, только
+  // визуально похож), на подтверждение приёмщиком, см. WarehouseScreen.tsx.
+  suggestions: BarcodeLookupItem[];
 }
 
 // Госкаталог tasnif.soliq.uz (не из исходного ТЗ) — автозаполнение названия товара по
