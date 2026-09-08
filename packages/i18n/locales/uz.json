@@ -484,7 +484,10 @@
     "markingAdjustHint": "Har bir birlik markirovkasini skanerlang. Allaqachon ma'lum kodlar: {{known}} — bunday qadoqni qayta skanerlash o'tkazib yuboriladi, takrorlanish bo'lmaydi.",
     "markingAdjustAdded": "Yangi: {{count}}",
     "markingAdjustSkipped": "O'tkazib yuborildi (avval hisobga olingan): {{count}}",
-    "markingAdjustSave": "Qoldiqqa qo'shish ({{count}})"
+    "markingAdjustSave": "Qoldiqqa qo'shish ({{count}})",
+    "markingStatus": "Markirovka",
+    "markingCount": "{{count}} dona",
+    "markingNone": "Markirovka qilinmagan"
   },
   "equipment": {
     "title": "Uskunalar",

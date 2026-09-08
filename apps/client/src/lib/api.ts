@@ -634,13 +634,17 @@ export interface ApiStockMovement {
   comment: string | null;
   markingCodes: string[];
   createdAt: string;
+  stock: { productId: string };
 }
 
 // Не из исходного ТЗ — по прямому запросу клиента: узнать, какие коды маркировки уже записаны
 // за товаром (см. WarehouseScreen.tsx — "Корректировка" в режиме приёма по маркировке должна
-// пропускать уже известные коды и добавлять только новые, а не просто менять число остатка).
-export function getStockMovements(token: string, storeId: string, productId: string) {
-  const params = new URLSearchParams({ storeId, productId });
+// пропускать уже известные коды и добавлять только новые, а не просто менять число остатка; без
+// productId — все движения по точке разом, чтобы показать статус маркировки сразу по всем
+// товарам в "Остатках", не дёргая эндпоинт на каждую строку отдельно).
+export function getStockMovements(token: string, storeId: string, productId?: string) {
+  const params = new URLSearchParams({ storeId });
+  if (productId) params.set("productId", productId);
   return request<ApiStockMovement[]>(`/stock/movements?${params.toString()}`, {}, token);
 }
 

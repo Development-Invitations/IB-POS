@@ -484,7 +484,10 @@
     "markingAdjustHint": "Ҳар бир бирлик маркировкасини сканерланг. Аллақачон маълум кодлар: {{known}} — бундай қадоқни қайта сканерлаш ўтказиб юборилади, такрорланиш бўлмайди.",
     "markingAdjustAdded": "Янги: {{count}}",
     "markingAdjustSkipped": "Ўтказиб юборилди (олдин ҳисобга олинган): {{count}}",
-    "markingAdjustSave": "Қолдиққа қўшиш ({{count}})"
+    "markingAdjustSave": "Қолдиққа қўшиш ({{count}})",
+    "markingStatus": "Маркировка",
+    "markingCount": "{{count}} дона",
+    "markingNone": "Маркировка қилинмаган"
   },
   "equipment": {
     "title": "Ускуналар",

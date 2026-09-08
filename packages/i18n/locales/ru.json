@@ -484,7 +484,10 @@
     "markingAdjustHint": "Сканируйте маркировку каждой единицы. Уже известных кодов: {{known}} — повторный скан такой упаковки будет пропущен, задвоения не будет.",
     "markingAdjustAdded": "Новых: {{count}}",
     "markingAdjustSkipped": "Пропущено (уже было учтено ранее): {{count}}",
-    "markingAdjustSave": "Добавить в остаток ({{count}})"
+    "markingAdjustSave": "Добавить в остаток ({{count}})",
+    "markingStatus": "Маркировка",
+    "markingCount": "{{count}} шт.",
+    "markingNone": "Не промаркирован"
   },
   "equipment": {
     "title": "Оборудование",

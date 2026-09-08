@@ -127,6 +127,34 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       .catch(() => undefined);
   }, [session.accessToken, canManage]);
 
+  // Не из исходного ТЗ — по прямому запросу клиента: у товара в "Остатках" не было видно, есть
+  // ли по нему уже отсканированная маркировка вообще — приходилось верить внутренней логике на
+  // слово. Один запрос по всей точке разом (не по товару отдельно — не дёргать эндпоинт N раз),
+  // агрегирует коды из истории движений в карту "товар → его коды", используется и для колонки
+  // статуса, и как быстрый предзагруз при открытии "Корректировки" по маркировке.
+  const [markingCodesByProduct, setMarkingCodesByProduct] = useState<Map<string, string[]>>(new Map());
+
+  function refreshMarkingCodes() {
+    if (!markingModeActive || !storeId) return;
+    getStockMovements(session.accessToken, storeId)
+      .then((movements) => {
+        const byProduct = new Map<string, Set<string>>();
+        for (const m of movements) {
+          if (m.type !== "RECEIPT_IN") continue;
+          const set = byProduct.get(m.stock.productId) ?? new Set<string>();
+          for (const code of m.markingCodes) set.add(code);
+          byProduct.set(m.stock.productId, set);
+        }
+        setMarkingCodesByProduct(new Map([...byProduct].map(([id, set]) => [id, [...set]])));
+      })
+      .catch(() => undefined);
+  }
+
+  useEffect(() => {
+    refreshMarkingCodes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.accessToken, storeId, markingModeActive]);
+
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
     setLoadError(null);
@@ -387,6 +415,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       const fresh = await getStockReport(session.accessToken, storeId);
       setEntries(fresh);
       onStockChanged?.();
+      refreshMarkingCodes();
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : t("warehouse.receiveError"));
     } finally {
@@ -465,6 +494,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       const fresh = await getStockReport(session.accessToken, markingAdjustTarget.storeId);
       setEntries(fresh);
       onStockChanged?.();
+      refreshMarkingCodes();
       closeMarkingAdjust();
     } catch (err) {
       setMarkingAdjustError(err instanceof ApiError ? err.message : t("warehouse.receiveError"));
@@ -693,11 +723,14 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                   <th className="px-4 py-3 font-medium">{t("products.name")}</th>
                   <th className="px-4 py-3 font-medium">{t("products.barcode")}</th>
                   <th className="px-4 py-3 font-medium text-right">{t("warehouse.quantity")}</th>
+                  {markingModeActive && <th className="px-4 py-3 font-medium">{t("warehouse.markingStatus")}</th>}
                   {canManage && <th className="px-4 py-3 font-medium" />}
                 </tr>
               </thead>
               <tbody>
-                {filteredEntries.map((entry) => (
+                {filteredEntries.map((entry) => {
+                  const knownCodes = markingCodesByProduct.get(entry.productId) ?? [];
+                  return (
                   <tr key={entry.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-slate-800">{entry.product.name}</td>
                     <td className="px-4 py-3 text-slate-500">{entry.product.barcode ?? "—"}</td>
@@ -706,6 +739,19 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                     >
                       {entry.quantity} {entry.product.unit}
                     </td>
+                    {markingModeActive && (
+                      <td className="px-4 py-3">
+                        {knownCodes.length > 0 ? (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                            {t("warehouse.markingCount", { count: knownCodes.length })}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-600">
+                            {t("warehouse.markingNone")}
+                          </span>
+                        )}
+                      </td>
+                    )}
                     {canManage && (
                       <td className="px-4 py-3 text-right">
                         <button
@@ -717,11 +763,15 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                       </td>
                     )}
                   </tr>
-                ))}
+                  );
+                })}
 
                 {filteredEntries.length === 0 && (
                   <tr>
-                    <td colSpan={canManage ? 4 : 3} className="px-4 py-8 text-center text-sm text-slate-400">
+                    <td
+                      colSpan={3 + (markingModeActive ? 1 : 0) + (canManage ? 1 : 0)}
+                      className="px-4 py-8 text-center text-sm text-slate-400"
+                    >
                       {t("warehouse.empty")}
                     </td>
                   </tr>
