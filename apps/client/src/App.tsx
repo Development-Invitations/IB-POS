@@ -348,12 +348,34 @@ function App() {
     setTickets((prev) => prev.map((ticket) => (ticket.id === activeTicketId ? updater(ticket) : ticket)));
   }
 
+  // Тот же критерий, что и isHiddenForNoStock — для Ресторана обычные блюда (не расходники)
+  // остаток не ведут вообще, там ограничения по количеству нет.
+  function tracksStock(product: CartProduct): boolean {
+    return businessType !== "RESTAURANT" || Boolean(product.isConsumable);
+  }
+
+  // Не из исходного ТЗ — по прямому запросу клиента (скриншот: в чеке 3 шт., хотя на "Складе" в
+  // тот же момент 0 pcs): isProductUnsellable проверяет только "остаток есть хоть какой-то", а
+  // не "хватит ли на то количество, что уже лежит в чеке". Товар с остатком 1 шт. пропускал ПЕРВЫЙ
+  // скан (1 > 0 — не заблокирован), но при повторном скане/клике "+" та же проверка снова видела
+  // тот же остаток 1 шт. — она не знала, что 1 единица уже "занята" текущим чеком — и пропускала
+  // ещё раз, уводя количество в чеке выше реального остатка.
+  function wouldExceedStock(product: CartProduct, addQty: number): boolean {
+    if (!tracksStock(product) || product.stockQty === undefined) return false;
+    const inCart = lines.find((line) => line.product.id === product.id)?.qty ?? 0;
+    return inCart + addQty > product.stockQty;
+  }
+
   function addToCart(product: CartProduct) {
     // Тот же критерий, что и в visibleProducts (isProductUnsellable) — товар с нулевым/не
     // заведённым остатком или без цены нельзя продать, каким бы путём его ни пытались добавить
     // (клик по плитке, скан штрихкода или поиск в шапке — плитка обычно скрыта, но эти пути её
     // обходят).
     if (isProductUnsellable(product)) {
+      return;
+    }
+    if (wouldExceedStock(product, 1)) {
+      setBlockedScan({ product, reason: "stock" });
       return;
     }
     updateActiveTicket((ticket) => {
@@ -366,6 +388,11 @@ function App() {
   }
 
   function increment(productId: string) {
+    const product = products.find((p) => p.id === productId);
+    if (product && wouldExceedStock(product, 1)) {
+      setBlockedScan({ product, reason: "stock" });
+      return;
+    }
     updateActiveTicket((ticket) => ({
       ...ticket,
       lines: ticket.lines.map((line) => (line.product.id === productId ? { ...line, qty: line.qty + 1 } : line)),
