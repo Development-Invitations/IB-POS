@@ -7,6 +7,7 @@ import {
   getProducts,
   getStockReport,
   getStores,
+  getWarehouseConfig,
   lookupBarcode,
   receiveStock,
   type BarcodeLookupItem,
@@ -14,7 +15,7 @@ import {
 import { useBarcodeScanner } from "../lib/use-barcode-scanner";
 import { AmountInput } from "./AmountInput";
 import { CloseIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
-import type { ApiProduct, ApiStockEntry, ApiStore } from "../types/api";
+import type { ApiProduct, ApiStockEntry, ApiStore, ReceivingMode } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface WarehouseScreenProps {
@@ -30,6 +31,20 @@ const CAN_MANAGE_ROLES: AuthSession["role"][] = ["ADMIN", "WAREHOUSE"];
 interface BatchLine {
   product: ApiProduct;
   quantity: number;
+  // Заполнено только если количество набрано сканированием маркировок (режим MARKING_SCAN,
+  // см. beginMarkingReceive/finishMarkingReceive ниже) — при ручной правке количества в таблице
+  // очищается (setBatchQuantity), т.к. количество больше не подтверждено поштучным сканом.
+  markingCodes?: string[];
+}
+
+// Товар, для которого запущен приход по маркировке: сначала спрашиваем количество (по
+// накладной), затем открываем сканирование — каждый скан добавляет одну маркировку, пока не
+// наберётся targetQty (см. markingModeActive ниже). targetQty === null — ещё на шаге ввода
+// количества, скан в это время игнорируется.
+interface PendingMarkingReceive {
+  product: ApiProduct;
+  targetQty: number | null;
+  markings: string[];
 }
 
 export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProps) {
@@ -79,6 +94,26 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [quickSubmitting, setQuickSubmitting] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
 
+  // Настройки → Магазин → "Приём товара на складе" (не из исходного ТЗ, по прямому запросу
+  // клиента). Узкий эндпоинт (не полный /settings) — доступен и Зав.складом, не только Админу.
+  const [receivingMode, setReceivingMode] = useState<ReceivingMode>("MANUAL");
+  const [receivingBusinessType, setReceivingBusinessType] = useState<string | null>(null);
+  const markingModeActive = receivingMode === "MARKING_SCAN" && receivingBusinessType === "STORE";
+
+  const [pendingMarking, setPendingMarking] = useState<PendingMarkingReceive | null>(null);
+  const [pendingQtyInput, setPendingQtyInput] = useState("");
+  const [markingError, setMarkingError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!canManage) return;
+    getWarehouseConfig(session.accessToken)
+      .then((cfg) => {
+        setReceivingMode(cfg.receivingMode);
+        setReceivingBusinessType(cfg.businessType);
+      })
+      .catch(() => undefined);
+  }, [session.accessToken, canManage]);
+
   async function load(quiet = false) {
     if (!quiet) setLoading(true);
     setLoadError(null);
@@ -120,10 +155,23 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // молчит вне экрана "Продажа" — см. activeScreen !== "sale" там) — конфликта нет.
   useBarcodeScanner((code) => {
     if (!canManage) return;
+    // Идёт приём по маркировке — очередной скан это код маркировки конкретной единицы, а не
+    // штрихкод товара (см. beginMarkingReceive). Пока не введено количество (targetQty === null,
+    // открыт попап "сколько пришло?") — случайный скан игнорируем, а не путаем с товаром.
+    if (pendingMarking) {
+      if (pendingMarking.targetQty !== null) {
+        handleMarkingScan(code);
+      }
+      return;
+    }
     const product = products.find((p) => p.barcode === code);
     if (product) {
-      setScanMessage(null);
-      addToBatch(product);
+      if (markingModeActive) {
+        beginMarkingReceive(product);
+      } else {
+        setScanMessage(null);
+        addToBatch(product);
+      }
       return;
     }
     setScanMessage(t("warehouse.scanLookingUp", { code }));
@@ -159,14 +207,67 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     setPickingItem(false);
   }
 
+  // Приход по маркировке (Настройки → Магазин, не из исходного ТЗ): сначала спрашиваем
+  // количество (по накладной), затем сканируем маркировку каждой единицы — см.
+  // handleMarkingScan/finishMarkingReceive.
+  function beginMarkingReceive(product: ApiProduct) {
+    setPendingMarking({ product, targetQty: null, markings: [] });
+    setPendingQtyInput("");
+    setMarkingError(null);
+  }
+
+  function confirmMarkingQuantity() {
+    const n = Number(pendingQtyInput);
+    if (!Number.isFinite(n) || n <= 0) return;
+    setPendingMarking((prev) => (prev ? { ...prev, targetQty: Math.floor(n) } : prev));
+  }
+
+  function handleMarkingScan(code: string) {
+    setPendingMarking((prev) => {
+      if (!prev) return prev;
+      if (prev.markings.includes(code)) {
+        setMarkingError(t("warehouse.markingDuplicate"));
+        return prev;
+      }
+      setMarkingError(null);
+      return { ...prev, markings: [...prev.markings, code] };
+    });
+  }
+
+  function removeMarkingAt(index: number) {
+    setPendingMarking((prev) => (prev ? { ...prev, markings: prev.markings.filter((_, i) => i !== index) } : prev));
+  }
+
+  // Срабатывает и по кнопке "Готово" (можно завершить раньше, если по факту пришло меньше, чем
+  // указали изначально), и автоматически при достижении targetQty (эффект ниже) — источник
+  // истины по количеству это именно число отсканированных маркировок, не введённая цифра.
+  function finishMarkingReceive() {
+    setPendingMarking((prev) => {
+      if (!prev || prev.markings.length === 0) return prev;
+      addBatchWithQuantity(prev.product, prev.markings.length, prev.markings);
+      setScanMessage(t("warehouse.markingReceiveAdded", { name: prev.product.name, count: prev.markings.length }));
+      return null;
+    });
+  }
+
+  useEffect(() => {
+    if (pendingMarking && pendingMarking.targetQty !== null && pendingMarking.markings.length >= pendingMarking.targetQty) {
+      finishMarkingReceive();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingMarking]);
+
   async function handleQuickCreate() {
-    if (!scanLookup || !quickName.trim() || quickPrice <= 0) return;
+    if (!scanLookup || !quickName.trim()) return;
+    if (!markingModeActive && quickPrice <= 0) return;
     setQuickSubmitting(true);
     setQuickError(null);
     try {
       const created = await createProduct(session.accessToken, {
         name: quickName.trim(),
         barcode: scanLookup.barcode,
+        // В режиме приёма по маркировке цена не обязательна — 0 значит "укажем позже по
+        // накладной" (см. ProductsScreen.tsx — такие товары показаны отдельным списком сверху).
         price: quickPrice,
         unit: quickUnit.trim() || "pcs",
         mxikCode: quickMxikCode ?? undefined,
@@ -178,8 +279,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
         sku: quickMxikCode ?? undefined,
       });
       setProducts((prev) => [...prev, created]);
-      addToBatch(created);
       setScanLookup(null);
+      if (markingModeActive) {
+        beginMarkingReceive(created);
+      } else {
+        addToBatch(created);
+      }
     } catch (err) {
       setQuickError(err instanceof ApiError ? err.message : t("warehouse.quickCreateError"));
     } finally {
@@ -196,6 +301,22 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     });
   }
 
+  // Приход по маркировке (см. finishMarkingReceive) — количество и коды маркировки набраны
+  // сканированием, а не введены вручную. Повторный скан того же товара в рамках одной партии
+  // (например, довезли ещё коробку) суммирует количество и объединяет коды.
+  function addBatchWithQuantity(product: ApiProduct, quantity: number, markingCodes: string[]) {
+    setBatch((prev) => {
+      const next = new Map(prev);
+      const existing = next.get(product.id);
+      next.set(product.id, {
+        product,
+        quantity: (existing?.quantity ?? 0) + quantity,
+        markingCodes: [...(existing?.markingCodes ?? []), ...markingCodes],
+      });
+      return next;
+    });
+  }
+
   function setBatchQuantity(productId: string, quantity: number) {
     setBatch((prev) => {
       const next = new Map(prev);
@@ -204,7 +325,9 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       if (quantity <= 0) {
         next.delete(productId);
       } else {
-        next.set(productId, { ...line, quantity });
+        // Ручная правка количества — коды маркировки от исходного скана больше не соответствуют
+        // фактическому количеству, поэтому очищаем (не подтверждено поштучным сканом).
+        next.set(productId, { ...line, quantity, markingCodes: undefined });
       }
       return next;
     });
@@ -237,6 +360,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
           productId: line.product.id,
           quantity: line.quantity,
           comment: t("warehouse.receiveComment"),
+          markingCodes: line.markingCodes,
         });
       }
       setBatch(new Map());
@@ -322,9 +446,18 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
 
       {canManage && (
         <section className="space-y-3 rounded-xl bg-white p-4 shadow-sm">
-          <div>
-            <h2 className="text-sm font-semibold text-slate-700">{t("warehouse.receiveTitle")}</h2>
-            <p className="text-xs text-slate-400">{t("warehouse.receiveHint")}</p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-700">{t("warehouse.receiveTitle")}</h2>
+              <p className="text-xs text-slate-400">
+                {markingModeActive ? t("warehouse.receiveHintMarking") : t("warehouse.receiveHint")}
+              </p>
+            </div>
+            {markingModeActive && (
+              <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                {t("settings.receivingModes.MARKING_SCAN.title")}
+              </span>
+            )}
           </div>
 
           {scanMessage && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">{scanMessage}</p>}
@@ -343,7 +476,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                   <button
                     key={p.id}
                     onClick={() => {
-                      addToBatch(p);
+                      if (markingModeActive) {
+                        beginMarkingReceive(p);
+                      } else {
+                        addToBatch(p);
+                      }
                       setManualQuery("");
                     }}
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
@@ -369,7 +506,17 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 <tbody>
                   {[...batch.values()].map((line) => (
                     <tr key={line.product.id} className="border-b border-slate-50 last:border-0">
-                      <td className="px-3 py-2 text-slate-800">{line.product.name}</td>
+                      <td className="px-3 py-2 text-slate-800">
+                        {line.product.name}
+                        {line.markingCodes && line.markingCodes.length > 0 && (
+                          <span
+                            className="ml-1.5 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-semibold text-emerald-600"
+                            title={t("warehouse.markingVerifiedHint")}
+                          >
+                            {t("warehouse.markingVerifiedBadge")}
+                          </span>
+                        )}
+                      </td>
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-1.5">
                           <button
@@ -612,6 +759,9 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-xs font-medium text-slate-500">
                   {t("products.price")}
+                  {markingModeActive && (
+                    <span className="ml-1 font-normal text-slate-400">({t("common.optional")})</span>
+                  )}
                   <AmountInput
                     value={quickPrice}
                     onChange={setQuickPrice}
@@ -659,10 +809,110 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
               </button>
               <button
                 onClick={handleQuickCreate}
-                disabled={quickSubmitting || !quickName.trim() || quickPrice <= 0}
+                disabled={quickSubmitting || !quickName.trim() || (!markingModeActive && quickPrice <= 0)}
                 className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
               >
                 {quickSubmitting ? t("common.loading") : t("warehouse.quickCreateSubmit")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMarking && pendingMarking.targetQty === null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-800">{pendingMarking.product.name}</h2>
+              <p className="mt-1 text-xs text-slate-400">{t("warehouse.markingQtyHint")}</p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              <label className="block text-xs font-medium text-slate-500">
+                {t("warehouse.markingQtyLabel")}
+                <input
+                  type="number"
+                  min={1}
+                  value={pendingQtyInput}
+                  onChange={(e) => setPendingQtyInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmMarkingQuantity()}
+                  autoFocus
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                />
+              </label>
+            </div>
+            <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={() => setPendingMarking(null)}
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("returns.cancel")}
+              </button>
+              <button
+                onClick={confirmMarkingQuantity}
+                disabled={!pendingQtyInput || Number(pendingQtyInput) <= 0}
+                className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+              >
+                {t("warehouse.markingQtyConfirm")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMarking && pendingMarking.targetQty !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-800">{pendingMarking.product.name}</h2>
+              <p className="mt-1 text-xs text-slate-400">
+                {t("warehouse.markingScanHint", {
+                  done: pendingMarking.markings.length,
+                  total: pendingMarking.targetQty,
+                })}
+              </p>
+            </div>
+            <div className="space-y-2 px-5 py-4">
+              <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full bg-accent transition-all"
+                  style={{
+                    width: `${Math.min(100, (pendingMarking.markings.length / pendingMarking.targetQty) * 100)}%`,
+                  }}
+                />
+              </div>
+              {markingError && <p className="text-xs text-red-600">{markingError}</p>}
+              {pendingMarking.markings.length > 0 && (
+                <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg bg-slate-50 px-2 py-2">
+                  {pendingMarking.markings.map((code, i) => (
+                    <div key={code} className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                      <span className="truncate">
+                        {i + 1}. {code}
+                      </span>
+                      <button
+                        onClick={() => removeMarkingAt(i)}
+                        className="shrink-0 text-slate-300 hover:text-red-500"
+                        aria-label={t("common.remove")}
+                      >
+                        <CloseIcon width={12} height={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={() => setPendingMarking(null)}
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("returns.cancel")}
+              </button>
+              <button
+                onClick={finishMarkingReceive}
+                disabled={pendingMarking.markings.length === 0}
+                className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+              >
+                {t("warehouse.markingScanFinish", { count: pendingMarking.markings.length })}
               </button>
             </div>
           </div>

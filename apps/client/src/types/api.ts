@@ -231,6 +231,8 @@ export interface OneCCredentials {
 
 export type BusinessType = "RESTAURANT" | "STORE" | "PHARMACY";
 
+export type ReceivingMode = "MANUAL" | "MARKING_SCAN";
+
 export interface ApiSettings {
   name: string;
   currency: string;
@@ -242,6 +244,7 @@ export interface ApiSettings {
   lowStockThreshold: number | null;
   quickCashAmounts: number[];
   showConsumablesPanel: boolean;
+  receivingMode: ReceivingMode;
   warnings: string[];
 }
 

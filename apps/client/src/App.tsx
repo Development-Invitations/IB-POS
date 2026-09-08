@@ -287,10 +287,23 @@ function App() {
     return businessType !== "RESTAURANT" || Boolean(product.isConsumable);
   }
 
+  // Приём по маркировке (Настройки → Магазин, см. WarehouseScreen.tsx) может создать товар
+  // с названием, но без цены — её вносят вручную по накладной позже (не из исходного ТЗ, по
+  // прямому запросу клиента). Пока цена не указана, товар нельзя продать — как и с нулевым
+  // остатком (isHiddenForNoStock). Актуально только для Магазина: у Ресторана/Аптеки цена
+  // всегда обязательна уже при создании товара, этот сценарий для них не возникает.
+  function isHiddenForNoPrice(product: CartProduct): boolean {
+    return businessType === "STORE" && (!product.price || product.price <= 0);
+  }
+
+  function isProductUnsellable(product: CartProduct): boolean {
+    return isHiddenForNoStock(product) || isHiddenForNoPrice(product);
+  }
+
   const visibleProducts = useMemo(() => {
     const byCategory =
       activeCategory === "all" ? products : products.filter((product) => product.categoryId === activeCategory);
-    return byCategory.filter((product) => !isHiddenForNoStock(product));
+    return byCategory.filter((product) => !isProductUnsellable(product));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, activeCategory, businessType]);
 
@@ -328,10 +341,11 @@ function App() {
   }
 
   function addToCart(product: CartProduct) {
-    // Тот же критерий, что и в visibleProducts (isHiddenForNoStock) — товар с нулевым/не
-    // заведённым остатком нельзя продать, каким бы путём его ни пытались добавить (клик по
-    // плитке, скан штрихкода или поиск в шапке — плитка обычно скрыта, но эти пути её обходят).
-    if (isHiddenForNoStock(product)) {
+    // Тот же критерий, что и в visibleProducts (isProductUnsellable) — товар с нулевым/не
+    // заведённым остатком или без цены нельзя продать, каким бы путём его ни пытались добавить
+    // (клик по плитке, скан штрихкода или поиск в шапке — плитка обычно скрыта, но эти пути её
+    // обходят).
+    if (isProductUnsellable(product)) {
       return;
     }
     updateActiveTicket((ticket) => {
@@ -560,7 +574,7 @@ function App() {
         shiftOpenedAt={shift?.openedAt ?? null}
         products={products}
         lowStockProducts={lowStockProducts}
-        isProductUnavailable={isHiddenForNoStock}
+        isProductUnavailable={isProductUnsellable}
         onSelectProduct={(product) => {
           addToCart(product);
           setActiveScreen("sale");

@@ -26,6 +26,7 @@ import type {
   OneCCredentials,
   OneCStatus,
   ReceiptStatus,
+  ReceivingMode,
   StaffReportRow,
   TopProduct,
 } from "../types/api";
@@ -176,6 +177,10 @@ export interface ProductPayload {
   categoryId?: string;
   sku?: string;
   barcode?: string;
+  // Сервер требует число (может быть 0 — @Min(0)). 0 значит "цена ещё не указана" — так создаёт
+  // товар приём по маркировке (см. WarehouseScreen.tsx, Настройки → Магазин →
+  // OrganizationSettings.receivingMode), цену вносят позже по накладной. Во всех остальных путях
+  // создания форма на клиенте (ProductFormModal.tsx) как и раньше не пускает дальше без цены > 0.
   price: number;
   cost?: number;
   unit?: string;
@@ -594,6 +599,9 @@ export interface ReceiveStockPayload {
   productId: string;
   quantity: number;
   comment?: string;
+  // Не из исходного ТЗ — по прямому запросу клиента: коды маркировки, отсканированные при
+  // приёмке в режиме "Приём по штрихкоду и маркировке", см. WarehouseScreen.tsx.
+  markingCodes?: string[];
 }
 
 export function receiveStock(token: string, payload: ReceiveStockPayload) {
@@ -674,6 +682,7 @@ export interface UpdateSettingsPayload {
   lowStockThreshold?: number | null;
   quickCashAmounts?: number[];
   showConsumablesPanel?: boolean;
+  receivingMode?: ReceivingMode;
 }
 
 export function updateSettings(token: string, payload: UpdateSettingsPayload) {
@@ -709,6 +718,16 @@ export function getSaleConfig(token: string) {
 // порог "заканчивается" для уведомлений в шапке (Header.tsx).
 export function getNotificationsConfig(token: string) {
   return request<{ lowStockThreshold: number | null }>("/settings/notifications-config", {}, token);
+}
+
+// Доступно ролям, управляющим "Складом" (Админ/Управляющий/Зав.складом) — способ приёмки и
+// профиль бизнеса, не открывая остальные настройки, см. WarehouseScreen.tsx.
+export function getWarehouseConfig(token: string) {
+  return request<{ receivingMode: ReceivingMode; businessType: BusinessType }>(
+    "/settings/warehouse-config",
+    {},
+    token,
+  );
 }
 
 export function getBackups(token: string) {

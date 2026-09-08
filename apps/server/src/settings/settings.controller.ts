@@ -36,6 +36,14 @@ export class SettingsController {
     return this.settings.getNotificationsConfig(user.organizationId);
   }
 
+  // Раздел 3 ТЗ: "Приход" на "Складе" доступен Админу/Управляющему/Зав.складом — тем же, кто
+  // управляет приёмкой в WarehouseScreen.tsx.
+  @Roles(Role.ADMIN, Role.MANAGER, Role.WAREHOUSE)
+  @Get('warehouse-config')
+  getWarehouseConfig(@CurrentUser() user: AuthenticatedUser) {
+    return this.settings.getWarehouseConfig(user.organizationId);
+  }
+
   @Get()
   get(@CurrentUser() user: AuthenticatedUser) {
     return this.settings.get(user.organizationId);

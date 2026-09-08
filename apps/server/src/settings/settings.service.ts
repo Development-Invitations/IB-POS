@@ -41,6 +41,7 @@ export class SettingsService {
       lowStockThreshold: settings.lowStockThreshold,
       quickCashAmounts: settings.quickCashAmounts,
       showConsumablesPanel: settings.showConsumablesPanel,
+      receivingMode: settings.receivingMode,
       warnings: this.buildTaxWarnings(
         settings.taxRatePercent,
         Boolean(hasFiscalIntegration),
@@ -74,6 +75,20 @@ export class SettingsService {
       update: {},
     });
     return { lowStockThreshold: settings.lowStockThreshold };
+  }
+
+  // Отдельный узкий эндпоинт — "Склад" (Управляющий/Зав.складом, не только Админ) должен знать
+  // способ приёмки и профиль бизнеса, не имея доступа к остальным настройкам.
+  async getWarehouseConfig(organizationId: string) {
+    const settings = await this.prisma.organizationSettings.upsert({
+      where: { organizationId },
+      create: { organizationId },
+      update: {},
+    });
+    return {
+      receivingMode: settings.receivingMode,
+      businessType: settings.businessType,
+    };
   }
 
   // Налоги и фискализация: предупреждения при несовместимых параметрах (Этап 9).
@@ -122,6 +137,7 @@ export class SettingsService {
         lowStockThreshold: dto.lowStockThreshold,
         quickCashAmounts: dto.quickCashAmounts,
         showConsumablesPanel: dto.showConsumablesPanel,
+        receivingMode: dto.receivingMode,
       },
       update: {
         currency: dto.currency,
@@ -133,6 +149,7 @@ export class SettingsService {
         lowStockThreshold: dto.lowStockThreshold,
         quickCashAmounts: dto.quickCashAmounts,
         showConsumablesPanel: dto.showConsumablesPanel,
+        receivingMode: dto.receivingMode,
       },
     });
 

@@ -8,7 +8,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { BusinessType } from '@prisma/client';
+import { BusinessType, ReceivingMode } from '@prisma/client';
 
 export class UpdateSettingsDto {
   @IsOptional()
@@ -66,4 +66,10 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   showConsumablesPanel?: boolean;
+
+  // Не из исходного ТЗ — по прямому запросу клиента, только для Магазина: способ приёмки на
+  // "Складе" (вручную или по штрихкоду + маркировке), см. WarehouseScreen.tsx.
+  @IsOptional()
+  @IsEnum(ReceivingMode)
+  receivingMode?: ReceivingMode;
 }

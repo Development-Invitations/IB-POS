@@ -21,6 +21,7 @@ export class StockService {
     type: StockMovementType,
     userId: string | null,
     comment?: string,
+    markingCodes?: string[],
   ) {
     const stock = await client.stock.upsert({
       where: { storeId_productId: { storeId, productId } },
@@ -29,7 +30,7 @@ export class StockService {
     });
 
     await client.stockMovement.create({
-      data: { stockId: stock.id, type, quantityDelta, userId, comment },
+      data: { stockId: stock.id, type, quantityDelta, userId, comment, markingCodes },
     });
 
     return stock;
@@ -45,6 +46,7 @@ export class StockService {
       StockMovementType.RECEIPT_IN,
       userId,
       dto.comment,
+      dto.markingCodes,
     );
   }
 

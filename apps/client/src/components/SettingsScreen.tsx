@@ -20,7 +20,7 @@ import { loadApiBase, loadConnectionMode } from "../lib/server-config";
 import { AmountInput } from "./AmountInput";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ServerConnectionScreen } from "./ServerConnectionScreen";
-import type { ApiBackup, ApiProduct, ApiSettings, BusinessType } from "../types/api";
+import type { ApiBackup, ApiProduct, ApiSettings, BusinessType, ReceivingMode } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface SettingsScreenProps {
@@ -63,6 +63,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [lowStockThreshold, setLowStockThreshold] = useState("");
   const [quickCashAmounts, setQuickCashAmounts] = useState("");
   const [showConsumablesPanel, setShowConsumablesPanel] = useState(false);
+  const [receivingMode, setReceivingMode] = useState<ReceivingMode>("MANUAL");
   const [showProductImages, setShowProductImages] = useState(loadShowProductImages());
 
   // Управление расходниками (посуда/пакет, не из исходного ТЗ) прямо из Настроек — по прямому
@@ -111,6 +112,7 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         );
         setQuickCashAmounts(settingsResult.quickCashAmounts.join(", "));
         setShowConsumablesPanel(settingsResult.showConsumablesPanel);
+        setReceivingMode(settingsResult.receivingMode);
       } catch (err) {
         if (!cancelled) {
           if (err instanceof ApiError && err.status === 403) {
@@ -196,6 +198,25 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
       setSettings(updated);
     } catch {
       setShowConsumablesPanel(previous);
+    }
+  }
+
+  // Тот же паттерн авто-сохранения по клику, что и у businessType/showConsumablesPanel выше.
+  // Не из исходного ТЗ — по прямому запросу клиента: только для Магазина (см. карточку в
+  // General — скрыта для остальных профилей), способ приёма товара на "Складе".
+  const [receivingModeSaving, setReceivingModeSaving] = useState(false);
+
+  async function handleSelectReceivingMode(mode: ReceivingMode) {
+    const previous = receivingMode;
+    setReceivingMode(mode);
+    setReceivingModeSaving(true);
+    try {
+      const updated = await updateSettings(session.accessToken, { receivingMode: mode });
+      setSettings(updated);
+    } catch {
+      setReceivingMode(previous);
+    } finally {
+      setReceivingModeSaving(false);
     }
   }
 
@@ -376,6 +397,33 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
             {businessTypeSaving && <p className="mt-2 text-xs text-slate-400">{t("common.loading")}</p>}
             {businessTypeError && <p className="mt-2 text-xs text-red-600">{businessTypeError}</p>}
           </div>
+
+          {businessType === "STORE" && (
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <h3 className="mb-1 text-sm font-semibold text-slate-700">{t("settings.receivingMode")}</h3>
+              <p className="mb-3 text-xs text-slate-400">{t("settings.receivingModeHint")}</p>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(["MANUAL", "MARKING_SCAN"] as ReceivingMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => handleSelectReceivingMode(mode)}
+                    disabled={receivingModeSaving}
+                    className={`rounded-lg border p-3 text-left transition disabled:opacity-60 ${
+                      receivingMode === mode ? "border-accent bg-accent/5" : "border-slate-200 hover:border-slate-300"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-slate-800">
+                      {t(`settings.receivingModes.${mode}.title`)}
+                    </div>
+                    <div className="mt-0.5 text-xs text-slate-400">
+                      {t(`settings.receivingModes.${mode}.hint`)}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {receivingModeSaving && <p className="mt-2 text-xs text-slate-400">{t("common.loading")}</p>}
+            </div>
+          )}
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
             <div className="flex items-center justify-between gap-3">

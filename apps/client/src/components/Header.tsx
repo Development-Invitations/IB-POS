@@ -182,7 +182,7 @@ export function Header({
                     </span>
                     {unavailable ? (
                       <span className="shrink-0 rounded bg-red-50 px-1.5 py-0.5 text-xs font-semibold text-red-600">
-                        {t("products.outOfStock")}
+                        {!product.price || product.price <= 0 ? t("products.noPriceBadge") : t("products.outOfStock")}
                       </span>
                     ) : (
                       <span className="shrink-0 text-sm font-semibold text-slate-700">

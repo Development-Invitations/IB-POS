@@ -112,6 +112,21 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
     );
   });
 
+  // Не из исходного ТЗ — по прямому запросу клиента: только для Магазина. Приход по маркировке
+  // (см. WarehouseScreen.tsx — Настройки → "Приём по штрихкоду и маркировке") создаёт товар с
+  // названием, но без цены — её всё равно вносят вручную по накладной позже. Без разделения
+  // такие товары терялись бы в общем списке; тут они вынесены отдельным списком сверху, чтобы
+  // было видно, что ещё нужно дозаполнить.
+  const isStoreSplit = businessType === "STORE";
+  const noPriceRows = useMemo(
+    () => filtered.filter((p) => !p.price || Number(p.price) <= 0),
+    [filtered],
+  );
+  const withPriceRows = useMemo(
+    () => filtered.filter((p) => p.price && Number(p.price) > 0),
+    [filtered],
+  );
+
   function openCreate() {
     setEditingProduct(null);
     setFormOpen(true);
@@ -188,6 +203,126 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
     }
   }
 
+  function renderProductsTable(rows: ApiProduct[]) {
+    return (
+      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+        <table className="min-w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-xs text-slate-400">
+              <th className="whitespace-nowrap px-4 py-3 font-medium" />
+              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.name")}</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.category")}</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.sku")}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.price")}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.cost")}</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.unit")}</th>
+              {showStock && (
+                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("warehouse.stockTitle")}</th>
+              )}
+              {isPharmacy && <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
+              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.status")}</th>
+              {canManage && <th className="whitespace-nowrap px-4 py-3 font-medium" />}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((p) => (
+              <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                <td className="whitespace-nowrap px-4 py-3">
+                  <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
+                    {p.imageUrl ? (
+                      <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      p.name.trim().slice(0, 2).toUpperCase()
+                    )}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-800">
+                  {p.name}
+                  {p.isConsumable && (
+                    <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                      {t("products.consumable")}
+                    </span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.sku}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-right text-slate-800">
+                  {p.price && Number(p.price) > 0 ? `${formatSum(Number(p.price))} ${t("common.currency")}` : "—"}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
+                  {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.unit}</td>
+                {showStock && (
+                  <td
+                    className={`whitespace-nowrap px-4 py-3 text-right ${
+                      (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
+                    }`}
+                  >
+                    {stockByProduct.get(p.id) ?? 0} {p.unit}
+                  </td>
+                )}
+                {isPharmacy && (
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                    {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
+                  </td>
+                )}
+                <td className="whitespace-nowrap px-4 py-3">
+                  {p.isActive ? (
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                      {t("products.active")}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                      {t("products.inactive")}
+                    </span>
+                  )}
+                </td>
+                {canManage && (
+                  <td className="whitespace-nowrap px-4 py-3 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button onClick={() => openEdit(p)} className="text-xs font-medium text-accent hover:underline">
+                        {t("products.edit")}
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(p)}
+                        className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                      >
+                        {p.isActive ? t("products.deactivate") : t("products.activate")}
+                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => {
+                            setPurgeError(null);
+                            setPurgeTarget(p);
+                          }}
+                          className="text-xs font-medium text-red-400 hover:text-red-600"
+                        >
+                          {t("products.delete")}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                )}
+              </tr>
+            ))}
+
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0) + (showStock ? 1 : 0)}
+                  className="px-4 py-8 text-center text-sm text-slate-400"
+                >
+                  {t("products.empty")}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -217,126 +352,24 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
       {loadError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>}
       {rowError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{rowError}</p>}
 
-      {!loading && !loadError && (
-        <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-xs text-slate-400">
-                <th className="whitespace-nowrap px-4 py-3 font-medium" />
-                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.name")}</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.category")}</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.sku")}</th>
-                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.price")}</th>
-                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.cost")}</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.unit")}</th>
-                {showStock && (
-                  <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("warehouse.stockTitle")}</th>
-                )}
-                {isPharmacy && <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
-                <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.status")}</th>
-                {canManage && <th className="whitespace-nowrap px-4 py-3 font-medium" />}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
-                      {p.imageUrl ? (
-                        <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        p.name.trim().slice(0, 2).toUpperCase()
-                      )}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-800">
-                    {p.name}
-                    {p.isConsumable && (
-                      <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                        {t("products.consumable")}
-                      </span>
-                    )}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.sku}</td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-slate-800">
-                    {formatSum(Number(p.price))} {t("common.currency")}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
-                    {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.unit}</td>
-                  {showStock && (
-                    <td
-                      className={`whitespace-nowrap px-4 py-3 text-right ${
-                        (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
-                      }`}
-                    >
-                      {stockByProduct.get(p.id) ?? 0} {p.unit}
-                    </td>
-                  )}
-                  {isPharmacy && (
-                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                      {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
-                    </td>
-                  )}
-                  <td className="whitespace-nowrap px-4 py-3">
-                    {p.isActive ? (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                        {t("products.active")}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                        {t("products.inactive")}
-                      </span>
-                    )}
-                  </td>
-                  {canManage && (
-                    <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <div className="flex justify-end gap-3">
-                        <button
-                          onClick={() => openEdit(p)}
-                          className="text-xs font-medium text-accent hover:underline"
-                        >
-                          {t("products.edit")}
-                        </button>
-                        <button
-                          onClick={() => handleToggleActive(p)}
-                          className="text-xs font-medium text-slate-400 hover:text-slate-700"
-                        >
-                          {p.isActive ? t("products.deactivate") : t("products.activate")}
-                        </button>
-                        {canDelete && (
-                          <button
-                            onClick={() => {
-                              setPurgeError(null);
-                              setPurgeTarget(p);
-                            }}
-                            className="text-xs font-medium text-red-400 hover:text-red-600"
-                          >
-                            {t("products.delete")}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  )}
-                </tr>
-              ))}
-
-              {filtered.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0) + (showStock ? 1 : 0)}
-                    className="px-4 py-8 text-center text-sm text-slate-400"
-                  >
-                    {t("products.empty")}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {!loading && !loadError && isStoreSplit && (
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-amber-700">
+              {t("products.noPriceTitle")} ({noPriceRows.length})
+            </h2>
+            {renderProductsTable(noPriceRows)}
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-600">
+              {t("products.withPriceTitle")} ({withPriceRows.length})
+            </h2>
+            {renderProductsTable(withPriceRows)}
+          </div>
         </div>
       )}
+
+      {!loading && !loadError && !isStoreSplit && renderProductsTable(filtered)}
 
       {formOpen && (
         <ProductFormModal

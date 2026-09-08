@@ -60,6 +60,13 @@ model OrganizationSettings {
   // отдельную панель быстрого добавления расходников (Product.isConsumable) поверх Итого.
   // По умолчанию выключена — организации без размеченных расходников её не увидят.
   showConsumablesPanel      Boolean      @default(false) @map("show_consumables_panel")
+  // Не из исходного ТЗ — по прямому запросу клиента, только для Магазина: как принимать товар
+  // на "Складе" (WarehouseScreen.tsx). MANUAL — как раньше, вручную вводят название/цену.
+  // MARKING_SCAN — сканируют штрихкод (товар заводится автоматически по названию из штрихкода/
+  // госкаталога, без цены — её вносят позже по накладной), затем сканируют маркировку каждой
+  // физической единицы (см. StockMovement.markingCodes) — количество приходуемого товара
+  // определяется числом отсканированных маркировок, а не ручным вводом.
+  receivingMode             ReceivingMode @default(MANUAL) @map("receiving_mode")
   updatedAt                 DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -71,6 +78,11 @@ enum BusinessType {
   RESTAURANT
   STORE
   PHARMACY
+}
+
+enum ReceivingMode {
+  MANUAL
+  MARKING_SCAN
 }
 
 enum BackupTrigger {
@@ -263,6 +275,11 @@ model StockMovement {
   type          StockMovementType
   quantityDelta Decimal           @map("quantity_delta") @db.Decimal(14, 3)
   comment       String?
+  // Не из исходного ТЗ — по прямому запросу клиента: коды маркировки (DataMatrix), по одному
+  // на физическую единицу товара, отсканированные при приёмке в режиме "Приём по штрихкоду и
+  // маркировке" (см. OrganizationSettings.receivingMode). Пустой массив — обычная приёмка без
+  // маркировки (режим MANUAL или движение другого типа).
+  markingCodes  String[]          @default([]) @map("marking_codes")
   userId        String?           @map("user_id")
   createdAt     DateTime          @default(now()) @map("created_at")
 

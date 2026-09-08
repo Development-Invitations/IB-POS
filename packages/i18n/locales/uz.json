@@ -31,7 +31,8 @@
     "minutesAgo": "{{count}} daqiqa oldin",
     "hoursAgo": "{{count}} soat oldin",
     "daysAgo": "{{count}} kun oldin",
-    "refresh": "Holatni yangilash"
+    "refresh": "Holatni yangilash",
+    "optional": "ixtiyoriy"
   },
   "nav": {
     "home": "Bosh sahifa",
@@ -178,7 +179,10 @@
     "expired": "Muddati oʻtgan",
     "expiresSoon": "{{date}} gacha yaroqli",
     "isConsumable": "Sarf materiali (idish-tovoq, paket va h.k.)",
-    "consumable": "sarf materiali"
+    "consumable": "sarf materiali",
+    "noPriceTitle": "Narxi belgilanmagan mahsulotlar",
+    "withPriceTitle": "Narxi bor mahsulotlar",
+    "noPriceBadge": "Narx koʻrsatilmagan"
   },
   "customers": {
     "addTitle": "Yangi mijoz",
@@ -463,7 +467,17 @@
     "adjustReasonPlaceholder": "Masalan: inventarizatsiya, brakni hisobdan chiqarish",
     "adjustInvalid": "To'g'ri miqdorni kiriting (0 yoki undan ko'p)",
     "adjustError": "Qoldiqni tuzatib bo'lmadi",
-    "empty": "Omborda hali qoldig'i bor tovarlar yo'q"
+    "empty": "Omborda hali qoldig'i bor tovarlar yo'q",
+    "receiveHintMarking": "Avval mahsulot shtrixkodini, keyin nakladnoy bo'yicha miqdorni, keyin har bir birlik markirovkasini skanerlang.",
+    "markingQtyHint": "Nakladnoy bo'yicha nechta birlik keldi?",
+    "markingQtyLabel": "Miqdor",
+    "markingQtyConfirm": "Keyingisi — markirovkani skanerlash",
+    "markingScanHint": "Har bir birlik markirovkasini skanerlang: {{done}} / {{total}}",
+    "markingScanFinish": "Tayyor ({{count}})",
+    "markingDuplicate": "Bu markirovka allaqachon skanerlangan",
+    "markingReceiveAdded": "Qabulga qo'shildi: «{{name}}» — {{count}} dona",
+    "markingVerifiedBadge": "markirovka bo'yicha",
+    "markingVerifiedHint": "Miqdor har bir birlik markirovkasini skanerlash orqali tasdiqlangan"
   },
   "equipment": {
     "title": "Uskunalar",
@@ -580,6 +594,18 @@
     "quickCashAmounts": "Naqd tezkor summalar",
     "quickCashAmountsPlaceholder": "5000, 10000, 20000, 50000, 100000",
     "quickCashAmountsHint": "Vergul bilan. Naqd toʻlov oynasida summani qoʻlda kiritish oʻrniga tugmalar sifatida koʻrinadi.",
+    "receivingMode": "Omborda mahsulot qabul qilish",
+    "receivingModeHint": "Faqat Do'kon uchun: «Ombor» ekranida qabul qanday rasmiylashtiriladi.",
+    "receivingModes": {
+      "MANUAL": {
+        "title": "Qo'lda",
+        "hint": "Hozirgidek: mahsulotni topib, miqdorni qo'lda kiritasiz."
+      },
+      "MARKING_SCAN": {
+        "title": "Shtrixkod va markirovka orqali",
+        "hint": "Mahsulot shtrixkodini skanerlaysiz — nomi avtomatik qo'yiladi (narxsiz, uni keyinroq nakladnoy bo'yicha kiritasiz). Keyin har bir birlikning markirovkasini skanerlaysiz — bu qabul miqdorini beladi."
+      }
+    },
     "showConsumablesPanel": "Kassada sarf materiallari tezkor paneli",
     "showConsumablesPanelHint": "«Sarf materiali» belgisi qoʻyilgan tovarlar (Tovarlar → tovar kartochkasi) chekda tezkor +/- paneli sifatida koʻrinadi",
     "consumablesTitle": "Sarf materiallari",
