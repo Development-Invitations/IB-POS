@@ -131,6 +131,7 @@ function App() {
 
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("idle");
+  const [paymentErrorMessage, setPaymentErrorMessage] = useState<string | null>(null);
   const [lastReceipt, setLastReceipt] = useState<PaidReceipt | null>(null);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [notFoundCode, setNotFoundCode] = useState<string | null>(null);
@@ -426,12 +427,14 @@ function App() {
 
   function openPaymentModal() {
     setPaymentStatus("idle");
+    setPaymentErrorMessage(null);
     setPaymentModalOpen(true);
   }
 
   async function confirmPayment(method: PaymentMethod, _receivedAmount: number | null, clickProvider: ClickProvider) {
     if (!session || !workstation || !shift) return;
     setPaymentStatus("processing");
+    setPaymentErrorMessage(null);
     try {
       const receipt = await createReceipt(session.accessToken, {
         storeId: workstation.storeId,
@@ -460,6 +463,12 @@ function App() {
       }
       // Ошибка оплаты не должна терять чек: корзина (lines) остаётся как была,
       // кассир может повторить попытку кнопкой "Повторить" в модалке (см. ТЗ, Этап 3).
+      // status === 0 — сеть/сервер не ответил, а не осмысленный отказ (см. ApiError) — в этом
+      // случае показываем общее сообщение в PaymentModal, а не сырую служебную строку "network".
+      // Иначе — реальная причина отказа сервера (например "Недостаточно остатка на складе:
+      // «Товар»", см. ReceiptsService.pay) — раньше терялась, кассир видел только "Ошибка
+      // оплаты" без объяснения.
+      setPaymentErrorMessage(err instanceof ApiError && err.status !== 0 ? err.message : null);
       setPaymentStatus("error");
     }
   }
@@ -784,6 +793,7 @@ function App() {
         <PaymentModal
           total={receiptPreview?.total ?? computeTotals(lines, discountPercent).total}
           status={paymentStatus}
+          errorMessage={paymentErrorMessage}
           quickCashAmounts={quickCashAmounts}
           onClose={() => setPaymentModalOpen(false)}
           onConfirm={confirmPayment}

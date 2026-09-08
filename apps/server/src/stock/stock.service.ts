@@ -36,6 +36,46 @@ export class StockService {
     return stock;
   }
 
+  // Не из исходного ТЗ — по прямому запросу клиента: "если на складе нету, то через кассу
+  // прохода не должно быть" — раньше applyMovement списывал остаток БЕЗ проверки нижней
+  // границы (жалоба клиента, скриншот с "-9 pcs" в "Остатках"), клиентская проверка на "нет в
+  // наличии" (App.tsx::isProductUnsellable) — только UI-подсказка, легко упускается: не
+  // учитывает конкурентную продажу того же товара с двух касс одновременно, и не пересчитывается
+  // при ручном увеличении количества в уже открытой строке чека. Здесь — авторитетная проверка
+  // прямо в БД: UPDATE с условием quantity >= requested в одном атомарном запросе (не
+  // "прочитать, проверить в JS, потом обновить" — это гонка при параллельных продажах;
+  // WHERE-условие в самом UPDATE безопасно и под конкурентным доступом, Postgres сериализует
+  // конфликтующие обновления одной строки). count === 0 — либо остатка нет вовсе, либо кто-то
+  // другой только что списал последнее раньше нас.
+  async trySale(
+    client: Client,
+    storeId: string,
+    productId: string,
+    quantity: number,
+    userId: string | null,
+    comment?: string,
+  ): Promise<boolean> {
+    const result = await client.stock.updateMany({
+      where: { storeId, productId, quantity: { gte: quantity } },
+      data: { quantity: { decrement: quantity } },
+    });
+    if (result.count === 0) return false;
+
+    const stock = await client.stock.findUniqueOrThrow({
+      where: { storeId_productId: { storeId, productId } },
+    });
+    await client.stockMovement.create({
+      data: {
+        stockId: stock.id,
+        type: StockMovementType.SALE,
+        quantityDelta: -quantity,
+        userId,
+        comment,
+      },
+    });
+    return true;
+  }
+
   async receive(organizationId: string, userId: string, dto: ReceiveStockDto) {
     await this.assertBelongsToOrg(organizationId, dto.storeId, dto.productId);
     return this.applyMovement(

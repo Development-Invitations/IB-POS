@@ -19,6 +19,12 @@ export type ClickProvider = "click" | "payme";
 interface PaymentModalProps {
   total: number;
   status: PaymentStatus;
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше при ошибке оплаты кассир видел
+  // только общее "Ошибка оплаты" без причины — например, отказ сервера "Недостаточно остатка на
+  // складе: «Товар»" (см. ReceiptsService.pay) терялся, и было не понять, что вообще случилось,
+  // сеть пропала или что-то более осмысленное. null — сеть/что-то нетипизированное, тогда
+  // остаётся общий t("payment.error").
+  errorMessage?: string | null;
   // Не из исходного ТЗ — настраивается в Настройках → Продажа. Пустой массив — кнопок нет,
   // только ручной ввод, как было раньше.
   quickCashAmounts: number[];
@@ -26,7 +32,7 @@ interface PaymentModalProps {
   onConfirm: (method: PaymentMethod, receivedAmount: number | null, clickProvider: ClickProvider) => void;
 }
 
-export function PaymentModal({ total, status, quickCashAmounts, onClose, onConfirm }: PaymentModalProps) {
+export function PaymentModal({ total, status, errorMessage, quickCashAmounts, onClose, onConfirm }: PaymentModalProps) {
   const { t } = useTranslation();
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [received, setReceived] = useState(total);
@@ -131,7 +137,9 @@ export function PaymentModal({ total, status, quickCashAmounts, onClose, onConfi
           )}
 
           {status === "error" && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{t("payment.error")}</p>
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">
+              {errorMessage || t("payment.error")}
+            </p>
           )}
         </div>
 

@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Role, ReceiptStatus, StockMovementType } from '@prisma/client';
+import { BusinessType, Role, ReceiptStatus, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
 import { AuditService } from '../audit/audit.service';
@@ -318,6 +318,14 @@ export class ReceiptsService {
       );
     }
 
+    // Тот же критерий, что и isHiddenForNoStock на клиенте (App.tsx): остаток обязателен для
+    // Магазина/Аптеки и для расходников Ресторана, обычные блюда Ресторана готовятся на месте
+    // и остаток по ним принципиально не ведётся.
+    const settings = await this.prisma.organizationSettings.findUnique({
+      where: { organizationId },
+    });
+    const businessType = settings?.businessType ?? BusinessType.RESTAURANT;
+
     return this.prisma.$transaction(async (tx) => {
       await tx.payment.createMany({
         data: dto.payments.map((p) => ({
@@ -330,19 +338,44 @@ export class ReceiptsService {
       const updated = await tx.receipt.update({
         where: { id },
         data: { status: ReceiptStatus.PAID },
-        include: { items: true, payments: true },
+        include: { items: { include: { product: true } }, payments: true },
       });
 
-      // Списываем остаток по каждой позиции в той же транзакции, что и оплата.
+      // Списываем остаток по каждой позиции в той же транзакции, что и оплата. Не из исходного
+      // ТЗ — по прямому запросу клиента: "если на складе нету, то через кассу прохода не должно
+      // быть" (жалоба с реальным скриншотом отрицательного остатка, "-9 pcs") — раньше остаток
+      // списывался безусловно, без проверки нижней границы, и клиентская UI-подсказка легко
+      // упускалась (не пересчитывалась при ручном увеличении количества в открытой строке чека,
+      // не защищала от двух касс, продающих последнюю единицу одновременно). trySale — условный
+      // UPDATE прямо в БД (quantity >= requested), а не "прочитать-проверить-обновить" в JS, это
+      // и была бы гонка при параллельных продажах. Если остатка не хватило — вся оплата
+      // откатывается (Prisma-транзакция), чек остаётся OPEN, деньги не списаны.
       for (const item of updated.items) {
-        await this.stock.applyMovement(
-          tx,
-          updated.storeId,
-          item.productId,
-          -Number(item.quantity),
-          StockMovementType.SALE,
-          userId,
-        );
+        const requiresStock =
+          businessType !== BusinessType.RESTAURANT || item.product.isConsumable;
+        if (requiresStock) {
+          const ok = await this.stock.trySale(
+            tx,
+            updated.storeId,
+            item.productId,
+            Number(item.quantity),
+            userId,
+          );
+          if (!ok) {
+            throw new BadRequestException(
+              `Недостаточно остатка на складе: «${item.product.name}»`,
+            );
+          }
+        } else {
+          await this.stock.applyMovement(
+            tx,
+            updated.storeId,
+            item.productId,
+            -Number(item.quantity),
+            StockMovementType.SALE,
+            userId,
+          );
+        }
       }
 
       // Пишется в той же транзакции, что и оплата — при отсутствии сети чек остаётся
