@@ -8,10 +8,16 @@ const LOGO = "src/assets/logo-mark.png";
 const OUT_DIR = "src-tauri/nsis";
 mkdirSync(OUT_DIR, { recursive: true });
 
-// sharp не умеет писать BMP напрямую — берём готовые RGB-пиксели через .raw() и сами
-// собираем минимальный 24-битный BMP (BITMAPFILEHEADER + BITMAPINFOHEADER, без сжатия,
-// строки снизу вверх, паддинг каждой строки до кратности 4 байт — стандартный формат BMP).
-function encodeBmp(rgbBuffer, width, height) {
+// sharp не умеет писать BMP напрямую — берём готовые пиксели через .raw() и сами собираем
+// минимальный 24-битный BMP (BITMAPFILEHEADER + BITMAPINFOHEADER, без сжатия, строки снизу
+// вверх, паддинг каждой строки до кратности 4 байт — стандартный формат BMP).
+// channels — БАГ первой версии этого скрипта: .flatten() убирает прозрачность (альфа = 255
+// visually), но НЕ убирает сам альфа-канал из .raw()-вывода при композите поверх PNG с альфой —
+// буфер остаётся 4-байтным (RGBA), а не 3-байтным (RGB), как предполагалось. Из-за этого каждый
+// пиксель читался со сдвигом, и в реальном NSIS-инсталляторе шапка/сайдбар были "шумом" вместо
+// логотипа (жалоба клиента со скриншотами). Теперь шаг между пикселями (channels) берётся из
+// реального sharp-вывода, а не захардкожен.
+function encodeBmp(rgbBuffer, width, height, channels) {
   const rowSize = Math.ceil((width * 3) / 4) * 4;
   const pixelArraySize = rowSize * height;
   const fileSize = 54 + pixelArraySize;
@@ -38,7 +44,7 @@ function encodeBmp(rgbBuffer, width, height) {
     const srcRow = height - 1 - y;
     const destOffset = 54 + y * rowSize;
     for (let x = 0; x < width; x++) {
-      const srcIdx = (srcRow * width + x) * 3;
+      const srcIdx = (srcRow * width + x) * channels;
       const destIdx = destOffset + x * 3;
       buf[destIdx] = rgbBuffer[srcIdx + 2];
       buf[destIdx + 1] = rgbBuffer[srcIdx + 1];
@@ -58,7 +64,7 @@ async function makeAsset(outFile, width, height, logoSize, logoTop) {
     .raw()
     .toBuffer({ resolveWithObject: true });
 
-  const bmp = encodeBmp(raw.data, raw.info.width, raw.info.height);
+  const bmp = encodeBmp(raw.data, raw.info.width, raw.info.height, raw.info.channels);
   writeFileSync(outFile, bmp);
 }
 

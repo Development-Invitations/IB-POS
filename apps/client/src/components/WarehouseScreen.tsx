@@ -162,6 +162,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
         price: quickPrice,
         unit: quickUnit.trim() || "pcs",
         mxikCode: quickMxikCode ?? undefined,
+        // Артикул из госкаталога — по прямому запросу клиента ("можно для таких полей
+        // автозаполнение?"): код ИКПУ и так уникален и уже известен, если товар найден по
+        // скану — не заставляем вводить артикул вручную второй раз. Себестоимость так же
+        // автозаполнить нельзя ни из какого внешнего источника — это закупочная цена именно
+        // этого магазина, госкаталог её не знает и знать не может.
+        sku: quickMxikCode ?? undefined,
       });
       setProducts((prev) => [...prev, created]);
       addToBatch(created);
