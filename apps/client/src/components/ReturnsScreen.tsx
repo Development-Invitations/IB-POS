@@ -14,6 +14,11 @@ function isPartiallyReturned(r: ApiReceipt): boolean {
 
 interface ReturnsScreenProps {
   session: AuthSession;
+  // Не из исходного ТЗ — по прямому запросу клиента: возврат отсюда тоже меняет остаток
+  // (увеличивает), а "Продажа" держит свою отдельную копию (App.tsx::products) — без этого
+  // остаток на "Продаже" оставался бы старым до похода на "Склад", как и в случае с оплатой
+  // (см. App.tsx::confirmPayment).
+  onStockChanged?: () => void;
 }
 
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"];
@@ -36,7 +41,7 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ReturnsScreen({ session }: ReturnsScreenProps) {
+export function ReturnsScreen({ session, onStockChanged }: ReturnsScreenProps) {
   const { t } = useTranslation();
   const canView = CAN_VIEW_ROLES.includes(session.role);
   const canInitiate = CAN_INITIATE_ROLES.includes(session.role);
@@ -268,6 +273,7 @@ export function ReturnsScreen({ session }: ReturnsScreenProps) {
             setReceipts((prev) => prev.map((r) => (r.id === result.id ? result : r)));
             setDoneId(result.id);
             setReturnTargetId(null);
+            onStockChanged?.();
           }}
         />
       )}

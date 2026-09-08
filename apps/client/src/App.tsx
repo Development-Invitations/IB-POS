@@ -482,6 +482,13 @@ function App() {
       setLastReceipt({ id: paid.id, total: Number(paid.total), method });
       setPaymentModalOpen(false);
       setPaymentStatus("idle");
+      // Не из исходного ТЗ — по прямому запросу клиента (скриншоты: товар с 0 pcs на "Складе"
+      // всё равно пробивался сканером на "Продаже"). Причина — stockQty в products обновлялся
+      // только когда сам ЗАШЁЛ на "Склад" (WarehouseScreen::onStockChanged), а после ОПЛАТЫ на
+      // самой "Продаже" — никогда: остаток в товаре молча оставался старым до следующего похода
+      // на "Склад". bump stockVersion — тот же триггер, что и там (см. эффект выше, зависящий
+      // от stockVersion), подтягивает свежие остатки сразу после каждой продажи.
+      setStockVersion((v) => v + 1);
       // Оплаченный чек не единственный открытый — закрываем его вкладку, чтобы не копились
       // пустые "Чек N" от прошлых покупателей; единственный чек просто остаётся пустым.
       if (tickets.length > 1) {
@@ -511,6 +518,8 @@ function App() {
     await returnReceipt(approver.accessToken, lastReceipt.id);
     setLastReceipt(null);
     setReturnModalOpen(false);
+    // Возврат тоже меняет остаток (увеличивает) — та же причина, что и у оплаты выше.
+    setStockVersion((v) => v + 1);
   }
 
   async function openCloseShiftModal() {
@@ -793,7 +802,7 @@ function App() {
 
         {activeScreen === "returns" && (
           <main className="flex-1 overflow-y-auto p-4">
-            <ReturnsScreen session={session} />
+            <ReturnsScreen session={session} onStockChanged={() => setStockVersion((v) => v + 1)} />
           </main>
         )}
 
@@ -875,7 +884,7 @@ function App() {
       )}
       {cashierModal === "returns" && (
         <Modal title={t("nav.returns")} onClose={() => setCashierModal(null)}>
-          <ReturnsScreen session={session} />
+          <ReturnsScreen session={session} onStockChanged={() => setStockVersion((v) => v + 1)} />
         </Modal>
       )}
       {cashierModal === "shifts" && (
