@@ -41,3 +41,6 @@ coverage/
 
 # Uploaded product photos (local disk storage, see apps/server/src/products/products.controller.ts)
 apps/server/uploads/
+
+# NSSM (Windows service manager for the backend) — downloaded binary, not committed
+tools/nssm.exe
