@@ -478,7 +478,13 @@
     "markingReceiveAdded": "Қабулга қўшилди: «{{name}}» — {{count}} дона",
     "markingVerifiedBadge": "маркировка бўйича",
     "markingVerifiedHint": "Миқдор ҳар бир бирлик маркировкасини сканерлаш орқали тасдиқланган",
-    "markingAddMore": "Яна сканерлаш"
+    "markingAddMore": "Яна сканерлаш",
+    "adjustByMarking": "Маркировкани сканерлаш",
+    "markingAdjustLoadError": "Аллақачон сканерланган маркировкаларни юклаб бўлмади",
+    "markingAdjustHint": "Ҳар бир бирлик маркировкасини сканерланг. Аллақачон маълум кодлар: {{known}} — бундай қадоқни қайта сканерлаш ўтказиб юборилади, такрорланиш бўлмайди.",
+    "markingAdjustAdded": "Янги: {{count}}",
+    "markingAdjustSkipped": "Ўтказиб юборилди (олдин ҳисобга олинган): {{count}}",
+    "markingAdjustSave": "Қолдиққа қўшиш ({{count}})"
   },
   "equipment": {
     "title": "Ускуналар",

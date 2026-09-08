@@ -478,7 +478,13 @@
     "markingReceiveAdded": "Добавлено в приход: «{{name}}» — {{count}} шт",
     "markingVerifiedBadge": "по маркировке",
     "markingVerifiedHint": "Количество подтверждено сканированием маркировки каждой единицы",
-    "markingAddMore": "Досканировать ещё"
+    "markingAddMore": "Досканировать ещё",
+    "adjustByMarking": "Сканировать маркировку",
+    "markingAdjustLoadError": "Не удалось загрузить уже отсканированные маркировки",
+    "markingAdjustHint": "Сканируйте маркировку каждой единицы. Уже известных кодов: {{known}} — повторный скан такой упаковки будет пропущен, задвоения не будет.",
+    "markingAdjustAdded": "Новых: {{count}}",
+    "markingAdjustSkipped": "Пропущено (уже было учтено ранее): {{count}}",
+    "markingAdjustSave": "Добавить в остаток ({{count}})"
   },
   "equipment": {
     "title": "Оборудование",

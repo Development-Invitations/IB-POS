@@ -627,6 +627,23 @@ export function adjustStock(token: string, payload: AdjustStockPayload) {
   );
 }
 
+export interface ApiStockMovement {
+  id: string;
+  type: "RECEIPT_IN" | "ADJUSTMENT" | "SALE" | "RETURN";
+  quantityDelta: string;
+  comment: string | null;
+  markingCodes: string[];
+  createdAt: string;
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента: узнать, какие коды маркировки уже записаны
+// за товаром (см. WarehouseScreen.tsx — "Корректировка" в режиме приёма по маркировке должна
+// пропускать уже известные коды и добавлять только новые, а не просто менять число остатка).
+export function getStockMovements(token: string, storeId: string, productId: string) {
+  const params = new URLSearchParams({ storeId, productId });
+  return request<ApiStockMovement[]>(`/stock/movements?${params.toString()}`, {}, token);
+}
+
 export function getTopProducts(token: string, filter: PeriodFilter) {
   return request<TopProduct[]>(`/reports/top-products${periodQuery(filter)}`, {}, token);
 }

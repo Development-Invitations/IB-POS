@@ -478,7 +478,13 @@
     "markingReceiveAdded": "Qabulga qo'shildi: «{{name}}» — {{count}} dona",
     "markingVerifiedBadge": "markirovka bo'yicha",
     "markingVerifiedHint": "Miqdor har bir birlik markirovkasini skanerlash orqali tasdiqlangan",
-    "markingAddMore": "Yana skanerlash"
+    "markingAddMore": "Yana skanerlash",
+    "adjustByMarking": "Markirovkani skanerlash",
+    "markingAdjustLoadError": "Allaqachon skanerlangan markirovkalarni yuklab bo'lmadi",
+    "markingAdjustHint": "Har bir birlik markirovkasini skanerlang. Allaqachon ma'lum kodlar: {{known}} — bunday qadoqni qayta skanerlash o'tkazib yuboriladi, takrorlanish bo'lmaydi.",
+    "markingAdjustAdded": "Yangi: {{count}}",
+    "markingAdjustSkipped": "O'tkazib yuborildi (avval hisobga olingan): {{count}}",
+    "markingAdjustSave": "Qoldiqqa qo'shish ({{count}})"
   },
   "equipment": {
     "title": "Uskunalar",

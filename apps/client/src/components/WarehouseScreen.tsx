@@ -5,6 +5,7 @@ import {
   adjustStock,
   createProduct,
   getProducts,
+  getStockMovements,
   getStockReport,
   getStores,
   getWarehouseConfig,
@@ -71,6 +72,18 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
+
+  // "Корректировка" в режиме приёма по маркировке (не из исходного ТЗ, по прямому запросу
+  // клиента) — вместо ручного ввода нового числа открывает сканирование: уже известные коды
+  // (собраны по истории движений остатка, см. getStockMovements) пропускаются молча, новые —
+  // добавляются и увеличивают остаток. См. openMarkingAdjust/handleMarkingAdjustScan ниже.
+  const [markingAdjustTarget, setMarkingAdjustTarget] = useState<ApiStockEntry | null>(null);
+  const [markingAdjustExisting, setMarkingAdjustExisting] = useState<string[]>([]);
+  const [markingAdjustNew, setMarkingAdjustNew] = useState<string[]>([]);
+  const [markingAdjustLoading, setMarkingAdjustLoading] = useState(false);
+  const [markingAdjustSubmitting, setMarkingAdjustSubmitting] = useState(false);
+  const [markingAdjustError, setMarkingAdjustError] = useState<string | null>(null);
+  const [markingAdjustSkipped, setMarkingAdjustSkipped] = useState(0);
 
   // Штрихкод не найден среди своих товаров — пробуем госкаталог (tasnif.soliq.uz, см.
   // ProductsService.lookupBarcode на сервере), не из исходного ТЗ, по прямому запросу клиента:
@@ -155,6 +168,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // молчит вне экрана "Продажа" — см. activeScreen !== "sale" там) — конфликта нет.
   useBarcodeScanner((code) => {
     if (!canManage) return;
+    // Корректировка остатка по маркировке (см. openMarkingAdjust) — очередной скан это код
+    // маркировки, известные коды пропускаются молча, новые добавляются.
+    if (markingAdjustTarget) {
+      handleMarkingAdjustScan(code);
+      return;
+    }
     // Идёт приём по маркировке — очередной скан это код маркировки конкретной единицы, а не
     // штрихкод товара (см. beginMarkingReceive). Пока не введено количество (targetQty === null,
     // открыт попап "сколько пришло?") — случайный скан игнорируем, а не путаем с товаром.
@@ -376,10 +395,82 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   }
 
   function openAdjust(entry: ApiStockEntry) {
+    if (markingModeActive) {
+      openMarkingAdjust(entry);
+      return;
+    }
     setAdjustTarget(entry);
     setAdjustValue(entry.quantity);
     setAdjustReason("");
     setAdjustError(null);
+  }
+
+  // "Корректировка" в режиме приёма по маркировке — вместо ручного ввода нового числа остатка
+  // (что и есть та самая "просто редактирование остатка без маркировки", от которой отказался
+  // клиент) открывает сканирование: подтягивает уже известные по этому товару коды маркировки
+  // из истории движений остатка (все RECEIPT_IN когда-либо, не только последний приход), чтобы
+  // повторный скан уже учтённой упаковки молча игнорировался, а не задваивал остаток.
+  async function openMarkingAdjust(entry: ApiStockEntry) {
+    setMarkingAdjustTarget(entry);
+    setMarkingAdjustNew([]);
+    setMarkingAdjustSkipped(0);
+    setMarkingAdjustError(null);
+    setMarkingAdjustLoading(true);
+    try {
+      const movements = await getStockMovements(session.accessToken, entry.storeId, entry.productId);
+      const existing = new Set<string>();
+      for (const m of movements) {
+        if (m.type === "RECEIPT_IN") {
+          for (const code of m.markingCodes) existing.add(code);
+        }
+      }
+      setMarkingAdjustExisting([...existing]);
+    } catch (err) {
+      setMarkingAdjustError(err instanceof ApiError ? err.message : t("warehouse.markingAdjustLoadError"));
+      setMarkingAdjustExisting([]);
+    } finally {
+      setMarkingAdjustLoading(false);
+    }
+  }
+
+  function handleMarkingAdjustScan(code: string) {
+    if (markingAdjustExisting.includes(code) || markingAdjustNew.includes(code)) {
+      setMarkingAdjustSkipped((n) => n + 1);
+      return;
+    }
+    setMarkingAdjustNew((prev) => [...prev, code]);
+  }
+
+  function closeMarkingAdjust() {
+    setMarkingAdjustTarget(null);
+    setMarkingAdjustExisting([]);
+    setMarkingAdjustNew([]);
+  }
+
+  async function confirmMarkingAdjust() {
+    if (!markingAdjustTarget || markingAdjustNew.length === 0) {
+      closeMarkingAdjust();
+      return;
+    }
+    setMarkingAdjustSubmitting(true);
+    setMarkingAdjustError(null);
+    try {
+      await receiveStock(session.accessToken, {
+        storeId: markingAdjustTarget.storeId,
+        productId: markingAdjustTarget.productId,
+        quantity: markingAdjustNew.length,
+        comment: t("warehouse.receiveComment"),
+        markingCodes: markingAdjustNew,
+      });
+      const fresh = await getStockReport(session.accessToken, markingAdjustTarget.storeId);
+      setEntries(fresh);
+      onStockChanged?.();
+      closeMarkingAdjust();
+    } catch (err) {
+      setMarkingAdjustError(err instanceof ApiError ? err.message : t("warehouse.receiveError"));
+    } finally {
+      setMarkingAdjustSubmitting(false);
+    }
   }
 
   async function confirmAdjust() {
@@ -621,7 +712,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                           onClick={() => openAdjust(entry)}
                           className="text-xs font-medium text-accent hover:underline"
                         >
-                          {t("warehouse.adjust")}
+                          {markingModeActive ? t("warehouse.adjustByMarking") : t("warehouse.adjust")}
                         </button>
                       </td>
                     )}
@@ -690,6 +781,78 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                 className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
               >
                 {adjustSubmitting ? t("common.loading") : t("products.save")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {markingAdjustTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-800">{markingAdjustTarget.product.name}</h2>
+              <button
+                onClick={closeMarkingAdjust}
+                className="text-slate-400 hover:text-slate-700"
+                aria-label={t("common.close")}
+              >
+                <CloseIcon />
+              </button>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              {markingAdjustLoading ? (
+                <p className="text-sm text-slate-400">{t("common.loading")}</p>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-400">
+                    {t("warehouse.markingAdjustHint", { known: markingAdjustExisting.length })}
+                  </p>
+                  <div className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                    {t("warehouse.markingAdjustAdded", { count: markingAdjustNew.length })}
+                  </div>
+                  {markingAdjustSkipped > 0 && (
+                    <p className="text-xs text-amber-600">
+                      {t("warehouse.markingAdjustSkipped", { count: markingAdjustSkipped })}
+                    </p>
+                  )}
+                  {markingAdjustNew.length > 0 && (
+                    <div className="max-h-32 space-y-1 overflow-y-auto rounded-lg bg-slate-50 px-2 py-2">
+                      {markingAdjustNew.map((code, i) => (
+                        <div key={code} className="flex items-center justify-between gap-2 text-xs text-slate-500">
+                          <span className="truncate">
+                            {i + 1}. {code}
+                          </span>
+                          <button
+                            onClick={() => setMarkingAdjustNew((prev) => prev.filter((_, idx) => idx !== i))}
+                            className="shrink-0 text-slate-300 hover:text-red-500"
+                            aria-label={t("common.remove")}
+                          >
+                            <CloseIcon width={12} height={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {markingAdjustError && <p className="text-xs text-red-600">{markingAdjustError}</p>}
+            </div>
+            <div className="flex gap-2 border-t border-slate-100 px-5 py-4">
+              <button
+                onClick={closeMarkingAdjust}
+                className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-semibold text-slate-500 hover:bg-slate-50"
+              >
+                {t("returns.cancel")}
+              </button>
+              <button
+                onClick={confirmMarkingAdjust}
+                disabled={markingAdjustSubmitting || markingAdjustLoading || markingAdjustNew.length === 0}
+                className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
+              >
+                {markingAdjustSubmitting
+                  ? t("common.loading")
+                  : t("warehouse.markingAdjustSave", { count: markingAdjustNew.length })}
               </button>
             </div>
           </div>
