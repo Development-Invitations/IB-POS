@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES, LOCALE_LABELS, type Locale } from "@ib-pos/i18n";
 import {
   ApiError,
+  adjustStock,
   clearHistory,
   clearMarkingCache,
   createProduct,
@@ -11,6 +12,7 @@ import {
   getProducts,
   getProductsCsv,
   getSettings,
+  getStores,
   runBackup,
   updateProduct,
   updateSettings,
@@ -22,7 +24,7 @@ import { loadApiBase, loadConnectionMode } from "../lib/server-config";
 import { AmountInput } from "./AmountInput";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ServerConnectionScreen } from "./ServerConnectionScreen";
-import type { ApiBackup, ApiProduct, ApiSettings, BusinessType, ReceivingMode } from "../types/api";
+import type { ApiBackup, ApiProduct, ApiSettings, ApiStore, BusinessType, ReceivingMode } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface SettingsScreenProps {
@@ -82,6 +84,14 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
   const [consumableAddQuery, setConsumableAddQuery] = useState("");
   const [newConsumableName, setNewConsumableName] = useState("");
   const [newConsumablePrice, setNewConsumablePrice] = useState(0);
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше расходник, созданный здесь, попадал
+  // в каталог без остатка вообще — на "Складе" его не было видно (ни на вкладке "Расходники",
+  // ни где-либо), пока кто-то отдельно не находил его там через поиск и не оприходовал вручную.
+  // Теперь остаток заводится сразу тут же — тем же способом, что и "Корректировка" на "Складе"
+  // (adjustStock, не receiveStock: тот требует quantity > 0, а тут по умолчанию 0 — просто чтобы
+  // товар сразу появился на "Складе" с нулевым остатком, а не отсутствовал там до первого прихода).
+  const [newConsumableQty, setNewConsumableQty] = useState(0);
+  const [stores, setStores] = useState<ApiStore[]>([]);
   const [consumableBusy, setConsumableBusy] = useState(false);
   const [consumableError, setConsumableError] = useState<string | null>(null);
 
@@ -100,15 +110,17 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
     let cancelled = false;
     async function load() {
       try {
-        const [settingsResult, backupList, productList] = await Promise.all([
+        const [settingsResult, backupList, productList, storeList] = await Promise.all([
           getSettings(session.accessToken),
           getBackups(session.accessToken),
           getProducts(session.accessToken),
+          getStores(session.accessToken),
         ]);
         if (cancelled) return;
         setSettings(settingsResult);
         setBackups(backupList);
         setProducts(productList);
+        setStores(storeList);
         setName(settingsResult.name);
         setCurrency(settingsResult.currency);
         setDefaultLanguage(settingsResult.defaultLanguage);
@@ -278,8 +290,19 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
         isConsumable: true,
       });
       setProducts((prev) => [...prev, created]);
+      if (stores[0]) {
+        // adjustStock, а не receiveStock — тот требует quantity > 0, а тут по умолчанию 0,
+        // чтобы товар сразу появился на "Складе" во вкладке "Расходники", а не отсутствовал
+        // там до первого прихода (см. комментарий у newConsumableQty выше).
+        await adjustStock(session.accessToken, {
+          storeId: stores[0].id,
+          productId: created.id,
+          newQuantity: newConsumableQty,
+        });
+      }
       setNewConsumableName("");
       setNewConsumablePrice(0);
+      setNewConsumableQty(0);
     } catch (err) {
       setConsumableError(err instanceof ApiError ? err.message : t("settings.consumablesError"));
     } finally {
@@ -779,6 +802,16 @@ export function SettingsScreen({ session }: SettingsScreenProps) {
               <AmountInput
                 value={newConsumablePrice}
                 onChange={setNewConsumablePrice}
+                className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+              />
+            </label>
+            <label className="block w-24 text-xs font-medium text-slate-500">
+              {t("warehouse.quantity")}
+              <input
+                type="number"
+                min={0}
+                value={newConsumableQty}
+                onChange={(e) => setNewConsumableQty(e.target.value ? Number(e.target.value) : 0)}
                 className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
               />
             </label>
