@@ -11,6 +11,11 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { parseCsv, toCsv } from '../common/csv';
 
+function deriveSkuFromBarcode(barcode?: string | null): string | undefined {
+  const digits = barcode?.trim();
+  return digits ? digits.slice(-8) : undefined;
+}
+
 const CSV_HEADER = [
   'name',
   'sku',
@@ -164,6 +169,11 @@ export class ProductsService {
     return this.prisma.product.create({
       data: {
         ...rest,
+        // Не из исходного ТЗ — по прямому запросу клиента: артикул почти никогда не заполняют
+        // явно (ни вручную, ни при импорте накладной через ИИ) — при наличии штрихкода, но без
+        // артикула подставляем короткий читаемый артикул из последних цифр штрихкода, вместо
+        // пустого поля.
+        sku: rest.sku ?? deriveSkuFromBarcode(rest.barcode),
         organizationId,
         // Prisma ждёт полноценный Date, а не "YYYY-MM-DD" — @IsDateString на DTO пропускает
         // и то, и другое, но с голой строкой Prisma падает "premature end of input".
@@ -187,12 +197,17 @@ export class ProductsService {
   }
 
   async update(organizationId: string, id: string, dto: UpdateProductDto) {
-    await this.findOne(organizationId, id);
+    const existing = await this.findOne(organizationId, id);
     const { expiryDate, ...rest } = dto;
     return this.prisma.product.update({
       where: { id },
       data: {
         ...rest,
+        // Тот же приём, что и в create() — только когда явного артикула не прислали ни сейчас,
+        // ни раньше (у товара его до сих пор нет), а штрихкод появляется впервые.
+        sku:
+          rest.sku ??
+          (!existing.sku ? deriveSkuFromBarcode(rest.barcode) : undefined),
         expiryDate: expiryDate ? new Date(expiryDate) : undefined,
       },
     });
@@ -357,7 +372,7 @@ export class ProductsService {
           data: {
             organizationId,
             name,
-            sku,
+            sku: sku ?? deriveSkuFromBarcode(barcode),
             barcode,
             price,
             cost,

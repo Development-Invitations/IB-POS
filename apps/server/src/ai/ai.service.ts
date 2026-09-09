@@ -43,8 +43,11 @@ const SYSTEM_PROMPT = `Ты — ассистент приёмки товара �
    если название совсем нечитаемо, укажи "?" и добавь "name" в missingFields.
 3. Не выдумывай значения, которых нет в документе. Пустое/нечитаемое поле — это missingFields,
    а не догадка.
-4. Каждая отдельная строка таблицы накладной — это отдельный элемент в products.
-5. Ответ — ТОЛЬКО JSON по заданной схеме, без пояснений.`;
+4. barcode и markingCodes — это ТЕКСТ, а не число, даже если состоят только из цифр. Копируй их
+   символ в символ, включая ведущие нули (например, "00460003..." — это ровно то, что нужно
+   вернуть, а не "460003..." без нулей в начале). Не округляй, не сокращай, не приводи к числу.
+5. Каждая отдельная строка таблицы накладной — это отдельный элемент в products.
+6. Ответ — ТОЛЬКО JSON по заданной схеме, без пояснений.`;
 
 const USER_INSTRUCTION =
   'Извлеки все товарные позиции из этой накладной и верни их в поле products.';
@@ -85,6 +88,29 @@ const RESPONSE_JSON_SCHEMA = {
   required: ['products'],
   additionalProperties: false,
 };
+
+// Не из исходного ТЗ — по прямому запросу клиента: LLM при чтении длинных цифровых кодов иногда
+// "теряет" ОДИН ведущий ноль (воспринимает строку как число несмотря на схему type: string и
+// явное правило в SYSTEM_PROMPT) — например, "046600..." приходит как "46600...". Восстанавливаем
+// только когда не хватает РОВНО одной цифры до ближайшей стандартной длины штрихкода
+// (EAN-8/UPC-A/EAN-13/ITF-14) — если не хватает двух и больше, это уже не различить от короткого
+// нестандартного кода (внутренний/складской), и досочинять цифры наугад рискованнее, чем оставить
+// как есть. Коды длиннее 14 цифр (кастомные/маркировочные) сюда не попадают вовсе.
+const STANDARD_BARCODE_LENGTHS = [8, 12, 13, 14];
+
+function normalizeBarcode(item: InvoiceItemProposal): InvoiceItemProposal {
+  const raw = item.barcode?.trim();
+  if (
+    !raw ||
+    !/^\d+$/.test(raw) ||
+    STANDARD_BARCODE_LENGTHS.includes(raw.length)
+  ) {
+    return item;
+  }
+  const target = STANDARD_BARCODE_LENGTHS.find((len) => len === raw.length + 1);
+  if (!target) return item;
+  return { ...item, barcode: raw.padStart(target, '0') };
+}
 
 @Injectable()
 export class AiService {
@@ -154,7 +180,7 @@ export class AiService {
           'Модель вернула не то, что ожидалось — попробуйте ещё раз',
         );
       }
-      return { items: parsed.products ?? [] };
+      return { items: (parsed.products ?? []).map(normalizeBarcode) };
     } catch (err) {
       if (err instanceof BadRequestException) throw err;
       this.logger.error(
