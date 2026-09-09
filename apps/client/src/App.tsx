@@ -681,7 +681,13 @@ function App() {
           <>
             <div className="flex flex-1 flex-col overflow-hidden">
               <main className="flex-1 space-y-4 overflow-y-auto p-4">
-                <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
+                {/* Не из исходного ТЗ — по прямому запросу клиента: когда у организации нет
+                    других категорий, вкладки "Категории" сводятся к одинокой кнопке "Все",
+                    которая ничего не переключает (только она и есть) — просто мусор на экране
+                    поверх списка чеков. Показываем панель только когда есть куда переключаться. */}
+                {(!showReceiptsInline || categories.length > 0) && (
+                  <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
+                )}
                 {showReceiptsInline && activeCategory === "all" ? (
                   <ReturnsScreen
                     session={session}
