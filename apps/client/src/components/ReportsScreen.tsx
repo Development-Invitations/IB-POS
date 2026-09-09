@@ -49,7 +49,7 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-type Tab = "dashboard" | "products" | "staff" | "finance" | "stock";
+type Tab = "dashboard" | "products" | "staff" | "finance" | "stock" | "consumables";
 
 function ChangeBadge({ value }: { value: number | null }) {
   const { t } = useTranslation();
@@ -112,6 +112,21 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
         } else if (tab === "stock" && canStock) {
           const entries = await getStockReport(session.accessToken, storeId || undefined);
           if (!cancelled) setStock(entries);
+        } else if (tab === "consumables") {
+          // Расходники — один экран, но данные с двух разных отчётов: выручка/себестоимость/
+          // прибыль из dashboard (доступно Бухгалтеру), остаток по количеству из stock (доступно
+          // Зав.складом) — ролей с обоими правами сразу может и не быть, поэтому грузим то, что
+          // доступно текущей роли, а не требуем оба сразу.
+          const [report, entries] = await Promise.all([
+            canDashboard
+              ? getDashboard(session.accessToken, { from, to, storeId: storeId || undefined })
+              : Promise.resolve(null),
+            canStock ? getStockReport(session.accessToken, storeId || undefined) : Promise.resolve([]),
+          ]);
+          if (!cancelled) {
+            if (report) setDashboard(report);
+            setStock(entries);
+          }
         }
       } catch (err) {
         if (!cancelled) setLoadError(err instanceof ApiError ? err.message : t("reports.loadError"));
@@ -127,6 +142,8 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
   }, [tab, from, to, storeId, session.accessToken]);
 
   const maxTopRevenue = useMemo(() => Math.max(1, ...topProducts.map((p) => p.revenue)), [topProducts]);
+  const regularStock = useMemo(() => stock.filter((s) => !s.product.isConsumable), [stock]);
+  const consumableStock = useMemo(() => stock.filter((s) => s.product.isConsumable), [stock]);
 
   // Один день выбран (С == По) -> по часам этого дня; несколько дней -> по датам, иначе "по
   // часам" за месяц складывал бы одинаковые часы разных дат в одну точку без указания, к какому
@@ -248,6 +265,16 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
             }`}
           >
             {t("reports.tabStock")}
+          </button>
+        )}
+        {(canDashboard || canStock) && (
+          <button
+            onClick={() => setTab("consumables")}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+              tab === "consumables" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            {t("reports.tabConsumables")}
           </button>
         )}
       </div>
@@ -376,32 +403,6 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
             </div>
           </div>
 
-          {dashboard.consumables.quantity > 0 && (
-            <div className="rounded-xl bg-white p-4 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-700">{t("reports.consumables")}</h3>
-              <p className="mb-3 text-xs text-slate-400">{t("reports.consumablesHint")}</p>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <div className="text-xs text-slate-400">{t("reports.revenue")}</div>
-                  <div className="mt-1 text-base font-bold text-slate-800">
-                    {formatSum(dashboard.consumables.revenue)} {t("common.currency")}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">{t("products.cost")}</div>
-                  <div className="mt-1 text-base font-bold text-slate-800">
-                    {formatSum(dashboard.consumables.cost)} {t("common.currency")}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">{t("reports.profit")}</div>
-                  <div className="mt-1 text-base font-bold text-slate-800">
-                    {formatSum(dashboard.consumables.profit)} {t("common.currency")}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -565,7 +566,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
               </tr>
             </thead>
             <tbody>
-              {stock.map((s) => (
+              {regularStock.map((s) => (
                 <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-slate-800">{s.product.name}</td>
                   <td className="px-4 py-3 text-slate-500">{s.store.name}</td>
@@ -574,7 +575,7 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
                   </td>
                 </tr>
               ))}
-              {stock.length === 0 && (
+              {regularStock.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-400">
                     {t("reports.stockEmpty")}
@@ -583,6 +584,69 @@ export function ReportsScreen({ session }: ReportsScreenProps) {
               )}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!loading && !loadError && tab === "consumables" && (
+        <div className="space-y-4">
+          {canDashboard && dashboard && (
+            <div className="rounded-xl bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-slate-700">{t("reports.consumables")}</h3>
+              <p className="mb-3 text-xs text-slate-400">{t("reports.consumablesHint")}</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <div className="text-xs text-slate-400">{t("reports.revenue")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.revenue)} {t("common.currency")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">{t("products.cost")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.cost)} {t("common.currency")}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">{t("reports.profit")}</div>
+                  <div className="mt-1 text-base font-bold text-slate-800">
+                    {formatSum(dashboard.consumables.profit)} {t("common.currency")}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {canStock && (
+            <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs text-slate-400">
+                    <th className="px-4 py-3 font-medium">{t("products.name")}</th>
+                    <th className="px-4 py-3 font-medium">{t("workstation.store")}</th>
+                    <th className="px-4 py-3 font-medium text-right">{t("reports.quantity")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {consumableStock.map((s) => (
+                    <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-800">{s.product.name}</td>
+                      <td className="px-4 py-3 text-slate-500">{s.store.name}</td>
+                      <td className="px-4 py-3 text-right text-slate-800">
+                        {s.quantity} {s.product.unit}
+                      </td>
+                    </tr>
+                  ))}
+                  {consumableStock.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-400">
+                        {t("reports.stockEmpty")}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

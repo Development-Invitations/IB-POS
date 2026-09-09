@@ -82,6 +82,12 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   // объясняет, что тут вообще можно делать, не занимая место по умолчанию.
   const [helpOpen, setHelpOpen] = useState(false);
 
+  // Не из исходного ТЗ — по прямому запросу клиента: расходники (посуда/пакеты и т.п.) —
+  // тоже покупной товар с остатком, но смешивать их в одной таблице с обычным ассортиментом
+  // сбивало с толку ("зачем тут пакет между телевизором и курткой?"). Остаток у них велся и
+  // раньше (см. tracksStock в App.tsx), просто не был виден отдельно.
+  const [stockTab, setStockTab] = useState<"regular" | "consumables">("regular");
+
   const [stores, setStores] = useState<ApiStore[]>([]);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -622,6 +628,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   }
 
   const filteredEntries = entries.filter((e) => {
+    if (Boolean(e.product.isConsumable) !== (stockTab === "consumables")) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
     return e.product.name.toLowerCase().includes(q) || (e.product.barcode ?? "").toLowerCase().includes(q);
@@ -858,8 +865,28 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-600">{t("warehouse.stockTitle")}</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold text-slate-600">{t("warehouse.stockTitle")}</h2>
+            <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+              <button
+                onClick={() => setStockTab("regular")}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  stockTab === "regular" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("warehouse.stockTabRegular")}
+              </button>
+              <button
+                onClick={() => setStockTab("consumables")}
+                className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
+                  stockTab === "consumables" ? "bg-accent text-white" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                {t("warehouse.stockTabConsumables")}
+              </button>
+            </div>
+          </div>
           <div className="relative max-w-xs">
             <SearchIcon className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input

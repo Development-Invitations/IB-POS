@@ -48,6 +48,10 @@ export function ProductFormModal({
   const [unit, setUnit] = useState(product?.unit ?? "pcs");
   const [expiryDate, setExpiryDate] = useState(product?.expiryDate?.slice(0, 10) ?? "");
   const [isConsumable, setIsConsumable] = useState(product?.isConsumable ?? false);
+  // Не из исходного ТЗ — по прямому запросу клиента: правило "штрихкод обязателен" (Магазин/
+  // Аптека) на расходники (посуда, пакеты и т.п.) не распространяется — у них штрихкода может
+  // не быть в принципе, это не помеха продаже через быструю панель расходников.
+  const barcodeRequired = requireBarcode && !isConsumable;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(
     product?.imageUrl ? `${API_BASE}${product.imageUrl}` : null,
@@ -78,7 +82,7 @@ export function ProductFormModal({
   }
 
   async function handleSubmit() {
-    if (requireBarcode && !barcode.trim()) {
+    if (barcodeRequired && !barcode.trim()) {
       setError(t("products.barcodeRequired"));
       return;
     }
@@ -304,7 +308,7 @@ export function ProductFormModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || !name.trim() || price <= 0 || (requireBarcode && !barcode.trim())}
+            disabled={submitting || !name.trim() || price <= 0 || (barcodeRequired && !barcode.trim())}
             className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
           >
             {submitting ? t("common.loading") : t("products.save")}
