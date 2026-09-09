@@ -371,9 +371,7 @@
   },
   "sale": {
     "returnAction": "Qaytarish (F9)",
-    "holdTicket": "Chekni saqlab qoʻyish",
-    "searchHintTitle": "Tovarni toping",
-    "searchHintBody": "Nomini kiriting yoki shtrix-kodni skanerlang (yuqoridagi qidiruv, F2), yoki kategoriyani tanlang. Toʻliq katalog — pastdagi «Tovarlar» tugmasi."
+    "holdTicket": "Chekni saqlab qoʻyish"
   },
   "roles": {
     "cashier": "Kassir",
@@ -502,6 +500,9 @@
     "testing": "Tekshirilmoqda...",
     "agentOffline": "Uskunani avtomatik aniqlash mavjud emas",
     "barcodeScannerHint": "Klaviatura kiritish rejimida ishlaydi — ulanish holati aniqlanmaydi",
+    "workstation": "Kassa",
+    "workstationShared": "Umumiy",
+    "workstationHint": "«Umumiy» — istalgan kassada ko'rinadi. Kassaga biriktirilgan — faqat o'sha yerda ko'rinadi.",
     "devices": {
       "fiscal_registrar": "Fiskal registrator",
       "cash_drawer": "Pul qutisi",

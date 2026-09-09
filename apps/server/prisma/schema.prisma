@@ -139,6 +139,7 @@ model Workstation {
   shifts   Shift[]
   receipts Receipt[]
   devices  Device[]
+  equipment Equipment[]
 
   @@index([organizationId])
   @@index([storeId])
@@ -392,6 +393,12 @@ enum EquipmentKind {
 model Equipment {
   id             String        @id @default(uuid())
   organizationId String        @map("organization_id")
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше "Моё оборудование" показывало ВСЁ
+  // оборудование организации всем кассирам разом — кассир на Кассе 2 видел оборудование Кассы 1
+  // и наоборот. null — общее оборудование, видно на любой кассе (например общий факсимильный
+  // принтер на несколько касс); заполнено — оборудование закреплено за конкретной кассой и
+  // видно только там (см. EquipmentService.findAll — фильтр workstationId = X OR IS NULL).
+  workstationId  String?       @map("workstation_id")
   kind           EquipmentKind
   label          String
   description    String?
@@ -409,8 +416,10 @@ model Equipment {
   updatedAt      DateTime      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workstation  Workstation? @relation(fields: [workstationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
+  @@index([workstationId])
   @@map("equipment")
 }
 

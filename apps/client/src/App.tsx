@@ -27,7 +27,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { RegisterScreen } from "./components/RegisterScreen";
 import { ShiftSetupScreen } from "./components/ShiftSetupScreen";
 import { CloseShiftModal } from "./components/CloseShiftModal";
-import { ReturnIcon, ClockIcon, BoxIcon, MonitorIcon, SearchIcon } from "./components/icons";
+import { ReturnIcon, ClockIcon, BoxIcon, MonitorIcon } from "./components/icons";
 import { Modal } from "./components/Modal";
 import {
   ApiError,
@@ -100,6 +100,11 @@ function App() {
   // остатки/срок годности на плитках товара показываются только для Магазина/Аптеки, см.
   // ProductGrid.tsx. Ресторан — прежнее поведение, без изменений.
   const [businessType, setBusinessType] = useState<BusinessType>("RESTAURANT");
+  // Не из исходного ТЗ — по прямому запросу клиента, только Магазин/Аптека: вкладка "Все" на
+  // "Продаже" вместо пустого "Найдите товар" показывает список последних чеков со встроенным
+  // поиском/возвратом (см. ниже, ReturnsScreen embedded) — Ресторан не затронут, там "Все"
+  // по-прежнему сразу показывает все блюда.
+  const showReceiptsInline = businessType === "STORE" || businessType === "PHARMACY";
   // Лимит ручной скидки кассира (Раздел 3 ТЗ: "применяет в рамках лимита") — null значит
   // использовать прежний потолок по умолчанию в ReceiptPanel.tsx, не "без ограничений".
   const [maxCashierDiscountPercent, setMaxCashierDiscountPercent] = useState<number | null>(null);
@@ -677,25 +682,30 @@ function App() {
             <div className="flex flex-1 flex-col overflow-hidden">
               <main className="flex-1 space-y-4 overflow-y-auto p-4">
                 <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
-                {businessType === "STORE" && activeCategory === "all" ? (
-                  <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white px-6 py-20 text-center">
-                    <SearchIcon width={28} height={28} className="text-slate-300" />
-                    <p className="text-sm font-semibold text-slate-600">{t("sale.searchHintTitle")}</p>
-                    <p className="max-w-sm text-xs text-slate-400">{t("sale.searchHintBody")}</p>
-                  </div>
+                {showReceiptsInline && activeCategory === "all" ? (
+                  <ReturnsScreen
+                    session={session}
+                    embedded
+                    onStockChanged={() => setStockVersion((v) => v + 1)}
+                  />
                 ) : (
                   <ProductGrid products={visibleProducts} onAdd={addToCart} businessType={businessType} />
                 )}
               </main>
 
               <div className="no-print flex flex-wrap gap-2.5 border-t border-slate-200 bg-white px-4 py-3">
-                <button
-                  onClick={() => setReturnModalOpen(true)}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
-                >
-                  <ReturnIcon width={20} height={20} />
-                  {t("sale.returnAction")}
-                </button>
+                {/* Не из исходного ТЗ — по прямому запросу клиента: для Магазина/Аптеки поиск и
+                    возврат любого чека теперь во вкладке "Все" (см. showReceiptsInline выше) —
+                    эта кнопка там больше не нужна. Ресторан не затронут. */}
+                {!showReceiptsInline && (
+                  <button
+                    onClick={() => setReturnModalOpen(true)}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                  >
+                    <ReturnIcon width={20} height={20} />
+                    {t("sale.returnAction")}
+                  </button>
+                )}
                 <button
                   onClick={addTicket}
                   disabled={tickets.length >= MAX_TICKETS}
@@ -714,13 +724,15 @@ function App() {
                       <BoxIcon width={20} height={20} />
                       {t("nav.products")}
                     </button>
-                    <button
-                      onClick={() => setCashierModal("returns")}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
-                    >
-                      <ReturnIcon width={20} height={20} />
-                      {t("nav.returns")}
-                    </button>
+                    {!showReceiptsInline && (
+                      <button
+                        onClick={() => setCashierModal("returns")}
+                        className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
+                      >
+                        <ReturnIcon width={20} height={20} />
+                        {t("nav.returns")}
+                      </button>
+                    )}
                     <button
                       onClick={() => setCashierModal("shifts")}
                       className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-3.5 text-sm font-bold text-slate-600 hover:border-accent/40 hover:text-accent"
@@ -894,7 +906,7 @@ function App() {
       )}
       {cashierModal === "equipment" && (
         <Modal title={t("nav.equipment")} onClose={() => setCashierModal(null)}>
-          <EquipmentScreen session={session} />
+          <EquipmentScreen session={session} workstationId={workstation?.id ?? null} />
         </Modal>
       )}
     </div>

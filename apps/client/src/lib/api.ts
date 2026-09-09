@@ -466,11 +466,16 @@ export function deactivateDiscount(token: string, id: string) {
   return request<void>(`/discounts/${id}`, { method: "DELETE" }, token);
 }
 
-export function getEquipment(token: string) {
-  return request<ApiEquipment[]>("/equipment", {}, token);
+// Не из исходного ТЗ — по прямому запросу клиента: без workstationId — весь реестр организации
+// (Админ/Управляющий на общем экране "Оборудование"). С workstationId — только оборудование
+// этой кассы + общее — раньше кассир на любой кассе видел оборудование вообще всех касс сразу.
+export function getEquipment(token: string, workstationId?: string) {
+  const query = workstationId ? `?workstationId=${encodeURIComponent(workstationId)}` : "";
+  return request<ApiEquipment[]>(`/equipment${query}`, {}, token);
 }
 
 export interface EquipmentPayload {
+  workstationId?: string | null;
   kind: EquipmentKind;
   label: string;
   description?: string;

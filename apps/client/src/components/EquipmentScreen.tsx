@@ -6,6 +6,7 @@ import {
   ApiError,
   deactivateEquipment,
   getEquipment,
+  getWorkstations,
   testEquipmentConnection,
   updateEquipment,
 } from "../lib/api";
@@ -19,7 +20,7 @@ import {
   PaymentTerminalArt,
 } from "./equipment-art";
 import barcodeScannerPhoto from "../assets/equipment/barcode-scanner.png";
-import type { ApiEquipment } from "../types/api";
+import type { ApiEquipment, ApiWorkstation } from "../types/api";
 import type { AuthSession } from "../types/auth";
 import type { DeviceKind } from "@ib-pos/shared";
 
@@ -32,6 +33,12 @@ const DEVICE_ART: Record<DeviceKind, (p: { className?: string }) => ReactElement
 
 interface EquipmentScreenProps {
   session: AuthSession;
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше "Моё оборудование" показывало ВСЁ
+  // оборудование организации на любой кассе — кассир на Кассе 2 видел оборудование Кассы 1.
+  // Передаётся только когда экран открыт СО СВОЕЙ кассы (App.tsx cashierModal — там есть
+  // workstation в состоянии); в общем экране "Оборудование" из сайдбара (Админ/Управляющий,
+  // управляют оборудованием сразу всех касс) не передаётся — там виден весь реестр как раньше.
+  workstationId?: string | null;
 }
 
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER"];
@@ -69,13 +76,14 @@ function equipmentIcon(item: ApiEquipment, className: string) {
   }
 }
 
-export function EquipmentScreen({ session }: EquipmentScreenProps) {
+export function EquipmentScreen({ session, workstationId }: EquipmentScreenProps) {
   const { t } = useTranslation();
   const { connected, devices, testState, testDevice } = useDeviceAgent();
   const canView = CAN_VIEW_ROLES.includes(session.role);
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
 
   const [items, setItems] = useState<ApiEquipment[]>([]);
+  const [workstations, setWorkstations] = useState<ApiWorkstation[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -92,7 +100,7 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
     setLoading(true);
     setLoadError(null);
     try {
-      setItems(await getEquipment(session.accessToken));
+      setItems(await getEquipment(session.accessToken, workstationId ?? undefined));
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : t("equipment.loadError"));
     } finally {
@@ -104,7 +112,19 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
     if (!canView) return;
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.accessToken]);
+  }, [session.accessToken, workstationId]);
+
+  // Только для подписи "Касса: X" у общего списка (когда workstationId не передан — экран
+  // управляет оборудованием сразу нескольких касс, и нужно понимать, что за чем закреплено).
+  useEffect(() => {
+    if (!canView || workstationId) return;
+    getWorkstations(session.accessToken)
+      .then(setWorkstations)
+      .catch(() => undefined);
+  }, [session.accessToken, canView, workstationId]);
+
+  const workstationName = (id: string | null) =>
+    id ? (workstations.find((w) => w.id === id)?.name ?? null) : null;
 
   function openCreate() {
     setEditingItem(null);
@@ -289,7 +309,14 @@ export function EquipmentScreen({ session }: EquipmentScreenProps) {
                   </span>
 
                   <div className="flex-1">
-                    <div className="text-sm font-semibold text-slate-800">{item.label}</div>
+                    <div className="text-sm font-semibold text-slate-800">
+                      {item.label}
+                      {!workstationId && (
+                        <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                          {workstationName(item.workstationId) ?? t("equipment.workstationShared")}
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-slate-400">{t(`equipment.devices.${item.kind.toLowerCase()}`)}</div>
                     {item.description && <div className="mt-0.5 text-xs text-slate-400">{item.description}</div>}
                     {item.connectionInfo && (

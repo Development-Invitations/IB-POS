@@ -132,6 +132,7 @@ export type EquipmentKind =
 
 export interface ApiEquipment {
   id: string;
+  workstationId: string | null;
   kind: EquipmentKind;
   label: string;
   description: string | null;

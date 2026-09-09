@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -51,8 +52,11 @@ export class EquipmentController {
 
   @Roles(Role.ADMIN, Role.MANAGER, Role.CASHIER)
   @Get()
-  findAll(@CurrentUser() user: AuthenticatedUser) {
-    return this.equipment.findAll(user.organizationId);
+  findAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('workstationId') workstationId?: string,
+  ) {
+    return this.equipment.findAll(user.organizationId, workstationId);
   }
 
   @Roles(Role.ADMIN)

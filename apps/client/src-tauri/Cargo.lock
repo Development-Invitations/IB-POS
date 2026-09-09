@@ -476,7 +476,7 @@ dependencies = [
 
 [[package]]
 name = "client"
-version = "0.7.17"
+version = "0.7.18"
 dependencies = [
  "serde",
  "serde_json",

@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon } from "./icons";
-import { API_BASE, ApiError, createEquipment, updateEquipment, uploadEquipmentImage } from "../lib/api";
+import {
+  API_BASE,
+  ApiError,
+  createEquipment,
+  getWorkstations,
+  updateEquipment,
+  uploadEquipmentImage,
+} from "../lib/api";
 import { resizeImageToJpeg } from "../lib/resize-image";
-import type { ApiEquipment, EquipmentKind } from "../types/api";
+import type { ApiEquipment, ApiWorkstation, EquipmentKind } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface EquipmentFormModalProps {
@@ -63,6 +70,10 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
   const initialUsb = !initialIp && !initialBt ? parseUsb(equipment?.connectionInfo) : null;
   const initialCom = !initialIp && !initialBt && !initialUsb ? parseCom(equipment?.connectionInfo) : null;
 
+  // Не из исходного ТЗ — по прямому запросу клиента: закрепление оборудования за конкретной
+  // кассой — пустая строка означает "Общее" (workstationId: null на сервере), см. handleSubmit.
+  const [workstations, setWorkstations] = useState<ApiWorkstation[]>([]);
+  const [workstationId, setWorkstationId] = useState(equipment?.workstationId ?? "");
   const [kind, setKind] = useState<EquipmentKind>(equipment?.kind ?? "OTHER");
   const [label, setLabel] = useState(equipment?.label ?? "");
   const [description, setDescription] = useState(equipment?.description ?? "");
@@ -87,6 +98,12 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    getWorkstations(session.accessToken)
+      .then(setWorkstations)
+      .catch(() => undefined);
+  }, [session.accessToken]);
 
   function handlePickImage(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -123,6 +140,7 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
               : comPort.trim() || undefined;
 
       const payload = {
+        workstationId: workstationId || null,
         kind,
         label: label.trim(),
         description: description.trim() || undefined,
@@ -198,6 +216,25 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
               className="hidden"
             />
           </div>
+
+          <label className="block text-xs font-medium text-slate-500">
+            {t("equipment.workstation")}
+            <select
+              value={workstationId}
+              onChange={(e) => setWorkstationId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+            >
+              <option value="">{t("equipment.workstationShared")}</option>
+              {workstations.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+            <span className="mt-1 block text-[11px] font-normal text-slate-400">
+              {t("equipment.workstationHint")}
+            </span>
+          </label>
 
           <label className="block text-xs font-medium text-slate-500">
             {t("equipment.kind")}

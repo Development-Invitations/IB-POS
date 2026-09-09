@@ -19,6 +19,11 @@ interface ReturnsScreenProps {
   // остаток на "Продаже" оставался бы старым до похода на "Склад", как и в случае с оплатой
   // (см. App.tsx::confirmPayment).
   onStockChanged?: () => void;
+  // Не из исходного ТЗ — по прямому запросу клиента: для Магазина/Аптеки этот же экран теперь
+  // встроен прямо в контент "Продажи" (вкладка "Все") вместо пустого "Найдите товар" —
+  // embedded скрывает заголовок страницы (он уже есть у самой "Продажи") и сразу ставит фокус
+  // в поле поиска чека, чтобы можно было сразу сканировать чек или вбить его номер.
+  embedded?: boolean;
 }
 
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"];
@@ -41,7 +46,7 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ReturnsScreen({ session, onStockChanged }: ReturnsScreenProps) {
+export function ReturnsScreen({ session, onStockChanged, embedded }: ReturnsScreenProps) {
   const { t } = useTranslation();
   const canView = CAN_VIEW_ROLES.includes(session.role);
   const canInitiate = CAN_INITIATE_ROLES.includes(session.role);
@@ -104,9 +109,11 @@ export function ReturnsScreen({ session, onStockChanged }: ReturnsScreenProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">{t("nav.returns")}</h1>
-      </div>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold text-slate-800">{t("nav.returns")}</h1>
+        </div>
+      )}
 
       {!canInitiate && <p className="text-sm text-slate-400">{t("returns.viewOnlyHint")}</p>}
 
@@ -183,6 +190,7 @@ export function ReturnsScreen({ session, onStockChanged }: ReturnsScreenProps) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("returns.searchPlaceholder")}
+            autoFocus={embedded}
             className="mt-1 block w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
           />
         </label>

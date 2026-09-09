@@ -122,9 +122,16 @@ export class EquipmentService {
     return this.prisma.equipment.create({ data: { ...dto, organizationId } });
   }
 
-  findAll(organizationId: string) {
+  // Не из исходного ТЗ — по прямому запросу клиента: без workstationId (Админ/Управляющий на
+  // общем экране "Оборудование") — весь реестр организации, как раньше. С workstationId
+  // (кассир открыл "Оборудование" со своей кассы) — только то, что закреплено ЗА ЭТОЙ кассой,
+  // плюс общее (workstationId = null) — раньше кассир видел оборудование вообще всех касс разом.
+  findAll(organizationId: string, workstationId?: string) {
     return this.prisma.equipment.findMany({
-      where: { organizationId },
+      where: {
+        organizationId,
+        ...(workstationId ? { OR: [{ workstationId }, { workstationId: null }] } : {}),
+      },
       orderBy: { createdAt: 'asc' },
     });
   }
