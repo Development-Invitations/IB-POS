@@ -46,8 +46,13 @@ const SYSTEM_PROMPT = `Ты — ассистент приёмки товара �
 4. barcode и markingCodes — это ТЕКСТ, а не число, даже если состоят только из цифр. Копируй их
    символ в символ, включая ведущие нули (например, "00460003..." — это ровно то, что нужно
    вернуть, а не "460003..." без нулей в начале). Не округляй, не сокращай, не приводи к числу.
-5. Каждая отдельная строка таблицы накладной — это отдельный элемент в products.
-6. Ответ — ТОЛЬКО JSON по заданной схеме, без пояснений.`;
+5. Штрихкод на этикетке иногда напечатан в формате GS1 с идентификатором применения в скобках
+   перед цифрами, например "(00)466003779210000018" или "(01)04780000123456". Скобки и число
+   в них — это НЕ отдельная метка/категория, а часть самого кода. В таком случае верни barcode
+   БЕЗ скобок, но С этими цифрами приклеенными в начало: "(00)466003779210000018" →
+   "00466003779210000018". Никогда не отбрасывай и не выноси отдельно часть в скобках.
+6. Каждая отдельная строка таблицы накладной — это отдельный элемент в products.
+7. Ответ — ТОЛЬКО JSON по заданной схеме, без пояснений.`;
 
 const USER_INSTRUCTION =
   'Извлеки все товарные позиции из этой накладной и верни их в поле products.';
@@ -98,17 +103,26 @@ const RESPONSE_JSON_SCHEMA = {
 // как есть. Коды длиннее 14 цифр (кастомные/маркировочные) сюда не попадают вовсе.
 const STANDARD_BARCODE_LENGTHS = [8, 12, 13, 14];
 
+// GS1 Application Identifier в скобках перед числом — например, "(00)466003779210000018".
+// В отличие от восстановления нулей ниже, это не догадка: скобки физически не могут быть
+// частью настоящего цифрового штрихкода, так что их можно снимать безусловно, склеивая
+// идентификатор с остальными цифрами (см. правило 5 в SYSTEM_PROMPT — модель иногда всё равно
+// присылает их как есть, несмотря на инструкцию).
+function stripGs1ApplicationIdentifier(raw: string): string {
+  const match = /^\((\d{2,4})\)(\d+)$/.exec(raw);
+  return match ? match[1] + match[2] : raw;
+}
+
 function normalizeBarcode(item: InvoiceItemProposal): InvoiceItemProposal {
-  const raw = item.barcode?.trim();
-  if (
-    !raw ||
-    !/^\d+$/.test(raw) ||
-    STANDARD_BARCODE_LENGTHS.includes(raw.length)
-  ) {
-    return item;
+  const trimmed = item.barcode?.trim();
+  if (!trimmed) return item;
+  const raw = stripGs1ApplicationIdentifier(trimmed);
+
+  if (!/^\d+$/.test(raw) || STANDARD_BARCODE_LENGTHS.includes(raw.length)) {
+    return raw === trimmed ? item : { ...item, barcode: raw };
   }
   const target = STANDARD_BARCODE_LENGTHS.find((len) => len === raw.length + 1);
-  if (!target) return item;
+  if (!target) return raw === trimmed ? item : { ...item, barcode: raw };
   return { ...item, barcode: raw.padStart(target, '0') };
 }
 
