@@ -11,6 +11,7 @@ import {
   updateProduct,
 } from "../lib/api";
 import { formatSum } from "../lib/format";
+import { Checkbox } from "./Checkbox";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ProductFormModal } from "./ProductFormModal";
 import { PlusIcon, SearchIcon } from "./icons";
@@ -52,14 +53,43 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
-  const [confirmTarget, setConfirmTarget] = useState<ApiProduct | null>(null);
+  const [confirmTargets, setConfirmTargets] = useState<ApiProduct[] | null>(null);
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [rowError, setRowError] = useState<string | null>(null);
 
-  const [purgeTarget, setPurgeTarget] = useState<ApiProduct | null>(null);
+  const [purgeTargets, setPurgeTargets] = useState<ApiProduct[] | null>(null);
   const [purgeSubmitting, setPurgeSubmitting] = useState(false);
   const [purgeError, setPurgeError] = useState<string | null>(null);
+
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше "Изменить/Деактивировать/Удалить"
+  // висели отдельными ссылками в каждой строке (тесно, легко промахнуться на сенсорном экране).
+  // Теперь строки выделяют кликом или чекбоксом (можно сразу несколько), и действия для
+  // выделенных появляются одной панелью над таблицей. "Изменить" доступно только при ровно
+  // одном выделенном — редактировать сразу несколько разных карточек не имеет смысла.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(rows: ApiProduct[]) {
+    const allSelected = rows.length > 0 && rows.every((p) => selectedIds.has(p.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      rows.forEach((p) => (allSelected ? next.delete(p.id) : next.add(p.id)));
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
 
   async function load() {
     setLoading(true);
@@ -149,33 +179,43 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
     onCatalogChanged();
   }
 
-  async function handleToggleActive(product: ApiProduct) {
-    if (product.isActive) {
+  // Не из исходного ТЗ — по прямому запросу клиента: одна кнопка на панель, смысл зависит от
+  // того, что выделено. Если хоть один из выделенных активен — кнопка деактивирует (с
+  // подтверждением, как и раньше) именно активных из выделения; уже неактивные молча
+  // пропускаются. Только когда ВСЕ выделенные уже неактивны — кнопка активирует их напрямую,
+  // без подтверждения (как и раньше для одиночного товара).
+  async function handleToggleActive(targets: ApiProduct[]) {
+    const toDeactivate = targets.filter((p) => p.isActive);
+    if (toDeactivate.length > 0) {
       setConfirmError(null);
-      setConfirmTarget(product);
+      setConfirmTargets(toDeactivate);
       return;
     }
     setRowError(null);
     try {
-      const saved = await updateProduct(session.accessToken, product.id, { isActive: true });
-      setProducts((prev) => prev.map((p) => (p.id === saved.id ? saved : p)));
+      const saved = await Promise.all(
+        targets.map((p) => updateProduct(session.accessToken, p.id, { isActive: true })),
+      );
+      const byId = new Map(saved.map((p) => [p.id, p]));
+      setProducts((prev) => prev.map((p) => byId.get(p.id) ?? p));
       onCatalogChanged();
+      clearSelection();
     } catch (err) {
       setRowError(err instanceof ApiError ? err.message : t("products.saveError"));
     }
   }
 
   async function confirmDeactivate() {
-    if (!confirmTarget) return;
+    if (!confirmTargets || confirmTargets.length === 0) return;
     setConfirmSubmitting(true);
     setConfirmError(null);
     try {
-      await deactivateProduct(session.accessToken, confirmTarget.id);
-      setProducts((prev) =>
-        prev.map((p) => (p.id === confirmTarget.id ? { ...p, isActive: false } : p)),
-      );
+      await Promise.all(confirmTargets.map((p) => deactivateProduct(session.accessToken, p.id)));
+      const ids = new Set(confirmTargets.map((p) => p.id));
+      setProducts((prev) => prev.map((p) => (ids.has(p.id) ? { ...p, isActive: false } : p)));
       onCatalogChanged();
-      setConfirmTarget(null);
+      setConfirmTargets(null);
+      clearSelection();
     } catch (err) {
       // Диалог остаётся открытым, с реальной причиной сбоя — раньше ошибка терялась молча,
       // и деактивация выглядела зависшей, даже если на сервере уже всё прошло (см. фикс request()).
@@ -186,17 +226,36 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
   }
 
   async function confirmPurge() {
-    if (!purgeTarget) return;
+    if (!purgeTargets || purgeTargets.length === 0) return;
     setPurgeSubmitting(true);
     setPurgeError(null);
     try {
-      await purgeProduct(session.accessToken, purgeTarget.id);
-      setProducts((prev) => prev.filter((p) => p.id !== purgeTarget.id));
+      // allSettled, а не all — при массовом удалении часть товаров может иметь историю продаж
+      // (сервер отказывает 400-й именно по ним), остальные всё равно должны удалиться, а не
+      // откатываться из-за одного отказа.
+      const results = await Promise.allSettled(
+        purgeTargets.map((p) => purgeProduct(session.accessToken, p.id).then(() => p.id)),
+      );
+      const succeededIds = new Set(
+        results
+          .filter((r): r is PromiseFulfilledResult<string> => r.status === "fulfilled")
+          .map((r) => r.value),
+      );
+      setProducts((prev) => prev.filter((p) => !succeededIds.has(p.id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        succeededIds.forEach((id) => next.delete(id));
+        return next;
+      });
       onCatalogChanged();
-      setPurgeTarget(null);
+      const remaining = purgeTargets.filter((p) => !succeededIds.has(p.id));
+      if (remaining.length > 0) {
+        setPurgeError(t("products.purgeErrorPartial", { count: remaining.length }));
+        setPurgeTargets(remaining);
+      } else {
+        setPurgeTargets(null);
+      }
     } catch (err) {
-      // Сервер сам отказывает 400-й, если по товару есть история продаж — показываем как есть,
-      // это не баг, а осознанная защита (см. ProductsService.purge()).
       setPurgeError(err instanceof ApiError ? err.message : t("products.purgeError"));
     } finally {
       setPurgeSubmitting(false);
@@ -204,121 +263,168 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
   }
 
   function renderProductsTable(rows: ApiProduct[]) {
+    const selected = canManage ? rows.filter((p) => selectedIds.has(p.id)) : [];
+    const allSelected = rows.length > 0 && rows.every((p) => selectedIds.has(p.id));
+    const allSelectedInactive = selected.length > 0 && selected.every((p) => !p.isActive);
+
     return (
-      <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
-        <table className="min-w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs text-slate-400">
-              <th className="whitespace-nowrap px-4 py-3 font-medium" />
-              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.name")}</th>
-              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.category")}</th>
-              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.sku")}</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.price")}</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.cost")}</th>
-              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.unit")}</th>
-              {showStock && (
-                <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("warehouse.stockTitle")}</th>
+      <div className="space-y-2">
+        {selected.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2.5">
+            <span className="truncate text-sm font-medium text-slate-700">
+              {selected.length === 1 ? selected[0].name : t("products.selectedCount", { count: selected.length })}
+            </span>
+            <div className="flex items-center gap-3">
+              {selected.length === 1 && (
+                <button
+                  onClick={() => openEdit(selected[0])}
+                  className="text-xs font-semibold text-accent hover:underline"
+                >
+                  {t("products.edit")}
+                </button>
               )}
-              {isPharmacy && <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.expiryDate")}</th>}
-              <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.status")}</th>
-              {canManage && <th className="whitespace-nowrap px-4 py-3 font-medium" />}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p) => (
-              <tr key={p.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50">
-                <td className="whitespace-nowrap px-4 py-3">
-                  <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
-                    {p.imageUrl ? (
-                      <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      p.name.trim().slice(0, 2).toUpperCase()
-                    )}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-800">
-                  {p.name}
-                  {p.isConsumable && (
-                    <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                      {t("products.consumable")}
-                    </span>
+              <button
+                onClick={() => handleToggleActive(selected)}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-700"
+              >
+                {allSelectedInactive ? t("products.activate") : t("products.deactivate")}
+              </button>
+              {canDelete && (
+                <button
+                  onClick={() => {
+                    setPurgeError(null);
+                    setPurgeTargets(selected);
+                  }}
+                  className="text-xs font-semibold text-red-500 hover:text-red-600"
+                >
+                  {t("products.delete")}
+                </button>
+              )}
+              <button
+                onClick={clearSelection}
+                className="text-xs font-medium text-slate-400 hover:text-slate-600"
+              >
+                {t("common.close")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto rounded-xl bg-white shadow-sm">
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="sticky top-0 z-10 border-b border-slate-100 bg-white text-xs text-slate-400">
+                  {canManage && (
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">
+                      <Checkbox
+                        checked={allSelected}
+                        onChange={() => toggleSelectAll(rows)}
+                        ariaLabel={t("products.selectAll")}
+                      />
+                    </th>
                   )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.sku}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-right text-slate-800">
-                  {p.price && Number(p.price) > 0 ? `${formatSum(Number(p.price))} ${t("common.currency")}` : "—"}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
-                  {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.unit}</td>
-                {showStock && (
-                  <td
-                    className={`whitespace-nowrap px-4 py-3 text-right ${
-                      (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.name")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.category")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.sku")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.price")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 text-right font-medium">{t("products.cost")}</th>
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.unit")}</th>
+                  {showStock && (
+                    <th className="whitespace-nowrap px-4 py-3 text-right font-medium">
+                      {t("warehouse.stockTitle")}
+                    </th>
+                  )}
+                  {isPharmacy && (
+                    <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.expiryDate")}</th>
+                  )}
+                  <th className="whitespace-nowrap px-4 py-3 font-medium">{t("products.status")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p) => (
+                  <tr
+                    key={p.id}
+                    onClick={canManage ? () => toggleSelect(p.id) : undefined}
+                    className={`border-b border-slate-50 last:border-0 ${canManage ? "cursor-pointer" : ""} ${
+                      selectedIds.has(p.id) ? "bg-accent/5" : "hover:bg-slate-50"
                     }`}
                   >
-                    {stockByProduct.get(p.id) ?? 0} {p.unit}
-                  </td>
-                )}
-                {isPharmacy && (
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-500">
-                    {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
-                  </td>
-                )}
-                <td className="whitespace-nowrap px-4 py-3">
-                  {p.isActive ? (
-                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
-                      {t("products.active")}
-                    </span>
-                  ) : (
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
-                      {t("products.inactive")}
-                    </span>
-                  )}
-                </td>
-                {canManage && (
-                  <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <div className="flex justify-end gap-3">
-                      <button onClick={() => openEdit(p)} className="text-xs font-medium text-accent hover:underline">
-                        {t("products.edit")}
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(p)}
-                        className="text-xs font-medium text-slate-400 hover:text-slate-700"
+                    {canManage && (
+                      <td className="whitespace-nowrap px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} ariaLabel={p.name} />
+                      </td>
+                    )}
+                    <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-xs font-bold text-slate-400">
+                          {p.imageUrl ? (
+                            <img src={`${API_BASE}${p.imageUrl}`} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            p.name.trim().slice(0, 2).toUpperCase()
+                          )}
+                        </span>
+                        <span>
+                          {p.name}
+                          {p.isConsumable && (
+                            <span className="ml-1.5 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                              {t("products.consumable")}
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{categoryName(p.categoryId)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.sku}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-slate-800">
+                      {p.price && Number(p.price) > 0 ? `${formatSum(Number(p.price))} ${t("common.currency")}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right text-slate-500">
+                      {p.cost ? `${formatSum(Number(p.cost))} ${t("common.currency")}` : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-slate-500">{p.unit}</td>
+                    {showStock && (
+                      <td
+                        className={`whitespace-nowrap px-4 py-3 text-right ${
+                          (stockByProduct.get(p.id) ?? 0) <= 0 ? "text-red-600" : "text-slate-800"
+                        }`}
                       >
-                        {p.isActive ? t("products.deactivate") : t("products.activate")}
-                      </button>
-                      {canDelete && (
-                        <button
-                          onClick={() => {
-                            setPurgeError(null);
-                            setPurgeTarget(p);
-                          }}
-                          className="text-xs font-medium text-red-400 hover:text-red-600"
-                        >
-                          {t("products.delete")}
-                        </button>
+                        {stockByProduct.get(p.id) ?? 0} {p.unit}
+                      </td>
+                    )}
+                    {isPharmacy && (
+                      <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                        {p.expiryDate ? new Date(p.expiryDate).toLocaleDateString("ru-RU") : "—"}
+                      </td>
+                    )}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {p.isActive ? (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-600">
+                          {t("products.active")}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+                          {t("products.inactive")}
+                        </span>
                       )}
-                    </div>
-                  </td>
-                )}
-              </tr>
-            ))}
+                    </td>
+                  </tr>
+                ))}
 
-            {rows.length === 0 && (
-              <tr>
-                <td
-                  colSpan={(canManage ? 9 : 8) + (isPharmacy ? 1 : 0) + (showStock ? 1 : 0)}
-                  className="px-4 py-8 text-center text-sm text-slate-400"
-                >
-                  {t("products.empty")}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                {rows.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7 + (canManage ? 1 : 0) + (isPharmacy ? 1 : 0) + (showStock ? 1 : 0)}
+                      className="px-4 py-8 text-center text-sm text-slate-400"
+                    >
+                      {t("products.empty")}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     );
   }
@@ -377,33 +483,42 @@ export function ProductsScreen({ session, onCatalogChanged, businessType }: Prod
           categories={categories}
           product={editingProduct}
           isPharmacy={isPharmacy}
+          requireBarcode={isPharmacy || businessType === "STORE"}
           onClose={() => setFormOpen(false)}
           onSaved={handleSaved}
         />
       )}
 
-      {confirmTarget && (
+      {confirmTargets && confirmTargets.length > 0 && (
         <ConfirmDialog
-          title={t("products.deactivateTitle")}
-          message={t("products.deactivateConfirm", { name: confirmTarget.name })}
+          title={confirmTargets.length === 1 ? t("products.deactivateTitle") : t("products.deactivateTitleBulk")}
+          message={
+            confirmTargets.length === 1
+              ? t("products.deactivateConfirm", { name: confirmTargets[0].name })
+              : t("products.deactivateConfirmBulk", { count: confirmTargets.length })
+          }
           confirmLabel={t("products.deactivate")}
           danger
           submitting={confirmSubmitting}
           error={confirmError}
-          onClose={() => setConfirmTarget(null)}
+          onClose={() => setConfirmTargets(null)}
           onConfirm={confirmDeactivate}
         />
       )}
 
-      {purgeTarget && (
+      {purgeTargets && purgeTargets.length > 0 && (
         <ConfirmDialog
-          title={t("products.deleteTitle")}
-          message={t("products.deleteConfirm", { name: purgeTarget.name })}
+          title={purgeTargets.length === 1 ? t("products.deleteTitle") : t("products.deleteTitleBulk")}
+          message={
+            purgeTargets.length === 1
+              ? t("products.deleteConfirm", { name: purgeTargets[0].name })
+              : t("products.deleteConfirmBulk", { count: purgeTargets.length })
+          }
           confirmLabel={t("products.delete")}
           danger
           submitting={purgeSubmitting}
           error={purgeError}
-          onClose={() => setPurgeTarget(null)}
+          onClose={() => setPurgeTargets(null)}
           onConfirm={confirmPurge}
         />
       )}

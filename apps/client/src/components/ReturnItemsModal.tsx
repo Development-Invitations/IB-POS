@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { ApiError, getReceipt, loginPin, returnReceipt, type ReturnReceiptResult } from "../lib/api";
 import { formatSum } from "../lib/format";
 import { sessionFromToken } from "../lib/session";
+import { useEscapeClose } from "../lib/use-escape-close";
+import { Checkbox } from "./Checkbox";
 import { CloseIcon } from "./icons";
 import type { ApiReceipt } from "../types/api";
 import type { AuthSession } from "../types/auth";
@@ -20,6 +22,7 @@ interface ReturnItemsModalProps {
 // операция, лучше явный выбор, чем случайно подтверждённый "выбрано всё").
 export function ReturnItemsModal({ session, receiptId, onClose, onReturned }: ReturnItemsModalProps) {
   const { t } = useTranslation();
+  useEscapeClose(onClose);
   const [receipt, setReceipt] = useState<ApiReceipt | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -128,8 +131,11 @@ export function ReturnItemsModal({ session, receiptId, onClose, onReturned }: Re
   const canConfirm = selected.size > 0 && managerLogin.trim().length > 0 && pin.length >= 4;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">{t("returns.itemsTitle")}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label={t("common.close")}>
@@ -162,11 +168,9 @@ export function ReturnItemsModal({ session, receiptId, onClose, onReturned }: Re
                   const checked = selected.has(item.id);
                   return (
                     <div key={item.id} className="flex items-center gap-3 px-3 py-2">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={checked}
-                        onChange={(e) => toggleItem(item.id, item.remaining, e.target.checked)}
-                        className="h-4 w-4 shrink-0 rounded border-slate-300 text-accent focus:ring-accent"
+                        onChange={() => toggleItem(item.id, item.remaining, !checked)}
                       />
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-slate-800">

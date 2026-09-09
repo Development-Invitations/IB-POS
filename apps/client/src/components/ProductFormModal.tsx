@@ -4,6 +4,7 @@ import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
 import { API_BASE, ApiError, createCategory, createProduct, updateProduct, uploadProductImage } from "../lib/api";
 import { resizeImageToJpeg } from "../lib/resize-image";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiCategory, ApiProduct } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -12,6 +13,11 @@ interface ProductFormModalProps {
   categories: ApiCategory[];
   product: ApiProduct | null;
   isPharmacy?: boolean;
+  // Не из исходного ТЗ — по прямому запросу клиента: для Магазина и Аптеки штрихкод обязателен
+  // при создании товара (без него товар нельзя ни просканировать на кассе, ни сверить остаток
+  // по накладной) — см. тот же флаг в InvoiceImportModal. У Ресторана штрихкоды не используются
+  // (блюда собираются на месте), поэтому там это не требуется.
+  requireBarcode?: boolean;
   onClose: () => void;
   onSaved: (product: ApiProduct, newCategory?: ApiCategory) => void;
 }
@@ -23,11 +29,13 @@ export function ProductFormModal({
   categories,
   product,
   isPharmacy,
+  requireBarcode,
   onClose,
   onSaved,
 }: ProductFormModalProps) {
   const { t } = useTranslation();
   const isEdit = product !== null;
+  useEscapeClose(onClose);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(product?.name ?? "");
@@ -70,6 +78,10 @@ export function ProductFormModal({
   }
 
   async function handleSubmit() {
+    if (requireBarcode && !barcode.trim()) {
+      setError(t("products.barcodeRequired"));
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -116,8 +128,8 @@ export function ProductFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">
             {isEdit ? t("products.editTitle") : t("products.addTitle")}
@@ -292,7 +304,7 @@ export function ProductFormModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={submitting || !name.trim() || price <= 0}
+            disabled={submitting || !name.trim() || price <= 0 || (requireBarcode && !barcode.trim())}
             className="flex-1 rounded-lg bg-accent py-2.5 text-sm font-bold text-white hover:bg-accent-hover disabled:opacity-40"
           >
             {submitting ? t("common.loading") : t("products.save")}

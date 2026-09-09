@@ -23,6 +23,7 @@ import type {
   DiscountType,
   EquipmentKind,
   FinanceReport,
+  InvoiceExtractionResult,
   OneCCredentials,
   OneCStatus,
   ReceiptStatus,
@@ -716,6 +717,32 @@ export function runFiscalizationQueue(token: string) {
 
 export function getOneCStatus(token: string) {
   return request<OneCStatus>("/integrations/onec", {}, token);
+}
+
+// Не из исходного ТЗ — по прямому запросу клиента: чтение накладной (фото/PDF/Excel) через Groq
+// (console.groq.com — облачный, но бесплатный тариф + быстрый инференс + vision для фото). Как и
+// uploadProductImage — минуя JSON-обёртку request(), т.к. это multipart. Таймаут с запасом (обычный
+// облачный ответ занимает секунды), но оставлен повыше на случай большой накладной или задержек сети.
+export async function extractInvoiceItems(token: string, file: Blob, filename: string) {
+  const form = new FormData();
+  form.append("file", file, filename);
+  const res = await fetch(`${API_BASE}/ai/invoice/extract`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+    signal: AbortSignal.timeout(120000),
+  });
+  if (!res.ok) {
+    let message = res.statusText;
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      message = Array.isArray(body.message) ? body.message.join("; ") : (body.message ?? message);
+    } catch {
+      // тело не JSON — оставляем statusText
+    }
+    throw new ApiError(message, res.status);
+  }
+  return (await res.json()) as InvoiceExtractionResult;
 }
 
 export function configureOneC(token: string) {

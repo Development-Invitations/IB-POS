@@ -15,7 +15,8 @@ import {
 } from "../lib/api";
 import { useBarcodeScanner } from "../lib/use-barcode-scanner";
 import { AmountInput } from "./AmountInput";
-import { CloseIcon, MinusIcon, PlusIcon, SearchIcon } from "./icons";
+import { InvoiceImportModal } from "./InvoiceImportModal";
+import { CloseIcon, InfoIcon, MinusIcon, PlusIcon, SearchIcon, SparkleIcon } from "./icons";
 import type { ApiProduct, ApiStockEntry, ApiStore, ReceivingMode } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -76,6 +77,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const canView = CAN_VIEW_ROLES.includes(session.role);
   const canManage = CAN_MANAGE_ROLES.includes(session.role);
 
+  // Не из исходного ТЗ — по прямому запросу клиента: у "Склада" много разных способов приёмки
+  // (вручную, по штрихкоду, по маркировке, накладной через ИИ) — сворачиваемая справка
+  // объясняет, что тут вообще можно делать, не занимая место по умолчанию.
+  const [helpOpen, setHelpOpen] = useState(false);
+
   const [stores, setStores] = useState<ApiStore[]>([]);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -83,6 +89,7 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [invoiceImportOpen, setInvoiceImportOpen] = useState(false);
 
   const [batch, setBatch] = useState<Map<string, BatchLine>>(new Map());
   const [scanMessage, setScanMessage] = useState<string | null>(null);
@@ -143,6 +150,24 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   const [pendingMarking, setPendingMarking] = useState<PendingMarkingReceive | null>(null);
   const [pendingQtyInput, setPendingQtyInput] = useState("");
   const [markingError, setMarkingError] = useState<string | null>(null);
+
+  // Не из исходного ТЗ — по прямому запросу клиента: Esc закрывает открытое модальное окно, как
+  // и клик вне его — см. onClick={...} на обёртке fixed inset-0 у каждого из модалок ниже. Здесь
+  // (в отличие от отдельных компонентов-модалок) все модалки инлайн в одном компоненте, поэтому
+  // один обработчик вместо useEscapeClose — закрывает то окно, что сейчас реально открыто.
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (adjustTarget) setAdjustTarget(null);
+      else if (markingAdjustTarget) closeMarkingAdjust();
+      else if (viewMarkingsFor) setViewMarkingsFor(null);
+      else if (scanLookup) setScanLookup(null);
+      else if (pendingMarking) setPendingMarking(null);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adjustTarget, markingAdjustTarget, viewMarkingsFor, scanLookup, pendingMarking]);
 
   useEffect(() => {
     if (!canManage) return;
@@ -613,21 +638,88 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-slate-800">{t("nav.warehouse")}</h1>
-        {stores.length > 1 && (
-          <select
-            value={storeId ?? ""}
-            onChange={(e) => setStoreId(e.target.value)}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold text-slate-800">{t("nav.warehouse")}</h1>
+          <button
+            onClick={() => setHelpOpen((v) => !v)}
+            aria-label={t("warehouse.helpTitle")}
+            aria-expanded={helpOpen}
+            className={`flex h-7 w-7 items-center justify-center rounded-full border ${
+              helpOpen ? "border-accent bg-accent/10 text-accent" : "border-slate-200 text-slate-400 hover:text-slate-600"
+            }`}
           >
-            {stores.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
+            <InfoIcon width={16} height={16} />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          {canManage && storeId && (
+            <button
+              onClick={() => setInvoiceImportOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-accent hover:border-accent/40"
+            >
+              <SparkleIcon width={18} height={18} />
+              {t("invoiceImport.openButton")}
+            </button>
+          )}
+          {stores.length > 1 && (
+            <select
+              value={storeId ?? ""}
+              onChange={(e) => setStoreId(e.target.value)}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-accent"
+            >
+              {stores.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       </div>
+
+      {helpOpen && (
+        <section className="space-y-2 rounded-xl border border-accent/20 bg-accent/5 p-4">
+          <h2 className="text-sm font-semibold text-slate-700">{t("warehouse.helpTitle")}</h2>
+          <ul className="space-y-1.5 text-xs text-slate-600">
+            <li>
+              <span className="font-semibold text-slate-700">{t("warehouse.helpManualTitle")}</span> —{" "}
+              {t("warehouse.helpManualText")}
+            </li>
+            <li>
+              <span className="font-semibold text-slate-700">{t("warehouse.helpMarkingTitle")}</span> —{" "}
+              {t("warehouse.helpMarkingText")}
+            </li>
+            <li>
+              <span className="font-semibold text-slate-700">{t("warehouse.helpInvoiceTitle")}</span> —{" "}
+              {t("warehouse.helpInvoiceText")}
+            </li>
+            <li>
+              <span className="font-semibold text-slate-700">{t("warehouse.helpAdjustTitle")}</span> —{" "}
+              {t("warehouse.helpAdjustText")}
+            </li>
+            <li>
+              <span className="font-semibold text-slate-700">{t("warehouse.helpReportTitle")}</span> —{" "}
+              {t("warehouse.helpReportText")}
+            </li>
+          </ul>
+        </section>
+      )}
+
+      {invoiceImportOpen && storeId && (
+        <InvoiceImportModal
+          session={session}
+          storeId={storeId}
+          requireBarcode={receivingBusinessType === "STORE" || receivingBusinessType === "PHARMACY"}
+          onClose={() => setInvoiceImportOpen(false)}
+          onItemCreated={() => {
+            load(true);
+            getStockReport(session.accessToken, storeId)
+              .then(setEntries)
+              .catch(() => undefined);
+            onStockChanged?.();
+          }}
+        />
+      )}
 
       {loadError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{loadError}</p>}
 
@@ -852,8 +944,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       </section>
 
       {adjustTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setAdjustTarget(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{adjustTarget.product.name}</h2>
               <button
@@ -907,8 +1002,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {markingAdjustTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={closeMarkingAdjust}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{markingAdjustTarget.product.name}</h2>
               <button
@@ -979,8 +1077,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {viewMarkingsFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setViewMarkingsFor(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-slate-800">{viewMarkingsFor.product.name}</h2>
@@ -1023,8 +1124,14 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {scanLookup && pickingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="flex w-full max-w-md flex-col rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setScanLookup(null)}
+        >
+          <div
+            className="flex w-full max-w-md flex-col rounded-xl bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.pickMxikTitle")}</h2>
               <p className="mt-1 text-xs text-slate-400">
@@ -1056,8 +1163,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {scanLookup && !pickingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setScanLookup(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{t("warehouse.quickCreateTitle")}</h2>
               <p className="mt-1 text-xs text-slate-400">
@@ -1156,8 +1266,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {pendingMarking && pendingMarking.targetQty === null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setPendingMarking(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{pendingMarking.product.name}</h2>
               <p className="mt-1 text-xs text-slate-400">{t("warehouse.markingQtyHint")}</p>
@@ -1208,8 +1321,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       )}
 
       {pendingMarking && pendingMarking.targetQty !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setPendingMarking(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{pendingMarking.product.name}</h2>
               <p className="mt-1 text-xs text-slate-400">

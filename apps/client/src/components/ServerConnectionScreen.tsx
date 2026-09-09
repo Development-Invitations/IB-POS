@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import logo from "../assets/logo-mark.png";
 import { loadApiBase, loadConnectionMode, saveServerConnection, type ConnectionMode } from "../lib/server-config";
+import { useEscapeClose } from "../lib/use-escape-close";
 import { CloseIcon } from "./icons";
 
 interface ServerConnectionScreenProps {
@@ -22,6 +23,7 @@ export function ServerConnectionScreen({ onClose }: ServerConnectionScreenProps)
   const { t } = useTranslation();
   const [mode, setMode] = useState<ConnectionMode>(loadConnectionMode());
   const [address, setAddress] = useState(loadApiBase());
+  useEscapeClose(() => onClose?.());
 
   function handleSave() {
     if (!address.trim()) return;
@@ -30,8 +32,11 @@ export function ServerConnectionScreen({ onClose }: ServerConnectionScreenProps)
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      onClick={() => onClose?.()}
+    >
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div className="flex items-center gap-2">
             <img src={logo} alt="IB-POS" className="h-6 w-6" />

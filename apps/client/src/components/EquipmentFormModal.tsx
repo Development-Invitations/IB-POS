@@ -10,6 +10,7 @@ import {
   uploadEquipmentImage,
 } from "../lib/api";
 import { resizeImageToJpeg } from "../lib/resize-image";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiEquipment, ApiWorkstation, EquipmentKind } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -63,6 +64,7 @@ function parseUsb(info: string | null | undefined): string | null {
 export function EquipmentFormModal({ session, equipment, onClose, onSaved }: EquipmentFormModalProps) {
   const { t } = useTranslation();
   const isEdit = equipment !== null;
+  useEscapeClose(onClose);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const initialIp = parseIp(equipment?.connectionInfo);
@@ -166,8 +168,8 @@ export function EquipmentFormModal({ session, equipment, onClose, onSaved }: Equ
   const canSubmit = label.trim().length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">
             {isEdit ? t("equipment.editTitle") : t("equipment.addTitle")}

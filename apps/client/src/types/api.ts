@@ -278,3 +278,18 @@ export interface ApiAuditLog {
   createdAt: string;
   user: { id: string; fullName: string; login: string } | null;
 }
+
+// Не из исходного ТЗ — по прямому запросу клиента: чтение накладной (фото/PDF/Excel) через
+// ИИ-ассистента, см. apps/server/src/ai/ai.service.ts::InvoiceItemProposal.
+export interface InvoiceItemProposal {
+  name: string;
+  barcode?: string | null;
+  quantity?: number | null;
+  markingCodes?: string[];
+  price?: number | null;
+  missingFields: string[];
+}
+
+export interface InvoiceExtractionResult {
+  items: InvoiceItemProposal[];
+}

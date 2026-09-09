@@ -268,29 +268,41 @@ function App() {
   useEffect(() => {
     if (!session || !workstation) return;
     let cancelled = false;
-    getStockReport(session.accessToken, workstation.storeId)
-      .then((entries) => {
-        if (cancelled) return;
-        const byProductId = new Map(entries.map((e) => [e.productId, e]));
-        setProducts((prev) =>
-          prev.map((p) => {
-            const entry = byProductId.get(p.id);
-            // Товар без записи на складе (ни разу не оприходован через "Склад") — это тот же
-            // случай, что и явный ноль, а не "неизвестно": раньше stockQty оставался undefined,
-            // и такой товар проходил проверку "нет в наличии" мимо и был доступен для продажи
-            // (жалоба клиента "добавили товар, но не отсканировали в склад — не должен быть
-            // в продаже, пока не вывели количество").
-            return {
-              ...p,
-              stockQty: entry ? Number(entry.quantity) : 0,
-              expiryDate: entry ? entry.product.expiryDate : p.expiryDate,
-            };
-          }),
-        );
-      })
-      .catch(() => undefined);
+    function refreshStock() {
+      getStockReport(session!.accessToken, workstation!.storeId)
+        .then((entries) => {
+          if (cancelled) return;
+          const byProductId = new Map(entries.map((e) => [e.productId, e]));
+          setProducts((prev) =>
+            prev.map((p) => {
+              const entry = byProductId.get(p.id);
+              // Товар без записи на складе (ни разу не оприходован через "Склад") — это тот же
+              // случай, что и явный ноль, а не "неизвестно": раньше stockQty оставался undefined,
+              // и такой товар проходил проверку "нет в наличии" мимо и был доступен для продажи
+              // (жалоба клиента "добавили товар, но не отсканировали в склад — не должен быть
+              // в продаже, пока не вывели количество").
+              return {
+                ...p,
+                stockQty: entry ? Number(entry.quantity) : 0,
+                expiryDate: entry ? entry.product.expiryDate : p.expiryDate,
+              };
+            }),
+          );
+        })
+        .catch(() => undefined);
+    }
+    refreshStock();
+    // Не из исходного ТЗ — по прямому запросу клиента: раньше остаток на "Продаже" обновлялся
+    // только по локальным событиям ЭТОЙ кассы (оплата/возврат/приход, см. stockVersion). Если
+    // товар продали на другой кассе или списали через "Склад" с другого устройства, эта касса
+    // не узнавала об этом и пускала в чек то, чего уже физически нет — сервер потом отказывал
+    // на оплате с "Недостаточно остатка", уже после того как кассир набрал чек. Добавлен
+    // периодический опрос (та же идея, что у useOnlineStatus) как подстраховка от внешних
+    // изменений остатка.
+    const intervalId = setInterval(refreshStock, 20000);
     return () => {
       cancelled = true;
+      clearInterval(intervalId);
     };
   }, [session, workstation, products.length, stockVersion]);
 

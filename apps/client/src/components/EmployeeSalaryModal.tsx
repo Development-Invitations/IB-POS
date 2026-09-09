@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
 import { ApiError, updateUser } from "../lib/api";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiUser } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -18,6 +19,7 @@ interface EmployeeSalaryModalProps {
 // не видны вообще, а не просто задизейблены в общей форме.
 export function EmployeeSalaryModal({ session, employee, onClose, onSaved }: EmployeeSalaryModalProps) {
   const { t } = useTranslation();
+  useEscapeClose(onClose);
   const [salary, setSalary] = useState(employee.salary ? Number(employee.salary) : 0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,8 +38,8 @@ export function EmployeeSalaryModal({ session, employee, onClose, onSaved }: Emp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">{t("employees.salaryTitle")}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label={t("common.close")}>

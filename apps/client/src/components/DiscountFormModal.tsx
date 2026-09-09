@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
 import { ApiError, createDiscount, updateDiscount } from "../lib/api";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiCategory, ApiDiscount, ApiProduct, DiscountType } from "../types/api";
 import type { AuthSession, Role } from "../types/auth";
 
@@ -42,6 +43,7 @@ export function DiscountFormModal({
 }: DiscountFormModalProps) {
   const { t } = useTranslation();
   const isEdit = discount !== null;
+  useEscapeClose(onClose);
 
   const [name, setName] = useState(discount?.name ?? "");
   const [type, setType] = useState<DiscountType>(discount?.type ?? "PERCENT");
@@ -83,8 +85,8 @@ export function DiscountFormModal({
     (scope !== "category" || categoryId);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">
             {isEdit ? t("discounts.editTitle") : t("discounts.addTitle")}

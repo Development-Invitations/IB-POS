@@ -22,6 +22,12 @@ export const HomeIcon = (p: SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+export const SparkleIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M12 3v4M12 17v4M4 12h4M16 12h4M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1" />
+  </svg>
+);
+
 export const CartIcon = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}>
     <circle cx="9" cy="20" r="1.4" />
@@ -43,6 +49,13 @@ export const WarehouseIcon = (p: SVGProps<SVGSVGElement>) => (
     <path d="M3 10.5 12 5l9 5.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V10.5Z" />
     <path d="M8 21v-6h8v6" />
     <path d="M8 13h8" />
+  </svg>
+);
+
+export const InfoIcon = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v6M12 8v.01" />
   </svg>
 );
 

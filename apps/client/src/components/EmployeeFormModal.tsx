@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CloseIcon } from "./icons";
 import { ApiError, createUser, updateUser } from "../lib/api";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiUser } from "../types/api";
 import type { AuthSession, Role } from "../types/auth";
 
@@ -24,6 +25,7 @@ const ROLE_KEY: Record<Role, string> = {
 export function EmployeeFormModal({ session, employee, onClose, onSaved }: EmployeeFormModalProps) {
   const { t } = useTranslation();
   const isEdit = employee !== null;
+  useEscapeClose(onClose);
 
   const [fullName, setFullName] = useState(employee?.fullName ?? "");
   const [login, setLogin] = useState(employee?.login ?? "");
@@ -65,8 +67,8 @@ export function EmployeeFormModal({ session, employee, onClose, onSaved }: Emplo
     (isEdit || pin.length > 0 || password.length > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">
             {isEdit ? t("employees.editTitle") : t("employees.addTitle")}

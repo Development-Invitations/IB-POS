@@ -4,6 +4,7 @@ import { CloseIcon } from "./icons";
 import { AmountInput } from "./AmountInput";
 import { formatSum } from "../lib/format";
 import { ApiError, adjustCustomerBonus, getCustomerPurchaseHistory } from "../lib/api";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiCustomer, ApiReceipt, ReceiptStatus } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -32,6 +33,7 @@ export function CustomerDetailModal({
   onBonusChanged,
 }: CustomerDetailModalProps) {
   const { t } = useTranslation();
+  useEscapeClose(onClose);
   const [receipts, setReceipts] = useState<ApiReceipt[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -75,8 +77,11 @@ export function CustomerDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-800">{customer.fullName}</h2>

@@ -10,6 +10,7 @@ import {
   testIntegration,
 } from "../lib/api";
 import { formatRelativeTime } from "../lib/format";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiIntegration, FiscalProviderName, OneCCredentials, OneCStatus } from "../types/api";
 import type { AuthSession } from "../types/auth";
 import arcaGroupLogo from "../assets/integrations/arcagroup.svg";
@@ -97,6 +98,7 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
   const [accessDenied, setAccessDenied] = useState(false);
 
   const [activeProvider, setActiveProvider] = useState<FiscalProviderName | null>(null);
+  useEscapeClose(() => setActiveProvider(null));
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [providerBusy, setProviderBusy] = useState(false);
   const [providerMessage, setProviderMessage] = useState<string | null>(null);
@@ -373,8 +375,11 @@ export function IntegrationsScreen({ session }: IntegrationsScreenProps) {
       )}
 
       {activeProvider && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setActiveProvider(null)}
+        >
+          <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="border-b border-slate-100 px-5 py-4">
               <h2 className="text-lg font-semibold text-slate-800">{PROVIDER_META[activeProvider].label}</h2>
             </div>

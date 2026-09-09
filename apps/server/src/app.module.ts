@@ -23,6 +23,7 @@ import { ReportsModule } from './reports/reports.module';
 import { SettingsModule } from './settings/settings.module';
 import { BackupsModule } from './backups/backups.module';
 import { EquipmentModule } from './equipment/equipment.module';
+import { AiModule } from './ai/ai.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { EquipmentModule } from './equipment/equipment.module';
     SettingsModule,
     BackupsModule,
     EquipmentModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

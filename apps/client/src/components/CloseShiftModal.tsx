@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatSum } from "../lib/format";
+import { useEscapeClose } from "../lib/use-escape-close";
 import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
 import type { ApiShift } from "../types/api";
@@ -22,6 +23,9 @@ export function CloseShiftModal({ expectedCash, onClose, onConfirm, onDone }: Cl
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const dismiss = phase === "done" ? onDone : onClose;
+  useEscapeClose(dismiss);
+
   async function handleConfirm() {
     setSubmitting(true);
     setError(null);
@@ -37,8 +41,11 @@ export function CloseShiftModal({ expectedCash, onClose, onConfirm, onDone }: Cl
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      onClick={dismiss}
+    >
+      <div className="w-full max-w-sm rounded-xl bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-800">{t("workstation.closeShiftTitle")}</h2>
           {phase === "form" && (

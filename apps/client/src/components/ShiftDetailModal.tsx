@@ -4,6 +4,7 @@ import { AmountInput } from "./AmountInput";
 import { CloseIcon } from "./icons";
 import { ApiError, createCashMovement, getShiftReport, type ShiftReport } from "../lib/api";
 import { formatSum } from "../lib/format";
+import { useEscapeClose } from "../lib/use-escape-close";
 import type { ApiShift, BackendPaymentMethod, CashMovementType } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
@@ -25,6 +26,7 @@ const METHOD_KEY: Record<BackendPaymentMethod, string> = {
 
 export function ShiftDetailModal({ session, shift, workstationName, onClose }: ShiftDetailModalProps) {
   const { t } = useTranslation();
+  useEscapeClose(onClose);
   // Бухгалтеру смены открыты только на просмотр (см. ShiftsScreen.tsx) — внесение/изъятие
   // наличных ему недоступно и на сервере (ShiftsController), форму просто не показываем.
   const canManage = session.role !== "ACCOUNTANT";
@@ -75,8 +77,11 @@ export function ShiftDetailModal({ session, shift, workstationName, onClose }: S
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-xl bg-white shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-800">{workstationName}</h2>
