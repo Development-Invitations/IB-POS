@@ -40,6 +40,12 @@ interface HeaderProps {
   onLogout: () => void;
   onCloseShift: () => void;
   className?: string;
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше поисковый запрос жил только внутри
+  // Header и наружу не отдавался, поэтому контент "Продажи" (вкладка "Все") не мог сам
+  // переключиться на сетку найденных товаров, пока кассир печатает — виден был только этот
+  // маленький выпадающий список. Состояние поднято в App.tsx, Header теперь контролируемый.
+  query: string;
+  onQueryChange: (query: string) => void;
 }
 
 export function Header({
@@ -53,6 +59,8 @@ export function Header({
   onLogout,
   onCloseShift,
   className,
+  query,
+  onQueryChange,
 }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const now = new Date();
@@ -67,7 +75,6 @@ export function Header({
   const hasSaleAccess = SCREEN_ACCESS.sale.includes(session.role);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -103,7 +110,7 @@ export function Header({
   function selectProduct(product: CartProduct) {
     if (isProductUnavailable(product)) return;
     onSelectProduct(product);
-    setQuery("");
+    onQueryChange("");
     setSearchOpen(false);
     searchInputRef.current?.blur();
   }
@@ -139,7 +146,7 @@ export function Header({
             type="text"
             value={query}
             onChange={(e) => {
-              setQuery(e.target.value);
+              onQueryChange(e.target.value);
               setSearchOpen(true);
             }}
             onFocus={() => setSearchOpen(true)}

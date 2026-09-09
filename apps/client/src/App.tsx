@@ -121,6 +121,12 @@ function App() {
   const [activeScreen, setActiveScreen] = useState<ScreenKey>(() => ROLE_HOME_SCREEN[loadSession()?.role ?? "CASHIER"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  // Не из исходного ТЗ — по прямому запросу клиента: раньше на вкладке "Все" вводимый в шапке
+  // поиск товара показывал только маленький выпадающий список (Header), а сам контент экрана
+  // ("Все" теперь встроенные чеки — см. showReceiptsInline) никак не реагировал — кассиру было
+  // не из чего выбирать крупными плитками. Состояние поднято сюда, чтобы контент мог сам
+  // переключиться на сетку товаров, пока в поиске что-то введено.
+  const [productQuery, setProductQuery] = useState("");
   const [products, setProducts] = useState<CartProduct[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   // Несколько параллельно открытых чеков (по запросу клиента: касса раньше могла вести только
@@ -321,6 +327,22 @@ function App() {
   }, [products, activeCategory, businessType]);
 
   const consumableProducts = useMemo(() => products.filter((product) => product.isConsumable), [products]);
+
+  // Та же фильтрация "можно продать", что и visibleProducts, но по тексту поиска из шапки
+  // (имя/артикул/штрихкод) — см. productQuery выше. Используется только на вкладке "Все" для
+  // Магазина/Аптеки, когда в поиске что-то введено (см. рендер контента ниже).
+  const searchedProducts = useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    if (!q) return [];
+    return products.filter(
+      (product) =>
+        !isProductUnsellable(product) &&
+        (product.name.toLowerCase().includes(q) ||
+          (product.barcode ?? "").toLowerCase().includes(q) ||
+          (product.sku ?? "").toLowerCase().includes(q)),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [products, productQuery, businessType]);
 
   // Предпросчёт итога с учётом авто-скидок (см. ReceiptsService.calculateTotals на сервере) —
   // кассир должен видеть тот же итог, что реально спишется при оплате. Если сети нет или запрос
@@ -642,6 +664,8 @@ function App() {
           addToCart(product);
           setActiveScreen("sale");
         }}
+        query={productQuery}
+        onQueryChange={setProductQuery}
         onLogout={handleLogout}
         onCloseShift={openCloseShiftModal}
         className="no-print"
@@ -688,14 +712,19 @@ function App() {
                 {(!showReceiptsInline || categories.length > 0) && (
                   <CategoryTabs categories={categories} active={activeCategory} onChange={setActiveCategory} />
                 )}
-                {showReceiptsInline && activeCategory === "all" ? (
+                {showReceiptsInline && activeCategory === "all" && !productQuery.trim() ? (
                   <ReturnsScreen
                     session={session}
                     embedded
                     onStockChanged={() => setStockVersion((v) => v + 1)}
+                    refreshKey={stockVersion}
                   />
                 ) : (
-                  <ProductGrid products={visibleProducts} onAdd={addToCart} businessType={businessType} />
+                  <ProductGrid
+                    products={showReceiptsInline && activeCategory === "all" ? searchedProducts : visibleProducts}
+                    onAdd={addToCart}
+                    businessType={businessType}
+                  />
                 )}
               </main>
 

@@ -24,6 +24,11 @@ interface ReturnsScreenProps {
   // embedded скрывает заголовок страницы (он уже есть у самой "Продажи") и сразу ставит фокус
   // в поле поиска чека, чтобы можно было сразу сканировать чек или вбить его номер.
   embedded?: boolean;
+  // Не из исходного ТЗ — по прямому запросу клиента: встроенный список чеков не обновлялся
+  // после только что пробитой продажи или возврата — кассир видел новый чек только после
+  // перелогина. App.tsx передаёт сюда stockVersion (уже увеличивается после каждой оплаты и
+  // возврата — см. confirmPayment/confirmReturn), любое изменение значения перезапускает загрузку.
+  refreshKey?: number;
 }
 
 const CAN_VIEW_ROLES: AuthSession["role"][] = ["ADMIN", "MANAGER", "CASHIER", "ACCOUNTANT"];
@@ -46,7 +51,7 @@ function daysAgoIso(days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ReturnsScreen({ session, onStockChanged, embedded }: ReturnsScreenProps) {
+export function ReturnsScreen({ session, onStockChanged, embedded, refreshKey }: ReturnsScreenProps) {
   const { t } = useTranslation();
   const canView = CAN_VIEW_ROLES.includes(session.role);
   const canInitiate = CAN_INITIATE_ROLES.includes(session.role);
@@ -97,7 +102,7 @@ export function ReturnsScreen({ session, onStockChanged, embedded }: ReturnsScre
       clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session.accessToken, storeId, from, to, search, canView]);
+  }, [session.accessToken, storeId, from, to, search, canView, refreshKey]);
 
   if (!canView) {
     return (
