@@ -1,22 +1,25 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { IntegrationProvider, ReceiptStatus } from '@prisma/client';
+import { mkdir, readFile, rm, writeFile } from 'fs/promises';
+import { existsSync, mkdirSync } from 'fs';
+import { join } from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { parseClassifierAndCatalog, parseOffers } from './commerceml-parser';
 
 const FILE_LIMIT_BYTES = 10 * 1024 * 1024; // 10 МБ на файл — разумный лимит для "базового режима"
+
+// Не под uploads/ — та папка отдаётся наружу статикой (см. main.ts useStaticAssets), а тут
+// сырые файлы каталога/цен от 1С клиента, светить их по предсказуемому публичному URL нельзя.
+const BUFFER_DIR = join(process.cwd(), 'onec-buffer');
+if (!existsSync(BUFFER_DIR)) {
+  mkdirSync(BUFFER_DIR, { recursive: true });
+}
 
 // Пока экспортируем сюда цифры одним числом за товар, без разбивки по характеристикам/складам —
 // это и есть "базовый режим" из ТЗ. Единица, артикул, серии и т.п. учитываются частично.
 @Injectable()
 export class OneCService {
   private readonly logger = new Logger(OneCService.name);
-
-  // Буфер загруженных файлов до вызова mode=import (протокол шлёт файл и импорт отдельными запросами).
-  // Держим в памяти процесса — переживает один сеанс обмена, не переживает рестарт сервера;
-  // для базового режима этого достаточно, при росте нагрузки можно вынести в Redis/файловую систему.
-  private readonly fileBuffers = new Map<string, Buffer>();
-  // Ид чеков, отданных на последнем mode=query, до подтверждения mode=success.
-  private readonly pendingExportBatches = new Map<string, string[]>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -34,19 +37,30 @@ export class OneCService {
     });
   }
 
-  saveFile(organizationId: string, filename: string, content: Buffer) {
-    this.fileBuffers.set(`${organizationId}:${filename}`, content);
+  // Буфер загруженных файлов до вызова mode=import (протокол шлёт файл и импорт отдельными
+  // запросами) — раньше держали в памяти процесса, терялось при рестарте сервера посреди
+  // обмена. На диске (не в БД — файлы каталога могут быть на несколько МБ, гонять их через
+  // Postgres лишнее) переживает рестарт, 1С в следующей сессии просто повторит mode=file.
+  async saveFile(
+    organizationId: string,
+    filename: string,
+    content: Buffer,
+  ): Promise<void> {
+    await mkdir(join(BUFFER_DIR, organizationId), { recursive: true });
+    await writeFile(this.bufferPath(organizationId, filename), content);
   }
 
   async importFile(organizationId: string, filename: string): Promise<void> {
-    const key = `${organizationId}:${filename}`;
-    const content = this.fileBuffers.get(key);
-    if (!content) {
+    const path = this.bufferPath(organizationId, filename);
+    let content: Buffer;
+    try {
+      content = await readFile(path);
+    } catch {
       throw new Error(
         `Файл ${filename} не загружен (нет предшествующего mode=file)`,
       );
     }
-    this.fileBuffers.delete(key);
+    await rm(path, { force: true });
 
     const xml = content.toString('utf8');
     if (filename.toLowerCase().includes('offers')) {
@@ -54,6 +68,14 @@ export class OneCService {
     } else {
       await this.importCatalog(organizationId, xml);
     }
+  }
+
+  // filename приходит от 1С как query-параметр — не доверяем ему буквально при сборке пути на
+  // диске (обход через "../" иначе мог бы читать/писать за пределами BUFFER_DIR). Оставляем
+  // только базовое имя файла, без разделителей директорий.
+  private bufferPath(organizationId: string, filename: string): string {
+    const safeName = filename.replace(/[/\\]/g, '_');
+    return join(BUFFER_DIR, organizationId, safeName);
   }
 
   private async importCatalog(organizationId: string, xml: string) {
@@ -154,10 +176,17 @@ export class OneCService {
       orderBy: { createdAt: 'asc' },
     });
 
-    this.pendingExportBatches.set(
-      organizationId,
-      receipts.map((r) => r.id),
-    );
+    // Не из исходного ТЗ: раньше id чеков в этой партии держали в памяти процесса до
+    // mode=success — терялось при рестарте сервера, и confirmExport не знал бы, что
+    // подтверждать. exportPendingAt на самих чеках переживает рестарт: 1С в следующей сессии
+    // просто получит тот же набор ещё раз (запрос выше и так исключает только exportedToOneCAt,
+    // не exportPendingAt) — протокол это ожидает, mode=query идемпотентен, пока нет success.
+    if (receipts.length > 0) {
+      await this.prisma.receipt.updateMany({
+        where: { id: { in: receipts.map((r) => r.id) } },
+        data: { exportPendingAt: new Date() },
+      });
+    }
 
     const documents = receipts
       .map((r) => {
@@ -198,15 +227,13 @@ ${documents}
   }
 
   async confirmExport(organizationId: string): Promise<void> {
-    const receiptIds = this.pendingExportBatches.get(organizationId) ?? [];
-    if (receiptIds.length === 0) return;
-
-    await this.prisma.receipt.updateMany({
-      where: { id: { in: receiptIds } },
-      data: { exportedToOneCAt: new Date() },
+    const { count } = await this.prisma.receipt.updateMany({
+      where: { exportPendingAt: { not: null }, store: { organizationId } },
+      data: { exportedToOneCAt: new Date(), exportPendingAt: null },
     });
-    this.pendingExportBatches.delete(organizationId);
-    this.logger.log(`1С: подтверждена выгрузка ${receiptIds.length} чеков`);
+    if (count > 0) {
+      this.logger.log(`1С: подтверждена выгрузка ${count} чеков`);
+    }
   }
 }
 

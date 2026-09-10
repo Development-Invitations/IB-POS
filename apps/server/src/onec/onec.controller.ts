@@ -64,7 +64,7 @@ export class OneCController {
       // Body — Buffer, потому что для пути /onec подключён express.raw() (см. main.ts):
       // 1С шлёт файл с произвольным/пустым Content-Type, обычный JSON body-parser его не ловит.
       const content = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
-      this.onec.saveFile(organizationId, filename, content);
+      await this.onec.saveFile(organizationId, filename, content);
       return 'success';
     }
 

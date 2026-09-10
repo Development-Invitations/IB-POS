@@ -496,6 +496,10 @@ model Receipt {
   discountTotal    Decimal       @default(0) @map("discount_total") @db.Decimal(14, 2)
   // Когда свод продаж по этому чеку был выгружен в 1С (Этап 6, направление IB-POS -> 1С).
   exportedToOneCAt DateTime?     @map("exported_to_onec_at")
+  // Чек попал в последний ответ на mode=query, но 1С ещё не подтвердила приём через mode=success
+  // (см. OneCService.buildSalesDocument/confirmExport). Заменяет буфер id чеков в памяти
+  // процесса — тот терялся при рестарте сервера посреди обмена, это поле переживает рестарт.
+  exportPendingAt  DateTime?     @map("export_pending_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 

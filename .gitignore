@@ -42,5 +42,8 @@ coverage/
 # Uploaded product photos (local disk storage, see apps/server/src/products/products.controller.ts)
 apps/server/uploads/
 
+# 1С exchange file buffer (mode=file -> mode=import), see apps/server/src/onec/onec.service.ts
+apps/server/onec-buffer/
+
 # NSSM (Windows service manager for the backend) — downloaded binary, not committed
 tools/nssm.exe
