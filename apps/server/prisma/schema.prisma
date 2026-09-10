@@ -29,6 +29,7 @@ model Organization {
   backups      Backup[]
   equipment    Equipment[]
   productMarkings ProductMarking[]
+  suppliers    Supplier[]
 
   @@map("organizations")
 }
@@ -201,6 +202,25 @@ model Category {
   @@map("categories")
 }
 
+// Не из исходного ТЗ — по прямому запросу клиента: нужен для документа "Поступление товаров и
+// услуг" при выгрузке в 1С (Контрагент обязателен в этом документе, у прихода на "Склад" раньше
+// поставщик не указывался вообще). externalId — тот же приём, что у Category/Product: сопоставление
+// с Контрагентом в 1С при повторном импорте, если он придёт оттуда.
+model Supplier {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  name           String
+  externalId     String?  @map("external_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  stockMovements  StockMovement[]
+
+  @@unique([organizationId, externalId])
+  @@index([organizationId])
+  @@map("suppliers")
+}
+
 model Product {
   id             String    @id @default(uuid())
   organizationId String    @map("organization_id")
@@ -325,10 +345,21 @@ model StockMovement {
   // маркировки (режим MANUAL или движение другого типа).
   markingCodes  String[]          @default([]) @map("marking_codes")
   userId        String?           @map("user_id")
+  // Не из исходного ТЗ — по прямому запросу клиента: поставщик для движений типа RECEIPT_IN —
+  // нужен документу "Поступление товаров и услуг" при выгрузке в 1С (см. Supplier). Для других
+  // типов движения не заполняется.
+  supplierId    String?           @map("supplier_id")
+  // Когда движение попало в выгруженный в 1С документ "Поступление товаров и услуг"
+  // (направление IB-POS -> 1С, Этап 6, см. OneCService.buildGoodsReceiptDocuments) и когда 1С
+  // подтвердила приём — та же пара полей и та же логика идемпотентности, что у
+  // Receipt.exportedToOneCAt/exportPendingAt.
+  exportedToOneCAt DateTime?       @map("exported_to_onec_at")
+  exportPendingAt  DateTime?       @map("export_pending_at")
   createdAt     DateTime          @default(now()) @map("created_at")
 
-  stock Stock @relation(fields: [stockId], references: [id], onDelete: Cascade)
-  user  User? @relation(fields: [userId], references: [id])
+  stock    Stock     @relation(fields: [stockId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
 
   @@index([stockId])
   @@map("stock_movements")

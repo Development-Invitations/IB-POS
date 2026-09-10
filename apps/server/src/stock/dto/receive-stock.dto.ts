@@ -23,4 +23,10 @@ export class ReceiveStockDto {
   @IsArray()
   @IsString({ each: true })
   markingCodes?: string[];
+
+  // Не из исходного ТЗ — по прямому запросу клиента: нужен документу "Поступление товаров и
+  // услуг" при выгрузке в 1С (см. Supplier, StockMovement.supplierId).
+  @IsOptional()
+  @IsString()
+  supplierId?: string;
 }

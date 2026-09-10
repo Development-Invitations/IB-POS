@@ -14,6 +14,7 @@ import type {
   ApiShift,
   ApiStockEntry,
   ApiStore,
+  ApiSupplier,
   ApiUser,
   ApiWorkstation,
   BackendPaymentMethod,
@@ -145,6 +146,18 @@ export function createCategory(token: string, name: string, parentId?: string) {
   return request<ApiCategory>(
     "/categories",
     { method: "POST", body: JSON.stringify({ name, parentId }) },
+    token,
+  );
+}
+
+export function getSuppliers(token: string) {
+  return request<ApiSupplier[]>("/suppliers", {}, token);
+}
+
+export function createSupplier(token: string, name: string) {
+  return request<ApiSupplier>(
+    "/suppliers",
+    { method: "POST", body: JSON.stringify({ name }) },
     token,
   );
 }
@@ -608,6 +621,9 @@ export interface ReceiveStockPayload {
   // Не из исходного ТЗ — по прямому запросу клиента: коды маркировки, отсканированные при
   // приёмке в режиме "Приём по штрихкоду и маркировке", см. WarehouseScreen.tsx.
   markingCodes?: string[];
+  // Не из исходного ТЗ — по прямому запросу клиента: нужен документу "Поступление товаров и
+  // услуг" при выгрузке в 1С.
+  supplierId?: string;
 }
 
 export function receiveStock(token: string, payload: ReceiveStockPayload) {

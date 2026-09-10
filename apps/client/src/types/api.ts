@@ -9,6 +9,13 @@ export interface ApiCategory {
   parentId: string | null;
 }
 
+// Не из исходного ТЗ — по прямому запросу клиента: поставщик для прихода на "Склад", нужен
+// документу "Поступление товаров и услуг" при выгрузке в 1С.
+export interface ApiSupplier {
+  id: string;
+  name: string;
+}
+
 export interface ApiProduct {
   id: string;
   categoryId: string | null;

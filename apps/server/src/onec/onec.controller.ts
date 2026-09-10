@@ -75,7 +75,7 @@ export class OneCController {
     }
 
     if (type === 'sale' && mode === 'query') {
-      const { xml } = await this.onec.buildSalesDocument(organizationId);
+      const { xml } = await this.onec.buildExportDocuments(organizationId);
       return xml;
     }
 

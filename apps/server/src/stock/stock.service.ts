@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReceiveStockDto } from './dto/receive-stock.dto';
@@ -22,6 +26,9 @@ export class StockService {
     userId: string | null,
     comment?: string,
     markingCodes?: string[],
+    // Не из исходного ТЗ — по прямому запросу клиента: поставщик для RECEIPT_IN, см.
+    // ReceiveStockDto.supplierId. У остальных типов движения не заполняется.
+    supplierId?: string,
   ) {
     const stock = await client.stock.upsert({
       where: { storeId_productId: { storeId, productId } },
@@ -30,7 +37,15 @@ export class StockService {
     });
 
     await client.stockMovement.create({
-      data: { stockId: stock.id, type, quantityDelta, userId, comment, markingCodes },
+      data: {
+        stockId: stock.id,
+        type,
+        quantityDelta,
+        userId,
+        comment,
+        markingCodes,
+        supplierId,
+      },
     });
 
     return stock;
@@ -104,7 +119,11 @@ export class StockService {
   // Не из исходного ТЗ — по прямому запросу клиента: при возврате чека возвращённые единицы
   // должны "вернуть" именно свои коды маркировки в "активные" (не чужие — поэтому ищем строго
   // по receiptItemId), а не просто увеличить число остатка.
-  async restoreMarkings(client: Client, receiptItemId: string, quantity: number) {
+  async restoreMarkings(
+    client: Client,
+    receiptItemId: string,
+    quantity: number,
+  ) {
     const toRestore = await client.productMarking.findMany({
       where: { receiptItemId, consumedAt: { not: null } },
       orderBy: { consumedAt: 'desc' },
@@ -182,6 +201,7 @@ export class StockService {
           userId,
           dto.comment,
           dto.markingCodes,
+          dto.supplierId,
         );
       });
     }
@@ -195,6 +215,7 @@ export class StockService {
       userId,
       dto.comment,
       dto.markingCodes,
+      dto.supplierId,
     );
   }
 

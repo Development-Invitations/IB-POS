@@ -4,10 +4,12 @@ import {
   ApiError,
   adjustStock,
   createProduct,
+  createSupplier,
   getMarkings,
   getProducts,
   getStockReport,
   getStores,
+  getSuppliers,
   getWarehouseConfig,
   lookupBarcode,
   receiveStock,
@@ -17,7 +19,7 @@ import { useBarcodeScanner } from "../lib/use-barcode-scanner";
 import { AmountInput } from "./AmountInput";
 import { InvoiceImportModal } from "./InvoiceImportModal";
 import { CloseIcon, InfoIcon, MinusIcon, PlusIcon, SearchIcon, SparkleIcon } from "./icons";
-import type { ApiProduct, ApiStockEntry, ApiStore, ReceivingMode } from "../types/api";
+import type { ApiProduct, ApiStockEntry, ApiStore, ApiSupplier, ReceivingMode } from "../types/api";
 import type { AuthSession } from "../types/auth";
 
 interface WarehouseScreenProps {
@@ -90,6 +92,15 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
 
   const [stores, setStores] = useState<ApiStore[]>([]);
   const [storeId, setStoreId] = useState<string | null>(null);
+
+  // Не из исходного ТЗ — по прямому запросу клиента: поставщик для прихода — нужен документу
+  // "Поступление товаров и услуг" при выгрузке в 1С (см. Supplier). Один поставщик на всю
+  // партию прихода — как и в реальной накладной, там один контрагент на документ.
+  const [suppliers, setSuppliers] = useState<ApiSupplier[]>([]);
+  const [supplierId, setSupplierId] = useState("");
+  const [addingSupplier, setAddingSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [supplierBusy, setSupplierBusy] = useState(false);
   const [products, setProducts] = useState<ApiProduct[]>([]);
   const [entries, setEntries] = useState<ApiStockEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,12 +234,14 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
     if (!quiet) setLoading(true);
     setLoadError(null);
     try {
-      const [storeList, productList] = await Promise.all([
+      const [storeList, productList, supplierList] = await Promise.all([
         getStores(session.accessToken),
         getProducts(session.accessToken),
+        getSuppliers(session.accessToken),
       ]);
       setStores(storeList);
       setProducts(productList.filter((p) => p.isActive));
+      setSuppliers(supplierList);
       setStoreId((prev) => prev ?? storeList[0]?.id ?? null);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : t("warehouse.loadError"));
@@ -506,9 +519,11 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
           quantity: line.quantity,
           comment: t("warehouse.receiveComment"),
           markingCodes: line.markingCodes,
+          supplierId: supplierId || undefined,
         });
       }
       setBatch(new Map());
+      setSupplierId("");
       await load(true);
       const fresh = await getStockReport(session.accessToken, storeId);
       setEntries(fresh);
@@ -518,6 +533,22 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
       setSubmitError(err instanceof ApiError ? err.message : t("warehouse.receiveError"));
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleCreateSupplier() {
+    if (!newSupplierName.trim()) return;
+    setSupplierBusy(true);
+    try {
+      const created = await createSupplier(session.accessToken, newSupplierName.trim());
+      setSuppliers((prev) => [...prev, created]);
+      setSupplierId(created.id);
+      setNewSupplierName("");
+      setAddingSupplier(false);
+    } catch {
+      // молча — поле поставщика необязательное, приход не должен вставать из-за этого
+    } finally {
+      setSupplierBusy(false);
     }
   }
 
@@ -849,6 +880,52 @@ export function WarehouseScreen({ session, onStockChanged }: WarehouseScreenProp
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {batch.size > 0 && (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="block w-56 text-xs font-medium text-slate-500">
+                {t("warehouse.supplier")}
+                <select
+                  value={addingSupplier ? "__new__" : supplierId}
+                  onChange={(e) => {
+                    if (e.target.value === "__new__") {
+                      setAddingSupplier(true);
+                    } else {
+                      setAddingSupplier(false);
+                      setSupplierId(e.target.value);
+                    }
+                  }}
+                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                >
+                  <option value="">{t("warehouse.supplierNone")}</option>
+                  {suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                  <option value="__new__">{t("warehouse.supplierNew")}</option>
+                </select>
+              </label>
+              {addingSupplier && (
+                <>
+                  <input
+                    value={newSupplierName}
+                    onChange={(e) => setNewSupplierName(e.target.value)}
+                    placeholder={t("warehouse.supplierNewPlaceholder")}
+                    autoFocus
+                    className="w-48 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                  <button
+                    onClick={handleCreateSupplier}
+                    disabled={supplierBusy || !newSupplierName.trim()}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-accent hover:border-accent/40 disabled:opacity-40"
+                  >
+                    {t("warehouse.supplierAdd")}
+                  </button>
+                </>
+              )}
             </div>
           )}
 

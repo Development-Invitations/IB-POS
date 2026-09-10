@@ -24,6 +24,7 @@ import { SettingsModule } from './settings/settings.module';
 import { BackupsModule } from './backups/backups.module';
 import { EquipmentModule } from './equipment/equipment.module';
 import { AiModule } from './ai/ai.module';
+import { SuppliersModule } from './suppliers/suppliers.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { AiModule } from './ai/ai.module';
     UsersModule,
     ProductsModule,
     CategoriesModule,
+    SuppliersModule,
     CustomersModule,
     ShiftsModule,
     OutboxModule,
